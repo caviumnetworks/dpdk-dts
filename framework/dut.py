@@ -1,0 +1,416 @@
+# <COPYRIGHT_TAG>
+
+import os
+import re
+import dcts
+from settings import NICS
+from ssh_connection import SSHConnection
+from crb import Crb
+from logger import getLogger
+
+"""
+A connection to the CRB under test.
+
+This class sends commands to the CRB and validates the responses. It is
+implemented using either ssh for linuxapp or the terminal server for
+baremetal.
+
+All operations are in fact delegated to an instance of either CRBLinuxApp
+or CRBBareMetal.
+"""
+
+
+class Dut(Crb):
+    PORT_INFO_CACHE_KEY = 'dut_port_info'
+    NUMBER_CORES_CACHE_KEY = 'dut_number_cores'
+    CORE_LIST_CACHE_KEY = 'dut_core_list'
+    PCI_DEV_CACHE_KEY = 'dut_pci_dev_info'
+
+    def __init__(self, crb, serializer):
+        super(Dut, self).__init__(crb, serializer)
+        self.NAME = 'dut'
+        self.logger = getLogger(self.NAME)
+        self.session = SSHConnection(self.get_ip_address(), self.NAME)
+        self.session.init_log(self.logger)
+        self.alt_session = SSHConnection(self.get_ip_address(), self.NAME)
+        self.alt_session.init_log(self.logger)
+        self.number_of_cores = 0
+        self.tester = None
+        self.cores = []
+        self.architecture = None
+        self.ports_info = None
+
+    def change_config_option(self, target, parameter, value):
+        """
+        This function change option in the config file
+        """
+        self.send_expect("sed -i 's/%s=.*$/%s=%s/'  config/defconfig_%s" %
+                         (parameter, parameter, value, target), "# ")
+
+    def set_toolchain(self, target):
+        """
+        This looks at the current target and instantiates an attribute to
+        be either a CRBLinuxApp or CRBBareMetal object. These latter two
+        classes are private and should not be used directly by client code.
+        """
+        self.kill_all()
+        self.target = target
+        [arch, _, _, toolchain] = target.split('-')
+
+        if toolchain == "icc":
+            icc_vars = os.getenv('ICC_VARS', "/opt/intel/composer_xe_2013/bin/")
+            icc_vars += "compilervars.sh"
+
+            if arch == "x86_64":
+                icc_arch = "intel64"
+            elif arch == "i686":
+                icc_arch = "ia32"
+            self.send_expect("source " + icc_vars + " " + icc_arch, "# ")
+
+        self.architecture = arch
+
+    def mount_procfs(self):
+        mount_procfs = getattr(self, 'mount_procfs_%s' % self.get_os_type())
+        mount_procfs()
+
+    def mount_procfs_linux(self):
+        pass
+
+    def mount_procfs_freebsd(self):
+        self.send_expect('mount -t procfs proc /proc', '# ')
+
+    def get_ip_address(self):
+        return self.crb['IP']
+
+    def dut_prerequisites(self):
+        self.send_expect("cd %s" % self.base_dir, "# ")
+        self.send_expect("alias ls='ls --color=none'", "#")
+
+        if self.get_os_type() == 'freebsd':
+            self.send_expect('alias make=gmake', '# ')
+            self.send_expect('alias sed=gsed', '# ')
+
+        self.init_core_list()
+        self.pci_devices_information()
+        self.restore_interfaces()
+        self.scan_ports()
+        self.mount_procfs()
+
+    def restore_interfaces(self):
+        restore_interfaces = getattr(self, 'restore_interfaces_%s' % self.get_os_type())
+        return restore_interfaces()
+
+    def restore_interfaces_freebsd(self):
+        """
+        Restore FreeBSD interfaces
+        """
+        self.send_expect("kldunload nic_uio.ko", "#")
+        self.send_expect("kldunload contigmem.ko", "#")
+        self.send_expect("kldload if_ixgbe.ko", "#", 20)
+
+    def restore_interfaces_linux(self):
+        Crb.restore_interfaces(self)
+
+        if self.ports_info is not None:
+            for port in self.ports_info:
+                self.admin_ports_linux(port['intf'], 'up')
+
+    def setup_memory(self, hugepages=-1):
+        try:
+            function_name = 'setup_memory_%s' % self.get_os_type()
+            setup_memory = getattr(self, function_name)
+            setup_memory(hugepages)
+        except AttributeError:
+            self.logger.error("%s is not implemented" % function_name)
+
+    def setup_memory_linux(self, hugepages=-1):
+        hugepages_size = self.send_expect("awk '/Hugepagesize/ {print $2}' /proc/meminfo", "# ")
+
+        if int(hugepages_size) < (1024 * 1024):
+            if self.architecture == "x86_64":
+                arch_huge_pages = hugepages if hugepages > 0 else 1024
+            elif self.architecture == "i686":
+                arch_huge_pages = hugepages if hugepages > 0 else 512
+
+            total_huge_pages = self.get_total_huge_pages()
+
+            self.mount_huge_pages()
+            if total_huge_pages != arch_huge_pages:
+                self.set_huge_pages(arch_huge_pages)
+
+    def setup_memory_freebsd(self, hugepages=-1):
+        if hugepages is -1:
+            hugepages = 2048
+
+        num_buffers = hugepages / 1024
+        if num_buffers:
+            self.send_expect('kenv hw.contigmem.num_buffers=%d' % num_buffers, "#")
+
+        self.send_expect("kldunload contigmem.ko", "#")
+        self.send_expect("kldload ./%s/kmod/contigmem.ko" % self.target, "#")
+
+    def taskset(self, core):
+        if self.get_os_type() != 'linux':
+            return ''
+
+        return 'taskset %s ' % core
+
+    def bind_interfaces_linux(self, driver='igb_uio', nics_to_bind=None):
+        """
+        Bind the interfaces to the selected driver. nics_to_bind can be None
+        to bind all interfaces or an array with the port indexes
+        """
+
+        binding_list = '--bind=%s ' % driver
+
+        current_nic = 0
+        for (pci_bus, pci_id) in self.pci_devices_info:
+            if dcts.accepted_nic(pci_id):
+
+                if nics_to_bind is None or current_nic in nics_to_bind:
+                    binding_list += '%s ' % (pci_bus)
+
+                current_nic += 1
+
+        self.send_expect('tools/dpdk_nic_bind.py %s' % binding_list, '# ')
+
+    def unbind_interfaces_linux(self, nics_to_bind=None):
+        """
+        Unbind the interfaces
+        """
+
+        binding_list = '-u '
+
+        current_nic = 0
+        for (pci_bus, pci_id) in self.pci_devices_info:
+            if dcts.accepted_nic(pci_id):
+
+                if nics_to_bind is None or current_nic in nics_to_bind:
+                    binding_list += '%s ' % (pci_bus)
+
+                current_nic += 1
+
+        self.send_expect('tools/dpdk_nic_bind.py %s' % binding_list, '# ', 30)
+
+    def get_ports(self, nic_type, perf=None, socket=None):
+
+        ports = []
+        candidates = []
+
+        if perf is None:
+            perf = self.want_perf_tests
+
+        nictypes = []
+        if nic_type == 'any' and perf:
+            return ports
+
+        for nic in NICS.keys():
+            if ('any' == nic_type) or (nic_type in nic):
+                nictypes.append(nic)
+
+        for portid in range(len(self.ports_info)):
+            for nictype in nictypes:
+
+                if self.ports_info[portid]['type'] == NICS[nictype]:
+                    if (socket is None or
+                        self.ports_info[portid]['numa'] == -1 or
+                            socket == self.ports_info[portid]['numa']):
+
+                        if (self.ports_info[portid]['ipv6'] != "Not connected" and
+                                self.tester.get_local_port(portid) != -1):
+                            if perf and self.tester.get_local_port_type(portid) != "ixia":
+                                candidates.append(portid)
+                                continue
+                            elif False == perf and self.tester.get_local_port_type(portid) == "ixia":
+                                continue
+                            ports.append(portid)
+
+        if perf and not self.has_external_traffic_generator():
+            return candidates
+        else:
+            return ports
+
+    def get_ports_performance(self, nic_type, perf=None, socket=None,
+                              force_same_socket=True,
+                              force_different_nic=True):
+        """
+            Return the maximum available number of ports meeting the parameters.
+            Focuses on getting ports with same/different NUMA node and/or
+            same/different NIC.
+        """
+
+        available_ports = self.get_ports(nic_type, perf, socket)
+        accepted_sets = []
+
+        while len(available_ports) > 0:
+            accepted_ports = []
+            # first avaiable port is the reference port
+            accepted_ports.append(available_ports[0])
+
+            # check from second port according to parameter
+            for port in available_ports[1:]:
+
+                if force_same_socket and socket is None:
+                    if self.ports_info[port]['numa'] != self.ports_info[accepted_ports[0]]['numa']:
+                        continue
+                if force_different_nic:
+                    if self.ports_info[port]['pci'][:-1] == self.ports_info[accepted_ports[0]]['pci'][:-1]:
+                        continue
+
+                accepted_ports.append(port)
+
+            for port in accepted_ports:
+                available_ports.remove(port)
+
+            accepted_sets.append(accepted_ports)
+
+        biggest_set = max(accepted_sets, key=lambda s: len(s))
+
+        return biggest_set
+
+    def get_mac_address(self, port_num):
+        """
+        return the port mac on dut
+        """
+        return self.ports_info[port_num]['mac']
+
+    def get_ipv6_address(self, port_num):
+        """
+        return the IPv6 address on dut
+        """
+        return self.ports_info[port_num]['ipv6']
+
+    def get_numa_id(self, port_num):
+        """
+        return the Numa Id of port
+        """
+        if self.ports_info[port_num]['numa'] == -1:
+            self.logger.warning('NUMA not supported')
+
+        return self.ports_info[port_num]['numa']
+
+    def lcore_table_print(self, horizontal=False):
+        if not horizontal:
+            dcts.results_table_add_header(['Socket', 'Core', 'Thread'])
+
+            for lcore in self.cores:
+                dcts.results_table_add_row([lcore['socket'], lcore['core'], lcore['thread']])
+            dcts.results_table_print()
+        else:
+            dcts.results_table_add_header(['X'] + [''] * len(self.cores))
+            dcts.results_table_add_row(['Thread'] + [n['thread'] for n in self.cores])
+            dcts.results_table_add_row(['Core'] + [n['core'] for n in self.cores])
+            dcts.results_table_add_row(['Socket'] + [n['socket'] for n in self.cores])
+            dcts.results_table_print()
+
+    def get_memory_channels(self):
+        n = self.crb['memory channels']
+        if n is not None and n > 0:
+            return n
+        else:
+            return 1
+
+    def scan_ports(self):
+        if self.read_cache:
+            self.ports_info = self.serializer.load(self.PORT_INFO_CACHE_KEY)
+
+        if not self.read_cache or self.ports_info is None:
+            self.scan_ports_uncached()
+            self.serializer.save(self.PORT_INFO_CACHE_KEY, self.ports_info)
+
+        self.logger.info(dcts.pprint(self.ports_info))
+
+    def scan_ports_uncached(self):
+        scan_ports_uncached = getattr(self, 'scan_ports_uncached_%s' % self.get_os_type())
+        return scan_ports_uncached()
+
+    def scan_ports_uncached_linux(self):
+        self.ports_info = []
+
+        skipped = dcts.RED('Skipped: Unknown/not selected')
+        unknow_interface = dcts.RED('Skipped: unknow_interface')
+
+        for (pci_bus, pci_id) in self.pci_devices_info:
+
+            if not dcts.accepted_nic(pci_id):
+                self.logger.info("DUT: [000:%s %s] %s" % (pci_bus, pci_id,
+                                                          skipped))
+                continue
+
+            addr_array = pci_bus.split(':')
+            bus_id = addr_array[0]
+            devfun_id = addr_array[1]
+            self.send_expect("echo 0000:%s > /sys/bus/pci/drivers/igb_uio/unbind" % pci_bus, "# ")
+            if pci_id == '8086:10fb':
+                self.send_expect("echo 0000:%s > /sys/bus/pci/drivers/ixgbe/bind" % pci_bus, "# ")
+            intf = self.get_interface_name(bus_id, devfun_id)
+
+            self.logger.info("DUT: [000:%s %s] %s" % (pci_bus,
+                                                      pci_id,
+                                                      intf))
+
+            if "No such file" in intf:
+                self.logger.info("DUT: [000:%s %s] %s" % (pci_bus, pci_id,
+                                                          unknow_interface))
+                continue
+
+            macaddr = self.get_mac_addr(intf, bus_id, devfun_id)
+
+            out = self.send_expect("ip -family inet6 address show dev %s | awk '/inet6/ { print $2 }'"
+                                   % intf, "# ")
+            ipv6 = out.split('/')[0]
+
+            # Unconnected ports don't have IPv6
+            if ":" not in ipv6:
+                ipv6 = "Not connected"
+
+            numa = self.send_expect("cat /sys/bus/pci/devices/0000\:%s\:%s/numa_node" %
+                                    (bus_id, devfun_id), "# ")
+
+            try:
+                numa = int(numa)
+            except ValueError:
+                numa = -1
+                self.logger.warning("NUMA not available")
+
+            # store the port info to port mapping
+            self.ports_info.append({'pci': pci_bus, 'type': pci_id, 'intf':
+                                    intf, 'mac': macaddr, 'ipv6': ipv6, 'numa': numa})
+
+    def scan_ports_uncached_freebsd(self):
+        self.ports_info = []
+
+        skipped = dcts.RED('Skipped: Unknown/not selected')
+
+        for (pci_bus, pci_id) in self.pci_devices_info:
+
+            if not dcts.accepted_nic(pci_id):
+                self.logger.info("DUT: [%s %s] %s" % (pci_bus, pci_id,
+                                                      skipped))
+                continue
+
+            intf = self.get_interface_name(pci_bus)
+
+            macaddr = self.get_mac_addr(intf)
+            ipv6 = self.get_ipv6_addr(intf)
+
+            if ipv6 is None:
+                ipv6 = "Not available"
+
+            self.logger.warning("NUMA not available on FreeBSD")
+
+            self.logger.info("DUT: [%s %s] %s %s" % (pci_bus, pci_id, intf, ipv6))
+
+            # convert bsd format to linux format
+            pci_split = pci_bus.split(':')
+            pci_bus_id = hex(int(pci_split[0]))[2:]
+            if len(pci_split[1]) == 1:
+                pci_dev_str = "0" + pci_split[1]
+            else:
+                pci_dev_str = pci_split[1]
+
+            pci_str = "%s:%s.%s" % (pci_bus_id, pci_dev_str, pci_split[2])
+
+            # store the port info to port mapping
+            self.ports_info.append({'pci': pci_str, 'type': pci_id, 'intf':
+                                    intf, 'mac': macaddr, 'ipv6': ipv6, 'numa': -1})
