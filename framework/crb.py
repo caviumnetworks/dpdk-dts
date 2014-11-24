@@ -1,13 +1,52 @@
-# <COPYRIGHT_TAG>
+# BSD LICENSE
+#
+# Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+#
+#   * Redistributions of source code must retain the above copyright
+#     notice, this list of conditions and the following disclaimer.
+#   * Redistributions in binary form must reproduce the above copyright
+#     notice, this list of conditions and the following disclaimer in
+#     the documentation and/or other materials provided with the
+#     distribution.
+#   * Neither the name of Intel Corporation nor the names of its
+#     contributors may be used to endorse or promote products derived
+#     from this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+# OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import time
-import dcts
+import dts
 import re
 import os
 from settings import TIMEOUT, IXIA
 
+"""
+CRB (customer reference board) basic functions and handlers
+"""
+
 
 class Crb(object):
+
+    """
+    Basic module for customer reference board. This module implement functions
+    interact with CRB. With these function, we can get the information of
+    CPU/PCI/NIC on the board and setup running environment for DPDK.
+    """
 
     def __init__(self, crb, serializer):
         self.crb = crb
@@ -17,6 +56,11 @@ class Crb(object):
         self.ports_info = None
 
     def send_expect(self, cmds, expected, timeout=TIMEOUT, alt_session=False):
+        """
+        Send commands to crb and return string before expected string. If
+        there's no expected string found before timeout, TimeoutException will
+        be raised.
+        """
 
         if alt_session:
             return self.alt_session.session.send_expect(cmds, expected, timeout)
@@ -24,64 +68,78 @@ class Crb(object):
         return self.session.send_expect(cmds, expected, timeout)
 
     def set_test_types(self, func_tests, perf_tests):
+        """
+        Enable or disable function/performance test.
+        """
         self.want_func_tests = func_tests
         self.want_perf_tests = perf_tests
 
-    def has_external_traffic_generator(self):
-        try:
-            if self.crb[IXIA] is not None:
-                return True
-        except Exception as e:
-            return False
-
-        return False
-
-    def get_external_traffic_generator(self):
-        return self.crb[IXIA]
-
     def get_total_huge_pages(self):
+        """
+        Get the huge page number of CRB.
+        """
         huge_pages = self.send_expect("awk '/HugePages_Total/ { print $2 }' /proc/meminfo", "# ")
         if huge_pages != "":
             return int(huge_pages)
         return 0
 
     def mount_huge_pages(self):
+        """
+        Mount hugepage file system on CRB.
+        """
         self.send_expect("umount `awk '/hugetlbfs/ { print $2 }' /proc/mounts`", '# ')
         self.send_expect('mkdir -p /mnt/huge', '# ')
         self.send_expect('mount -t hugetlbfs nodev /mnt/huge', '# ')
 
     def set_huge_pages(self, huge_pages):
+        """
+        Set numbers of huge pages
+        """
         self.send_expect('echo %d > /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages' % huge_pages, '# ', 5)
 
     def set_speedup_options(self, read_cache, skip_setup):
+        """
+        Configure skip network topology scan or skip DPDK packet setup.
+        """
         self.read_cache = read_cache
         self.skip_setup = skip_setup
 
     def set_directory(self, base_dir):
+        """
+        Set DPDK package folder name.
+        """
         self.base_dir = base_dir
 
     def admin_ports(self, port, status):
+        """
+        Force set port's interface status.
+        """
         admin_ports_freebsd = getattr(self, 'admin_ports_freebsd_%s' % self.get_os_type())
         return admin_ports_freebsd()
 
     def admin_ports_freebsd(self, port, status):
         """
-        force set remote interface link status in FreeBSD
+        Force set remote interface link status in FreeBSD.
         """
         eth = self.ports_info[port]['intf']
         self.send_expect("ifconfig %s %s" % (eth, status), "# ")
 
     def admin_ports_linux(self, eth, status):
         """
-        force set remote interface link status in Linux
+        Force set remote interface link status in Linux.
         """
         self.send_expect("ip link set  %s %s" % (eth, status), "# ")
 
     def restore_interfaces(self):
         """
-        Restore Linux interfaces
+        Restore Linux interfaces.
         """
-        self.send_expect("rmmod igb_uio", "# ", 10)
+        if dts.drivername == "vfio-pci":
+            self.send_expect("rmmod vfio_iommu_type1", "# ", 10)
+            self.send_expect("rmmod vfio_pci", "# ", 10)
+            self.send_expect("rmmod vfio", "# ", 10)
+        else:
+            self.send_expect("rmmod igb_uio", "# ", 10)
         self.send_expect("modprobe igb", "# ", 20)
         self.send_expect("modprobe ixgbe", "# ", 20)
         self.send_expect("modprobe e1000e", "# ", 20)
@@ -102,10 +160,18 @@ class Crb(object):
                     self.send_expect("echo 0000%s > /sys/bus/pci/drivers/virtio-pci/bind" % pci_bus, "# ")
                 else:
                     continue
+
+                addr_array = pci_bus.split(':')
+                itf = self.get_interface_name(addr_array[0], addr_array[1])
+                self.send_expect("ifconfig %s up" % itf, "# ")
+
         except Exception as e:
             self.logger.error("   !!! Restore ITF: " + e.message)
 
     def pci_devices_information(self):
+        """
+        Scan CRB pci device information and save it into cache file.
+        """
         if self.read_cache:
             self.pci_devices_info = self.serializer.load(self.PCI_DEV_CACHE_KEY)
 
@@ -114,12 +180,15 @@ class Crb(object):
             self.serializer.save(self.PCI_DEV_CACHE_KEY, self.pci_devices_info)
 
     def pci_devices_information_uncached(self):
+        """
+        Scan CRB NIC's information on different OS.
+        """
         pci_devices_information_uncached = getattr(self, 'pci_devices_information_uncached_%s' % self.get_os_type())
         return pci_devices_information_uncached()
 
     def pci_devices_information_uncached_linux(self):
         """
-        Look for the NIC's information (PCI Id and card type)
+        Look for the NIC's information (PCI Id and card type).
         """
         out = self.send_expect("lspci -nn | grep -i eth", "# ")
         rexp = r"([\da-f]{2}:[\da-f]{2}.\d{1}) Ethernet .* Intel Corporation .*?([\da-f]{4}:[\da-f]{4})"
@@ -131,7 +200,7 @@ class Crb(object):
 
     def pci_devices_information_uncached_freebsd(self):
         """
-        Look for the NIC's information (PCI Id and card type)
+        Look for the NIC's information (PCI Id and card type).
         """
         out = self.send_expect("pciconf -l", "# ")
         rexp = r"pci0:([\da-f]{1,3}:[\da-f]{1,2}:\d{1}):\s*class=0x020000.*chip=0x([\da-f]{4})8086"
@@ -144,14 +213,23 @@ class Crb(object):
             self.pci_devices_info.append((match[i][0], card_type))
 
     def get_interface_name(self, bus_id, devfun_id=''):
+        """
+        Get interface name of specified pci device.
+        """
         get_interface_name = getattr(self, 'get_interface_name_%s' % self.get_os_type())
         return get_interface_name(bus_id, devfun_id)
 
     def get_interface_name_linux(self, bus_id, devfun_id):
+        """
+        Get interface name of specified pci device on linux.
+        """
         command = 'ls /sys/bus/pci/devices/0000:%s:%s/net' % (bus_id, devfun_id)
         return self.send_expect(command, '# ')
 
     def get_interface_name_freebsd(self, bus_id, devfun_id):
+        """
+        Get interface name of specified pci device on Freebsd.
+        """
         out = self.send_expect("pciconf -l", "# ")
         rexp = r"(\w*)@pci0:%s" % bus_id
         pattern = re.compile(rexp)
@@ -159,15 +237,24 @@ class Crb(object):
         return match[0]
 
     def get_mac_addr(self, intf, bus_id='', devfun_id=''):
+        """
+        Get mac address of specified pci device.
+        """
         get_mac_addr = getattr(self, 'get_mac_addr_%s' % self.get_os_type())
         return get_mac_addr(intf, bus_id, devfun_id)
 
     def get_mac_addr_linux(self, intf, bus_id, devfun_id):
+        """
+        Get mac address of specified pci device on linux.
+        """
         command = ('cat /sys/bus/pci/devices/0000:%s:%s/net/%s/address' %
                    (bus_id, devfun_id, intf))
         return self.send_expect(command, '# ')
 
     def get_mac_addr_freebsd(self, intf, bus_id, devfun_id):
+        """
+        Get mac address of specified pci device on Freebsd.
+        """
         out = self.send_expect('ifconfig %s' % intf, '# ')
         rexp = r"ether ([\da-f:]*)"
         pattern = re.compile(rexp)
@@ -175,15 +262,24 @@ class Crb(object):
         return match[0]
 
     def get_ipv6_addr(self, intf):
+        """
+        Get ipv6 address of specified pci device.
+        """
         get_ipv6_addr = getattr(self, 'get_ipv6_addr_%s' % self.get_os_type())
         return get_ipv6_addr(intf)
 
     def get_ipv6_addr_linux(self, intf):
+        """
+        Get ipv6 address of specified pci device on linux.
+        """
         out = self.send_expect("ip -family inet6 address show dev %s | awk '/inet6/ { print $2 }'"
                                % intf, "# ")
         return out.split('/')[0]
 
     def get_ipv6_addr_freebsd(self, intf):
+        """
+        Get ipv6 address of specified pci device on Freebsd.
+        """
         out = self.send_expect('ifconfig %s' % intf, '# ')
         rexp = r"inet6 ([\da-f:]*)%"
         pattern = re.compile(rexp)
@@ -194,11 +290,17 @@ class Crb(object):
         return match[0]
 
     def create_file(self, contents, fileName):
+        """
+        Create file with contents and copy it to CRB.
+        """
         with open(fileName, "w") as f:
             f.write(contents)
         self.session.copy_file_to(fileName)
 
     def kill_all(self):
+        """
+        Kill all dpdk applications on CRB.
+        """
         cmd = "for i in `lsof /var/run/.rte_config /var/run/dpdk_config \
                 | awk '/config/ {print $2}'` ; do kill -9 $i; done"
         self.alt_session.session.send_expect(cmd, "# ", 10)
@@ -206,10 +308,16 @@ class Crb(object):
         self.check_os_type()
 
     def close(self):
+        """
+        Close ssh session of CRB.
+        """
         self.session.close()
         self.alt_session.close()
 
     def get_os_type(self):
+        """
+        Get OS type from execution configuration file.
+        """
         from dut import Dut
         if isinstance(self, Dut) and 'OS' in self.crb:
             return str(self.crb['OS']).lower()
@@ -217,6 +325,9 @@ class Crb(object):
         return 'linux'
 
     def check_os_type(self):
+        """
+        Check real OS type whether match configured type.
+        """
         from dut import Dut
         expected = 'Linux.*#'
         if isinstance(self, Dut) and self.get_os_type() == 'freebsd':
@@ -225,6 +336,9 @@ class Crb(object):
         self.send_expect('uname', expected, 2)
 
     def init_core_list(self):
+        """
+        Load or create core information of CRB.
+        """
         if self.read_cache:
             self.number_of_cores = self.serializer.load(self.NUMBER_CORES_CACHE_KEY)
             self.cores = self.serializer.load(self.CORE_LIST_CACHE_KEY)
@@ -235,10 +349,16 @@ class Crb(object):
             self.serializer.save(self.CORE_LIST_CACHE_KEY, self.cores)
 
     def init_core_list_uncached(self):
+        """
+        Scan cores on CRB and create core information list.
+        """
         init_core_list_uncached = getattr(self, 'init_core_list_uncached_%s' % self.get_os_type())
         init_core_list_uncached()
 
     def init_core_list_uncached_freebsd(self):
+        """
+        Scan cores in Freebsd and create core information list.
+        """
         self.cores = []
 
         import xml.etree.ElementTree as ET
@@ -247,9 +367,7 @@ class Crb(object):
 
         cpu_xml = ET.fromstring(out)
 
-        #
         # WARNING: HARDCODED VALUES FOR CROWN PASS IVB
-        #
         thread = 0
         socket_id = 0
 
@@ -269,6 +387,9 @@ class Crb(object):
         self.number_of_cores = len(self.cores)
 
     def init_core_list_uncached_linux(self):
+        """
+        Scan cores in linux and create core information list.
+        """
         self.cores = []
 
         cpuinfo = \
@@ -292,9 +413,15 @@ class Crb(object):
         self.number_of_cores = len(self.cores)
 
     def get_all_cores(self):
+        """
+        Return core information list.
+        """
         return self.cores
 
     def remove_hyper_core(self, core_list, key=None):
+        """
+        Remove hyperthread locre for core list.
+        """
         found = set()
         for core in core_list:
             val = core if key is None else key(core)
@@ -303,17 +430,26 @@ class Crb(object):
                 found.add(val)
 
     def init_reserved_core(self):
+        """
+        Remove hyperthread cores from reserved list.
+        """
         partial_cores = self.cores
         # remove hyper-threading core
         self.reserved_cores = list(self.remove_hyper_core(partial_cores, key=lambda d: (d['core'], d['socket'])))
 
     def remove_reserved_cores(self, core_list, args):
+        """
+        Remove cores from reserved cores.
+        """
         indexes = sorted(args, reverse=True)
         for index in indexes:
             del core_list[index]
         return core_list
 
     def get_reserved_core(self, config, socket):
+        """
+        Get reserved cores by core config and socket id.
+        """
         m = re.match("([1-9]+)C", config)
         nr_cores = int(m.group(1))
         if m is None:
@@ -333,6 +469,10 @@ class Crb(object):
         return map(str, thread_list)
 
     def get_core_list(self, config, th=False, socket=-1):
+        """
+        Get lcore array according to the core config like "all", "1S/1C/1T".
+        We can specify the physical CPU socket by paramter "socket".
+        """
         if config == 'all':
 
             if th:
@@ -420,6 +560,9 @@ class Crb(object):
             return map(str, thread_list)
 
     def get_lcore_id(self, config):
+        """
+        Get lcore id of specified core by config "C{socket.core.thread}"
+        """
 
         m = re.match("C{([01]).(\d).([01])}", config)
 

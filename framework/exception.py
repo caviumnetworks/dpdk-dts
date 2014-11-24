@@ -1,5 +1,3 @@
-# <COPYRIGHT_TAG>
-
 """
 User-defined exceptions used across the framework.
 """
@@ -18,6 +16,9 @@ class TimeoutException(Exception):
     def __str__(self):
         msg = 'TIMEOUT on %s' % (self.command)
         return msg
+
+    def get_output(self):
+        return self.output
 
 
 class VerifyFailure(Exception):

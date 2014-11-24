@@ -1,25 +1,46 @@
-# <COPYRIGHT_TAG>
+# BSD LICENSE
+#
+# Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+#
+#   * Redistributions of source code must retain the above copyright
+#     notice, this list of conditions and the following disclaimer.
+#   * Redistributions in binary form must reproduce the above copyright
+#     notice, this list of conditions and the following disclaimer in
+#     the documentation and/or other materials provided with the
+#     distribution.
+#   * Neither the name of Intel Corporation nor the names of its
+#     contributors may be used to endorse or promote products derived
+#     from this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+# OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
 DPDK Test suite.
-
-
 Layer-3 forwarding test script.
 """
 
-import dcts
+import dts
 import string
 import re
 from plotting import Plotting
 from test_case import TestCase
 from exception import VerifyFailure
 from settings import HEADER_SIZE
-
-
-#
-#
-# Test class.
-#
 
 
 class TestL3fwd(TestCase):
@@ -167,7 +188,7 @@ class TestL3fwd(TestCase):
                         ylabel='% linerate',
                         legend=TestL3fwd.methods)
 
-                    dcts.results_plot_print(image_path, 50)
+                    dts.results_plot_print(image_path, 50)
                 except VerifyFailure as e:
                     self.logger.error(str(e))
 
@@ -213,7 +234,7 @@ class TestL3fwd(TestCase):
                     ylabel='% linerate',
                     legend=TestL3fwd.methods)
 
-                dcts.results_plot_print(image_path)
+                dts.results_plot_print(image_path)
             except VerifyFailure as e:
                 self.logger.error(str(e))
 
@@ -246,7 +267,7 @@ class TestL3fwd(TestCase):
                 ylabel='% linerate',
                 legend=cores)
 
-            dcts.results_plot_print(image_path, 50)
+            dts.results_plot_print(image_path, 50)
 
         # If testing only one mode, do nothing else.
         if len(TestL3fwd.methods) == 1:
@@ -278,7 +299,7 @@ class TestL3fwd(TestCase):
             ylabel='% linerate',
             legend=TestL3fwd.methods)
 
-        dcts.results_plot_print(image_path)
+        dts.results_plot_print(image_path)
 
     def set_up_all(self):
         """
@@ -395,7 +416,7 @@ class TestL3fwd(TestCase):
             command_line = output_pattern.sub(self.repl, command_line)
 
         self.logger.debug("%s\n" % str(corelist))
-        core_mask = dcts.create_mask(set(corelist))
+        core_mask = dts.create_mask(set(corelist))
 
         # First, measure by two different methods
         for method in TestL3fwd.methods:
@@ -403,9 +424,9 @@ class TestL3fwd(TestCase):
             method_command_line = command_line % (TestL3fwd.path + "l3fwd_" + method,
                                                   core_mask,
                                                   self.dut.get_memory_channels(),
-                                                  dcts.create_mask(valports[:4]))
+                                                  dts.create_mask(valports[:4]))
 
-            dcts.report(method_command_line + "\n", frame=True, annex=True)
+            dts.report(method_command_line + "\n", frame=True, annex=True)
 
             out = self.dut.send_expect(method_command_line, "L3FWD:", 120)
 
@@ -437,7 +458,7 @@ class TestL3fwd(TestCase):
             data_row.append(pct[method])
 
         # generate report table
-        dcts.results_table_add_row(data_row)
+        dts.results_table_add_row(data_row)
         self.l3fwd_test_results['data'].append(data_row)
 
     def set_up(self):
@@ -462,7 +483,7 @@ class TestL3fwd(TestCase):
             header_row.append('%s Mpps' % method)
             header_row.append('% linerate')
 
-        dcts.results_table_add_header(header_row)
+        dts.results_table_add_header(header_row)
         self.l3fwd_test_results['header'] = header_row
         self.l3fwd_test_results['data'] = []
 
@@ -479,10 +500,10 @@ class TestL3fwd(TestCase):
 
             self.tester.scapy_execute()
 
-            dcts.report("Flows for 4 ports, %d frame size.\n" % (frame_size),
-                        annex=True)
-            dcts.report("%s" % string.join(flows, '\n'),
-                        frame=True, annex=True)
+            dts.report("Flows for 4 ports, %d frame size.\n" % (frame_size),
+                       annex=True)
+            dts.report("%s" % string.join(flows, '\n'),
+                       frame=True, annex=True)
 
             # Get the number of sockets of the board
             number_sockets = self.dut.send_expect("grep \"processor\|physical id\|core id\|^$\" /proc/cpuinfo | grep physical | sort -u | wc -l", "# ")
@@ -496,7 +517,7 @@ class TestL3fwd(TestCase):
                     self.get_throughput(frame_size, *test_case)
 
         self.plot_4_ports()
-        dcts.results_table_print()
+        dts.results_table_print()
 
     def test_perf_l3fwd_2ports(self):
         """
@@ -505,7 +526,7 @@ class TestL3fwd(TestCase):
 
         header_row = ["Frame", "Ports", "S/C/T", "Mpps", "% linerate", "mode"]
         self.l3fwd_test_results['header'] = header_row
-        dcts.results_table_add_header(header_row)
+        dts.results_table_add_header(header_row)
         self.l3fwd_test_results['data'] = []
 
         for frame_size in TestL3fwd.frame_sizes:
@@ -516,10 +537,10 @@ class TestL3fwd(TestCase):
 
             flows = ['Ether()/%s/("X"*%d)' % (flow, payload_size) for flow in self.flows()[:4]]
 
-            dcts.report("Flows for 2 ports, %d frame size.\n" % (frame_size),
-                        annex=True)
-            dcts.report("%s" % string.join(flows, '\n'),
-                        frame=True, annex=True)
+            dts.report("Flows for 2 ports, %d frame size.\n" % (frame_size),
+                       annex=True)
+            dts.report("%s" % string.join(flows, '\n'),
+                       frame=True, annex=True)
 
             self.tester.scapy_append('wrpcap("test2ports.pcap", [%s])' % string.join(flows, ','))
             self.tester.scapy_execute()
@@ -534,7 +555,7 @@ class TestL3fwd(TestCase):
                 while pat.search(rtCmdLines[key]):
                     rtCmdLines[key] = pat.sub(self.repl, rtCmdLines[key])
                 self.logger.info("%s\n" % str(corelist))
-                coreMask[key] = dcts.create_mask(set(corelist))
+                coreMask[key] = dts.create_mask(set(corelist))
 
             # measure by two different mode
             for mode in TestL3fwd.methods:
@@ -548,13 +569,13 @@ class TestL3fwd(TestCase):
                            mode, cores, frame_size)
 
                     self.logger.info(info)
-                    dcts.report(info, annex=True)
+                    dts.report(info, annex=True)
 
                     subtitle.append(cores)
                     cmdline = rtCmdLines[cores] % (TestL3fwd.path + "l3fwd_" + mode, coreMask[cores],
-                                                   self.dut.get_memory_channels(), dcts.create_mask(valports[:2]))
+                                                   self.dut.get_memory_channels(), dts.create_mask(valports[:2]))
 
-                    dcts.report(cmdline + "\n", frame=True, annex=True)
+                    dts.report(cmdline + "\n", frame=True, annex=True)
 
                     out = self.dut.send_expect(cmdline, "L3FWD:", 120)
 
@@ -583,11 +604,11 @@ class TestL3fwd(TestCase):
                     self.dut.send_expect("^C", "#")
 
                     data_row = [frame_size, 2, cores, str(pps), str(pct), mode]
-                    dcts.results_table_add_row(data_row)
+                    dts.results_table_add_row(data_row)
                     self.l3fwd_test_results['data'].append(data_row)
 
         self.plot_2_ports()
-        dcts.results_table_print()
+        dts.results_table_print()
 
     def tear_down(self):
         """

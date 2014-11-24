@@ -1,29 +1,46 @@
-# <COPYRIGHT_TAG>
+# BSD LICENSE
+#
+# Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+#
+#   * Redistributions of source code must retain the above copyright
+#     notice, this list of conditions and the following disclaimer.
+#   * Redistributions in binary form must reproduce the above copyright
+#     notice, this list of conditions and the following disclaimer in
+#     the documentation and/or other materials provided with the
+#     distribution.
+#   * Neither the name of Intel Corporation nor the names of its
+#     contributors may be used to endorse or promote products derived
+#     from this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+# OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
 DPDK Test suite.
-
 Test Layer-2 Forwarding support
-
 """
 
-import dcts
+import dts
 from test_case import TestCase
 from plotting import Plotting
 from settings import HEADER_SIZE
 
-#
-#
-# Test class.
-#
-
 
 class TestL2fwd(TestCase):
-
-    #
-    #
-    # Utility methods and other non-test code.
-    #
 
     def plot_results(self):
 
@@ -45,13 +62,8 @@ class TestL2fwd(TestCase):
             ylabel='% linerate',
             legend=queues)
 
-        dcts.results_plot_print(image_path)
+        dts.results_plot_print(image_path)
 
-    #
-    #
-    #
-    # Test cases.
-    #
     def set_up_all(self):
         """
         Run at the start of each test suite.
@@ -88,7 +100,7 @@ class TestL2fwd(TestCase):
             self.table_header.append("%d queues Mpps" % queue['queues'])
             self.table_header.append("% linerate")
 
-        dcts.results_table_add_header(self.table_header)
+        dts.results_table_add_header(self.table_header)
         self.plotting = Plotting(self.dut.crb['name'], self.target, self.nic)
 
     def set_up(self):
@@ -106,7 +118,7 @@ class TestL2fwd(TestCase):
         Check port forwarding.
         """
         # the cases use the first two ports
-        port_mask = dcts.create_mask([self.dut_ports[0], self.dut_ports[1]])
+        port_mask = dts.create_mask([self.dut_ports[0], self.dut_ports[1]])
 
         self.dut.send_expect("./examples/l2fwd/build/app/l2fwd -n 1 -c f -- -q 8 -p %s  &" % port_mask, "L2FWD: entering main loop", 60)
 
@@ -139,9 +151,9 @@ class TestL2fwd(TestCase):
         for port in xrange(self.number_of_ports):
             ports.append(self.dut_ports[port])
 
-        port_mask = dcts.create_mask(ports)
-        core_mask = dcts.create_mask(self.dut.get_core_list(self.core_config,
-                                                            socket=self.ports_socket))
+        port_mask = dts.create_mask(ports)
+        core_mask = dts.create_mask(self.dut.get_core_list(self.core_config,
+                                                           socket=self.ports_socket))
 
         for frame_size in self.frame_sizes:
 
@@ -171,8 +183,8 @@ class TestL2fwd(TestCase):
                        (queues['queues'], frame_size, self.core_config)
 
                 self.logger.info(info)
-                dcts.report(info, annex=True)
-                dcts.report(command_line + "\n\n", frame=True, annex=True)
+                dts.report(info, annex=True)
+                dts.report(command_line + "\n\n", frame=True, annex=True)
                 _, pps = self.tester.traffic_generator_throughput(tgen_input)
                 Mpps = pps / 1000000.0
                 queues['Mpps'][frame_size] = Mpps
@@ -197,10 +209,10 @@ class TestL2fwd(TestCase):
                 results_row.append(queue['Mpps'][frame_size])
                 results_row.append(queue['pct'][frame_size])
 
-            dcts.results_table_add_row(results_row)
+            dts.results_table_add_row(results_row)
 
         self.plot_results()
-        dcts.results_table_print()
+        dts.results_table_print()
 
     def tear_down(self):
         """

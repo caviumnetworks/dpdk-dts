@@ -1,9 +1,38 @@
-# <COPYRIGHT_TAG>
+# BSD LICENSE
+#
+# Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+#
+#   * Redistributions of source code must retain the above copyright
+#     notice, this list of conditions and the following disclaimer.
+#   * Redistributions in binary form must reproduce the above copyright
+#     notice, this list of conditions and the following disclaimer in
+#     the documentation and/or other materials provided with the
+#     distribution.
+#   * Neither the name of Intel Corporation nor the names of its
+#     contributors may be used to endorse or promote products derived
+#     from this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+# OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import re
 import string
 import time
-import dcts
+import dts
 import ixiacfg
 from ssh_connection import SSHConnection
 from settings import SCAPY2IXIA
@@ -12,6 +41,10 @@ from exception import VerifyFailure
 
 
 class SoftwarePacketGenerator():
+
+    """
+    Software WindRiver packet generator for performance measurement.
+    """
 
     def __init__(self, tester):
         self.tester = tester
@@ -55,7 +88,7 @@ class SoftwarePacketGenerator():
             pcap_cmd += " -s %d:%s" % (port_map[tx_port], pcap_file)
 
         # Selected 2 for -n to optimize results on Burage
-        cores_mask = dcts.create_mask(self.tester.get_core_list("all"))
+        cores_mask = dts.create_mask(self.tester.get_core_list("all"))
 
         self.tester.send_expect("./pktgen -n 2 -c %s --proc-type auto --socket-mem 256,256 -- -P -m \"%s\" %s"
                                 % (cores_mask, map_cmd, pcap_cmd), "Pktgen>", 100)
@@ -96,6 +129,10 @@ class SoftwarePacketGenerator():
 
 class IxiaPacketGenerator(SSHConnection):
 
+    """
+    IXIA packet generator for performance measurement.
+    """
+
     def __init__(self, tester):
         self.tester = tester
         self.NAME = 'ixia'
@@ -134,13 +171,22 @@ class IxiaPacketGenerator(SSHConnection):
         return self.tester.get_ip_address()
 
     def add_tcl_cmd(self, cmd):
+        """
+        Add one tcl command into command list.
+        """
         self.tcl_cmds.append(cmd)
 
     def clean(self):
+        """
+        Clean ownership of IXIA devices and logout tcl session.
+        """
         self.close()
         self.send_expect("clearOwnershipAndLogout", "% ")
 
     def parse_pcap(self, fpcap):
+        """
+        Parse packet in pcap file and convert it into tcl commands.
+        """
         self.send_expect("echo {print [i.command() for i in rdpcap('%s', -1)]; exit()} > dumppcap.py" %
                          fpcap, "% ")
         out = self.send_expect("scapy -c dumppcap.py 2>/dev/null", "% ", 120)
@@ -148,11 +194,17 @@ class IxiaPacketGenerator(SSHConnection):
         return flows
 
     def ether(self, port, src, dst, type):
+        """
+        Configure Ether protocal.
+        """
         self.add_tcl_cmd("protocol config -ethernetType ethernetII")
         self.add_tcl_cmd('stream config -sa "%s"' % self.macToTclFormat(src))
         self.add_tcl_cmd('stream config -da "%s"' % self.macToTclFormat(dst))
 
     def ip(self, port, frag, src, proto, tos, dst, chksum, len, version, flags, ihl, ttl, id, options=None):
+        """
+        Configure IP protocal.
+        """
         self.add_tcl_cmd("protocol config -name ip")
         self.add_tcl_cmd('ip config -sourceIpAddr "%s"' % src)
         self.add_tcl_cmd('ip config -destIpAddr "%s"' % dst)
@@ -165,10 +217,16 @@ class IxiaPacketGenerator(SSHConnection):
         self.add_tcl_cmd("ip set %d %d %d" % (self.chasId, port['card'], port['port']))
 
     def macToTclFormat(self, macAddr):
+        """
+        Convert normal mac adress format into IXIA's format.
+        """
         macAddr = macAddr.upper()
         return "%s %s %s %s %s %s" % (macAddr[:2], macAddr[3:5], macAddr[6:8], macAddr[9:11], macAddr[12:14], macAddr[15:17])
 
     def ipv6(self, port, version, tc, fl, plen, nh, hlim, src, dst):
+        """
+        Configure IPv6 protocal.
+        """
         self.add_tcl_cmd("protocol config -name ipV6")
         self.add_tcl_cmd('ipV6 setDefault')
         self.add_tcl_cmd('ipV6 config -destAddr "%s"' % self.ipv6_to_tcl_format(dst))
@@ -184,6 +242,9 @@ class IxiaPacketGenerator(SSHConnection):
         self.add_tcl_cmd("ipV6 set %d %d %d" % (self.chasId, port['card'], port['port']))
 
     def udp(self, port, dport, sport, len, chksum):
+        """
+        Configure UDP protocal.
+        """
         self.add_tcl_cmd("udp setDefault")
         self.add_tcl_cmd("udp config -sourcePort %d" % sport)
         self.add_tcl_cmd("udp config -destPort %d" % dport)
@@ -191,23 +252,35 @@ class IxiaPacketGenerator(SSHConnection):
         self.add_tcl_cmd("udp set %d %d %d" % (self.chasId, port['card'], port['port']))
 
     def tcp(self, port, sport, dport, seq, ack, dataofs, reserved, flags, window, chksum, urgptr, options=None):
+        """
+        Configure TCP protocal.
+        """
         self.add_tcl_cmd("tcp setDefault")
         self.add_tcl_cmd("tcp config -sourcePort %d" % sport)
         self.add_tcl_cmd("tcp config -destPort %d" % dport)
         self.add_tcl_cmd("tcp set %d %d %d" % (self.chasId, port['card'], port['port']))
 
     def sctp(self, port, sport, dport, tag, chksum):
+        """
+        Configure SCTP protocal.
+        """
         self.add_tcl_cmd("tcp config -sourcePort %d" % sport)
         self.add_tcl_cmd("tcp config -destPort %d" % dport)
         self.add_tcl_cmd("tcp set %d %d %d" % (self.chasId, port['card'], port['port']))
 
     def dot1q(self, port, prio, id, vlan, type):
+        """
+        Configure 8021Q protocal.
+        """
         self.add_tcl_cmd("protocol config -enable802dot1qTag true")
         self.add_tcl_cmd("vlan config -vlanID %d" % vlan)
         self.add_tcl_cmd("vlan config -userPriority %d" % prio)
         self.add_tcl_cmd("vlan set %d %d %d" % (self.chasId, port['card'], port['port']))
 
     def config_stream(self, fpcap, txport, rate_percent, stream_id=1, latency=False):
+        """
+        Configure IXIA stream and enable mutliple flows.
+        """
         flows = self.parse_pcap(fpcap)
 
         self.add_tcl_cmd("ixGlobalSetDefault")
@@ -235,6 +308,7 @@ class IxiaPacketGenerator(SSHConnection):
 
     def config_ixia_stream(self, rate_percent, flows, latency):
         """
+        Configure IXIA stream with rate and latency.
         Override this method if you want to add custom stream configuration.
         """
         self.add_tcl_cmd("stream config -rateMode usePercentRate")
@@ -249,7 +323,9 @@ class IxiaPacketGenerator(SSHConnection):
             self.add_tcl_cmd("stream config -fir true")
 
     def tcl_server_login(self):
-        # connect to tcl server
+        """
+        Connect to tcl server and take ownership of all the ports needed.
+        """
         out = self.send_expect("ixConnectToTclServer %s" % self.tclServerIP, "% ", 30)
         self.logger.debug("ixConnectToTclServer return:" + out)
         if out.strip()[-1] != '0':
@@ -272,12 +348,17 @@ class IxiaPacketGenerator(SSHConnection):
         return True
 
     def tcl_server_logout(self):
-
+        """
+        Disconnect to tcl server and make sure has been logged out.
+        """
         self.send_expect("ixDisconnectFromChassis %s" % self.tclServerIP, "%")
         self.send_expect("ixLogout", "%")
         self.send_expect("ixDisconnectTclServer %s" % self.tclServerIP, "%")
 
     def config_port(self, pList):
+        """
+        Configure ports and make them ready for performance validation.
+        """
         pl = list()
         for item in pList:
             self.add_tcl_cmd("port setFactoryDefaults chasId %d %d" % (
@@ -292,17 +373,26 @@ class IxiaPacketGenerator(SSHConnection):
         self.add_tcl_cmd("ixCheckLinkState portList")
 
     def set_ixia_port_list(self, pList):
+        """
+        Implement ports/streams configuration on specified ports.
+        """
         self.add_tcl_cmd("set portList [list %s]" %
                          string.join(['[list %d %d %d]' %
                                       (self.chasId, item['card'], item['port']) for item in pList], ' '))
 
     def send_ping6(self, intf, mac, ipv6):
-        self.send_expect("source ./ixiaPing6.tcl", "% ")
+        """
+        Send ping6 packet from IXIA ports.
+        """
+        self.send_expect("source ./ixTcl1.0/ixiaPing6.tcl", "% ")
         out = self.send_expect('ping6 "%s" "%s" %d %d %d' %
                                (self.ipv6_to_tcl_format(ipv6), self.macToTclFormat(mac), self.chasId, self.interface_to_port(intf)['card'], self.interface_to_port(intf)['port']), "% ", 90)
         return out
 
     def ipv6_to_tcl_format(self, ipv6):
+        """
+        Convert normal IPv6 address to IXIA format.
+        """
         ipv6 = ipv6.upper()
         singleAddr = ipv6.split(":")
         if '' == singleAddr[0]:
@@ -333,13 +423,22 @@ class IxiaPacketGenerator(SSHConnection):
         return plist
 
     def interface_to_port(self, intf):
+        """
+        Convert IXIA interface to IXIA port.
+        """
         return {'card': int(intf.split('.')[0]), 'port': int(intf.split('.')[1])}
 
     def loss(self, portList, ratePercent):
+        """
+        Run loss performance test and return loss rate.
+        """
         rxPortlist, txPortlist = self._configure_everything(portList, ratePercent)
         return self.get_loss_packet_rate(rxPortlist, txPortlist)
 
     def get_loss_packet_rate(self, rxPortlist, txPortlist):
+        """
+        Get RX/TX packet statistics and calculate loss rate.
+        """
         time.sleep(3)
 
         self.send_expect("ixStopTransmit portList", "%", 10)
@@ -363,10 +462,16 @@ class IxiaPacketGenerator(SSHConnection):
         return float(sendNumber - revNumber) / sendNumber
 
     def latency(self, portList, ratePercent, delay=5):
+        """
+        Run latency performance test and return latency statistics.
+        """
         rxPortlist, txPortlist = self._configure_everything(portList, ratePercent, True)
         return self.get_packet_latency(rxPortlist)
 
     def get_packet_latency(self, rxPortlist):
+        """
+        Stop IXIA transmit and return latency statistics.
+        """
         latencyList = []
         time.sleep(10)
         self.send_expect("ixStopTransmit portList", "%", 10)
@@ -380,10 +485,16 @@ class IxiaPacketGenerator(SSHConnection):
         return latencyList
 
     def throughput(self, port_list, rate_percent=100, delay=5):
+        """
+        Run throughput performance test and return throughput statistics.
+        """
         rxPortlist, txPortlist = self._configure_everything(port_list, rate_percent)
         return self.get_transmission_results(rxPortlist, txPortlist, delay)
 
     def _configure_everything(self, port_list, rate_percent, latency=False):
+        """
+        Prepare and configure IXIA ports for performance test.
+        """
         rxPortlist, txPortlist = self.prepare_port_list(port_list, rate_percent, latency)
         self.prepare_ixia_for_transmission(txPortlist, rxPortlist)
         self.configure_transmission()
@@ -392,17 +503,29 @@ class IxiaPacketGenerator(SSHConnection):
         return rxPortlist, txPortlist
 
     def clear_tcl_commands(self):
+        """
+        Clear all commands in command list.
+        """
         del self.tcl_cmds[:]
 
     def start_transmission(self):
+        """
+        Run commands in command list.
+        """
         fileContent = "\n".join(self.tcl_cmds) + "\n"
         self.tester.create_file(fileContent, 'ixiaConfig.tcl')
         self.send_expect("source ixiaConfig.tcl", "% ", 75)
 
     def configure_transmission(self, latency=False):
+        """
+        Start IXIA ports transmition.
+        """
         self.add_tcl_cmd("ixStartTransmit portList")
 
     def prepare_port_list(self, portList, rate_percent=100, latency=False):
+        """
+        Configure stream and flow on every IXIA ports.
+        """
         txPortlist = set()
         rxPortlist = set()
 
@@ -427,6 +550,9 @@ class IxiaPacketGenerator(SSHConnection):
         return rxPortlist, txPortlist
 
     def prepare_ixia_for_transmission(self, txPortlist, rxPortlist):
+        """
+        Clear all statistics and implement configuration to IXIA hareware.
+        """
         self.add_tcl_cmd("ixClearStats portList")
         self.set_ixia_port_list([self.interface_to_port(self.tester.get_interface(port)) for port in txPortlist])
         self.add_tcl_cmd("ixWriteConfigToHardware portList")
@@ -458,28 +584,35 @@ class IxiaPacketGenerator(SSHConnection):
 
         return (bpsRate, rate)
 
-    # Configure Ixia for DCB
     def config_ixia_dcb_init(self, rxPort, txPort):
-        self.send_expect("source ./ixiaDCB.tcl", "% ")
+        """
+        Configure Ixia for DCB.
+        """
+        self.send_expect("source ./ixTcl1.0/ixiaDCB.tcl", "% ")
         self.send_expect("configIxia %d %s" % (self.chasId, string.join(["%s" % (
             repr(self.conRelation[port][n])) for port in [rxPort, txPort] for n in range(3)])), "% ", 100)
 
-    # Configure Port for DCB
     def config_port_dcb(self, direction, tc):
+        """
+        Configure Port for DCB.
+        """
         self.send_expect("configPort %s %s" % (direction, tc), "% ", 100)
 
-    # Configure Stream for DCB
     def cfgStreamDcb(self, stream, rate, prio, types):
+        """
+        Configure Stream for DCB.
+        """
         self.send_expect("configStream %s %s %s %s" % (stream, rate, prio, types), "% ", 100)
 
-    # Get the connect relations between DUT and Ixia
     def get_connection_relation(self, dutPorts):
+        """
+        Get the connect relations between DUT and Ixia.
+        """
         for port in dutPorts:
             info = self.tester.get_interface(self.tester.get_local_port(port)).split('.')
             self.conRelation[port] = [int(info[0]), int(info[1]), repr(self.tester.dut.get_mac_address(port).replace(':', ' ').upper())]
         return self.conRelation
 
-    # enable packetGroup on port
     def config_pktGroup_rx(self, rxport):
         """
         Sets the transmit Packet Group configuration of the stream
@@ -493,12 +626,18 @@ class IxiaPacketGenerator(SSHConnection):
         self.add_tcl_cmd("packetGroup setTx %d %d %d 1" % (self.chasId, rxport['card'], rxport['port']))
 
     def config_pktGroup_tx(self, txport):
+        """
+        Configure tx port pktGroup for latency.
+        """
         self.add_tcl_cmd("packetGroup setDefault")
         self.add_tcl_cmd("packetGroup config -insertSignature true")
         self.add_tcl_cmd("packetGroup setTx %d %d %d 1" % (self.chasId,
                                                            txport['card'], txport['port']))
 
     def start_pktGroup(self, port):
+        """
+        Start tx port pktGroup for latency.
+        """
         self.add_tcl_cmd("ixStartPortPacketGroups %d %d %d" % (self.chasId,
                                                                port['card'], port['port']))
 
@@ -540,6 +679,9 @@ class IxiaPacketGenerator(SSHConnection):
         self.send_expect(command, '% ', 30)
 
     def stat_get_rate_stat_all_stats(self, port_number):
+        """
+        All statistics of specified IXIA port.
+        """
         port = self.interface_to_port(self.tester.get_interface(port_number))
         command = 'stat getRate statAllStats {0} {1} {2}'
         command = command.format(self.chasId, port['card'], port['port'])
@@ -573,11 +715,17 @@ class IxiaPacketGenerator(SSHConnection):
         return int(result.strip())
 
     def _capture_cget_value(self, requested_value):
+        """
+        Sends a IXIA TCL command to capture certain number of packets.
+        """
         command = "capture cget -" + requested_value
         result = self.send_expect(command, '%', 10)
         return int(result.strip())
 
     def _packetgroup_cget_value(self, requested_value):
+        """
+        Sends a IXIA TCL command to get pktGroup stat value.
+        """
         command = "packetGroupStats cget -" + requested_value
         result = self.send_expect(command, '%', 10)
         return int(result.strip())

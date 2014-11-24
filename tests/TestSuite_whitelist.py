@@ -1,31 +1,48 @@
-# <COPYRIGHT_TAG>
+# BSD LICENSE
+#
+# Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+#
+#   * Redistributions of source code must retain the above copyright
+#     notice, this list of conditions and the following disclaimer.
+#   * Redistributions in binary form must reproduce the above copyright
+#     notice, this list of conditions and the following disclaimer in
+#     the documentation and/or other materials provided with the
+#     distribution.
+#   * Neither the name of Intel Corporation nor the names of its
+#     contributors may be used to endorse or promote products derived
+#     from this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+# OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
 DPDK Test suite.
-
 Test the support of Whitelist Features by Poll Mode Drivers
-
 """
 
-import dcts
+import dts
 import time
 
 
 from test_case import TestCase
-
-#
-#
-# Test class.
-#
+from pmd_output import PmdOutput
 
 
 class TestWhitelist(TestCase):
-
-    #
-    #
-    #
-    # Test cases.
-    #
 
     def set_up_all(self):
         """
@@ -43,14 +60,10 @@ class TestWhitelist(TestCase):
         # Verify that enough ports are available
         self.verify(len(self.dutPorts) >= 1, "Insufficient ports")
 
-        cores = self.dut.get_core_list('1S/2C/1T')
-        coreMask = dcts.create_mask(cores)
+        portMask = dts.create_mask(self.dutPorts[:2])
 
-        portMask = dcts.create_mask(self.dutPorts[:2])
-
-        cmd = "./%s/build/app/test-pmd/testpmd -c %s -n 3 -- -i --burst=1 --rxpt=0 \
-        --rxht=0 --rxwt=0 --txpt=36 --txht=0 --txwt=0 --txrst=32 --txfreet=32 --rxfreet=64 --mbcache=250 --portmask=%s" % (self.target, coreMask, portMask)
-        self.dut.send_expect("%s" % cmd, "testpmd> ", 120)
+        self.pmdout = PmdOutput(self.dut)
+        self.pmdout.start_testpmd("1S/2C/1T", "--portmask=%s" % portMask)
         self.dut.send_expect("set verbose 1", "testpmd> ")
 
         # get dest address from self.target port
@@ -59,11 +72,11 @@ class TestWhitelist(TestCase):
         self.dest = self.dut.get_mac_address(self.dutPorts[0])
         mac_scanner = r"MAC address: (([\dA-F]{2}:){5}[\dA-F]{2})"
 
-        ret = dcts.regexp(out, mac_scanner)
+        ret = dts.regexp(out, mac_scanner)
         self.verify(ret is not None, "MAC address not found")
         self.verify(cmp(ret.lower(), self.dest) == 0, "MAC address wrong")
 
-        self.max_mac_addr = dcts.regexp(out, "Maximum number of MAC addresses: ([0-9]+)")
+        self.max_mac_addr = dts.regexp(out, "Maximum number of MAC addresses: ([0-9]+)")
 
     def set_up(self):
         """
@@ -98,12 +111,12 @@ class TestWhitelist(TestCase):
         self.dut.send_expect("set promisc %d off" % portid, "testpmd> ")
 
         out = self.dut.send_expect("show port stats %d" % portid, "testpmd> ")
-        pre_rxpkt = dcts.regexp(out, "RX-packets: ([0-9]+)")
+        pre_rxpkt = dts.regexp(out, "RX-packets: ([0-9]+)")
 
         # send one packet with the portid MAC address
         self.whitelist_send_packet(portid, self.dest)
         out = self.dut.send_expect("show port stats %d" % portid, "testpmd> ")
-        cur_rxpkt = dcts.regexp(out, "RX-packets: ([0-9]+)")
+        cur_rxpkt = dts.regexp(out, "RX-packets: ([0-9]+)")
         # check the packet increase
         self.verify(int(cur_rxpkt) == int(pre_rxpkt) + self.frames_to_send,
                     "Packet has not been received on default address")
@@ -113,7 +126,7 @@ class TestWhitelist(TestCase):
 
         pre_rxpkt = cur_rxpkt
         out = self.dut.send_expect("show port stats %d" % portid, "testpmd> ")
-        cur_rxpkt = dcts.regexp(out, "RX-packets: ([0-9]+)")
+        cur_rxpkt = dts.regexp(out, "RX-packets: ([0-9]+)")
 
         # check the packet DO NOT increase
         self.verify(int(cur_rxpkt) == int(pre_rxpkt),
@@ -126,7 +139,7 @@ class TestWhitelist(TestCase):
 
         pre_rxpkt = cur_rxpkt
         out = self.dut.send_expect("show port stats %d" % portid, "testpmd> ")
-        cur_rxpkt = dcts.regexp(out, "RX-packets: ([0-9]+)")
+        cur_rxpkt = dts.regexp(out, "RX-packets: ([0-9]+)")
 
         # check the packet increase
         self.verify(int(cur_rxpkt) == int(pre_rxpkt) + self.frames_to_send,
@@ -140,7 +153,7 @@ class TestWhitelist(TestCase):
 
         pre_rxpkt = cur_rxpkt
         out = self.dut.send_expect("show port stats %d" % portid, "testpmd> ")
-        cur_rxpkt = dcts.regexp(out, "RX-packets: ([0-9]+)")
+        cur_rxpkt = dts.regexp(out, "RX-packets: ([0-9]+)")
 
         # check the packet increase
         self.verify(int(cur_rxpkt) == int(pre_rxpkt),

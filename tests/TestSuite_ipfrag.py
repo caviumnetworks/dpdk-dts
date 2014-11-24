@@ -1,11 +1,40 @@
+# BSD LICENSE
+#
+# Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+#
+#   * Redistributions of source code must retain the above copyright
+#     notice, this list of conditions and the following disclaimer.
+#   * Redistributions in binary form must reproduce the above copyright
+#     notice, this list of conditions and the following disclaimer in
+#     the documentation and/or other materials provided with the
+#     distribution.
+#   * Neither the name of Intel Corporation nor the names of its
+#     contributors may be used to endorse or promote products derived
+#     from this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+# OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 """
 DPDK Test suite.
-
 Test IPv4 fragmentation features in DPDK.
-
 """
 
-import dcts
+import dts
 import string
 import re
 
@@ -33,11 +62,6 @@ lpm_table_ipv6 = [
 
 from test_case import TestCase
 
-#
-#
-# Test class.
-#
-
 
 class TestIpfrag(TestCase):
 
@@ -49,16 +73,6 @@ class TestIpfrag(TestCase):
         portid = match.group(1)
         self.verify(int(portid) in range(4), "invalid port id")
         return '%s' % eval("P" + str(portid))
-    #
-    #
-    # Utility methods and other non-test code.
-    #
-    # Insert or move non-test functions here.
-    #
-    #
-    #
-    # Test cases.
-    #
 
     def set_up_all(self):
         """
@@ -112,8 +126,8 @@ l3fwd_ipv4_route_array[] = {\\\n"
         Perform functional fragmentation checks.
         """
 
-        coremask = dcts.create_mask(cores)
-        portmask = dcts.create_mask([P0, P2])
+        coremask = dts.create_mask(cores)
+        portmask = dts.create_mask([P0, P2])
         numPortThread = len([P0, P2]) / len(cores)
         result = True
         errString = ''
@@ -169,8 +183,8 @@ l3fwd_ipv4_route_array[] = {\\\n"
         """
         Perform functional fragmentation checks.
         """
-        coremask = dcts.create_mask(cores)
-        portmask = dcts.create_mask([P0, P2])
+        coremask = dts.create_mask(cores)
+        portmask = dts.create_mask([P0, P2])
         numPortThread = len([P0, P2]) / len(cores)
         result = True
         errString = ''
@@ -292,11 +306,11 @@ l3fwd_ipv4_route_array[] = {\\\n"
         Pct = dict()
 
         if int(lcore[0]) == 1:
-            core_mask = dcts.create_mask(self.dut.get_core_list(lcore, socket=self.ports_socket))
+            core_mask = dts.create_mask(self.dut.get_core_list(lcore, socket=self.ports_socket))
         else:
-            core_mask = dcts.create_mask(self.dut.get_core_list(lcore))
+            core_mask = dts.create_mask(self.dut.get_core_list(lcore))
 
-        portmask = dcts.create_mask([P0, P2])
+        portmask = dts.create_mask([P0, P2])
 
         self.dut.send_expect("examples/ip_fragmentation/build/ip_fragmentation -c %s -n %d -- -p %s -q %s" % (
             core_mask, self.dut.get_memory_channels(), portmask, num_pthreads), "IP_FRAG:", 120)
@@ -334,7 +348,7 @@ l3fwd_ipv4_route_array[] = {\\\n"
             result.append(Pps[str(size)])
             result.append(Pct[str(size)])
 
-        dcts.results_table_add_row(result)
+        dts.results_table_add_row(result)
 
         self.dut.send_expect("^C", "#")
 
@@ -354,7 +368,7 @@ l3fwd_ipv4_route_array[] = {\\\n"
             tblheader.append("%dB Mpps" % size)
             tblheader.append("%d" % size)
 
-        dcts.results_table_add_header(tblheader)
+        dts.results_table_add_header(tblheader)
 
         lcores = [("1S/1C/1T", 2), ("1S/1C/2T", 2), ("1S/2C/1T", 2), ("2S/1C/1T", 2)]
         index = 1
@@ -362,7 +376,7 @@ l3fwd_ipv4_route_array[] = {\\\n"
             self.benchmark(index, lcore, numThr, sizes)
             index += 1
 
-        dcts.results_table_print()
+        dts.results_table_print()
 
         self.tester.send_expect("ifconfig %s mtu 1500" % self.tester.get_interface(self.tester.get_local_port(P0)), "#")
         self.tester.send_expect("ifconfig %s mtu 1500" % self.tester.get_interface(self.tester.get_local_port(P2)), "#")

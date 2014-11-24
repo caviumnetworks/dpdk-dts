@@ -1,26 +1,55 @@
-# <COPYRIGHT_TAG>
+# BSD LICENSE
+#
+# Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+#
+#   * Redistributions of source code must retain the above copyright
+#     notice, this list of conditions and the following disclaimer.
+#   * Redistributions in binary form must reproduce the above copyright
+#     notice, this list of conditions and the following disclaimer in
+#     the documentation and/or other materials provided with the
+#     distribution.
+#   * Neither the name of Intel Corporation nor the names of its
+#     contributors may be used to endorse or promote products derived
+#     from this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+# OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import os
 import re
-import dcts
+import time
+import dts
 from settings import NICS
 from ssh_connection import SSHConnection
 from crb import Crb
 from logger import getLogger
 
-"""
-A connection to the CRB under test.
-
-This class sends commands to the CRB and validates the responses. It is
-implemented using either ssh for linuxapp or the terminal server for
-baremetal.
-
-All operations are in fact delegated to an instance of either CRBLinuxApp
-or CRBBareMetal.
-"""
-
 
 class Dut(Crb):
+
+    """
+    A connection to the CRB under test.
+    This class sends commands to the CRB and validates the responses. It is
+    implemented using either ssh for linuxapp or the terminal server for
+    baremetal.
+    All operations are in fact delegated to an instance of either CRBLinuxApp
+    or CRBBareMetal.
+    """
+
     PORT_INFO_CACHE_KEY = 'dut_port_info'
     NUMBER_CORES_CACHE_KEY = 'dut_number_cores'
     CORE_LIST_CACHE_KEY = 'dut_core_list'
@@ -70,6 +99,9 @@ class Dut(Crb):
         self.architecture = arch
 
     def mount_procfs(self):
+        """
+        Mount proc file system.
+        """
         mount_procfs = getattr(self, 'mount_procfs_%s' % self.get_os_type())
         mount_procfs()
 
@@ -77,12 +109,24 @@ class Dut(Crb):
         pass
 
     def mount_procfs_freebsd(self):
+        """
+        Mount proc file system in Freebsd.
+        """
         self.send_expect('mount -t procfs proc /proc', '# ')
 
     def get_ip_address(self):
+        """
+        Get DUT's ip address.
+        """
         return self.crb['IP']
 
     def dut_prerequisites(self):
+        """
+        Prerequest function should be called before execute any test case.
+        Will call function to scan all lcore's information which on DUT.
+        Then call pci scan function to collect nic device information.
+        At last setup DUT' environment for validation.
+        """
         self.send_expect("cd %s" % self.base_dir, "# ")
         self.send_expect("alias ls='ls --color=none'", "#")
 
@@ -97,18 +141,24 @@ class Dut(Crb):
         self.mount_procfs()
 
     def restore_interfaces(self):
+        """
+        Restore all ports's interfaces.
+        """
         restore_interfaces = getattr(self, 'restore_interfaces_%s' % self.get_os_type())
         return restore_interfaces()
 
     def restore_interfaces_freebsd(self):
         """
-        Restore FreeBSD interfaces
+        Restore FreeBSD interfaces.
         """
         self.send_expect("kldunload nic_uio.ko", "#")
         self.send_expect("kldunload contigmem.ko", "#")
         self.send_expect("kldload if_ixgbe.ko", "#", 20)
 
     def restore_interfaces_linux(self):
+        """
+        Restore Linux interfaces.
+        """
         Crb.restore_interfaces(self)
 
         if self.ports_info is not None:
@@ -116,6 +166,9 @@ class Dut(Crb):
                 self.admin_ports_linux(port['intf'], 'up')
 
     def setup_memory(self, hugepages=-1):
+        """
+        Setup hugepage on DUT.
+        """
         try:
             function_name = 'setup_memory_%s' % self.get_os_type()
             setup_memory = getattr(self, function_name)
@@ -124,6 +177,9 @@ class Dut(Crb):
             self.logger.error("%s is not implemented" % function_name)
 
     def setup_memory_linux(self, hugepages=-1):
+        """
+        Setup Linux hugepages.
+        """
         hugepages_size = self.send_expect("awk '/Hugepagesize/ {print $2}' /proc/meminfo", "# ")
 
         if int(hugepages_size) < (1024 * 1024):
@@ -139,6 +195,9 @@ class Dut(Crb):
                 self.set_huge_pages(arch_huge_pages)
 
     def setup_memory_freebsd(self, hugepages=-1):
+        """
+        Setup Freebsd hugepages.
+        """
         if hugepages is -1:
             hugepages = 2048
 
@@ -165,7 +224,7 @@ class Dut(Crb):
 
         current_nic = 0
         for (pci_bus, pci_id) in self.pci_devices_info:
-            if dcts.accepted_nic(pci_id):
+            if dts.accepted_nic(pci_id):
 
                 if nics_to_bind is None or current_nic in nics_to_bind:
                     binding_list += '%s ' % (pci_bus)
@@ -176,14 +235,14 @@ class Dut(Crb):
 
     def unbind_interfaces_linux(self, nics_to_bind=None):
         """
-        Unbind the interfaces
+        Unbind the interfaces.
         """
 
         binding_list = '-u '
 
         current_nic = 0
         for (pci_bus, pci_id) in self.pci_devices_info:
-            if dcts.accepted_nic(pci_id):
+            if dts.accepted_nic(pci_id):
 
                 if nics_to_bind is None or current_nic in nics_to_bind:
                     binding_list += '%s ' % (pci_bus)
@@ -193,6 +252,10 @@ class Dut(Crb):
         self.send_expect('tools/dpdk_nic_bind.py %s' % binding_list, '# ', 30)
 
     def get_ports(self, nic_type, perf=None, socket=None):
+        """
+        Return DUT port list with the filter of NIC type, whether run IXIA
+        performance test, whether request specified socket.
+        """
 
         ports = []
         candidates = []
@@ -225,7 +288,7 @@ class Dut(Crb):
                                 continue
                             ports.append(portid)
 
-        if perf and not self.has_external_traffic_generator():
+        if perf and not self.tester.has_external_traffic_generator():
             return candidates
         else:
             return ports
@@ -291,17 +354,17 @@ class Dut(Crb):
 
     def lcore_table_print(self, horizontal=False):
         if not horizontal:
-            dcts.results_table_add_header(['Socket', 'Core', 'Thread'])
+            dts.results_table_add_header(['Socket', 'Core', 'Thread'])
 
             for lcore in self.cores:
-                dcts.results_table_add_row([lcore['socket'], lcore['core'], lcore['thread']])
-            dcts.results_table_print()
+                dts.results_table_add_row([lcore['socket'], lcore['core'], lcore['thread']])
+            dts.results_table_print()
         else:
-            dcts.results_table_add_header(['X'] + [''] * len(self.cores))
-            dcts.results_table_add_row(['Thread'] + [n['thread'] for n in self.cores])
-            dcts.results_table_add_row(['Core'] + [n['core'] for n in self.cores])
-            dcts.results_table_add_row(['Socket'] + [n['socket'] for n in self.cores])
-            dcts.results_table_print()
+            dts.results_table_add_header(['X'] + [''] * len(self.cores))
+            dts.results_table_add_row(['Thread'] + [n['thread'] for n in self.cores])
+            dts.results_table_add_row(['Core'] + [n['core'] for n in self.cores])
+            dts.results_table_add_row(['Socket'] + [n['socket'] for n in self.cores])
+            dts.results_table_print()
 
     def get_memory_channels(self):
         n = self.crb['memory channels']
@@ -311,6 +374,9 @@ class Dut(Crb):
             return 1
 
     def scan_ports(self):
+        """
+        Scan ports information or just read it from cache file.
+        """
         if self.read_cache:
             self.ports_info = self.serializer.load(self.PORT_INFO_CACHE_KEY)
 
@@ -318,21 +384,27 @@ class Dut(Crb):
             self.scan_ports_uncached()
             self.serializer.save(self.PORT_INFO_CACHE_KEY, self.ports_info)
 
-        self.logger.info(dcts.pprint(self.ports_info))
+        self.logger.info(dts.pprint(self.ports_info))
 
     def scan_ports_uncached(self):
+        """
+        Scan ports and collect port's pci id, mac adress, ipv6 address.
+        """
         scan_ports_uncached = getattr(self, 'scan_ports_uncached_%s' % self.get_os_type())
         return scan_ports_uncached()
 
     def scan_ports_uncached_linux(self):
+        """
+        Scan Linux ports and collect port's pci id, mac adress, ipv6 address.
+        """
         self.ports_info = []
 
-        skipped = dcts.RED('Skipped: Unknown/not selected')
-        unknow_interface = dcts.RED('Skipped: unknow_interface')
+        skipped = dts.RED('Skipped: Unknown/not selected')
+        unknow_interface = dts.RED('Skipped: unknow_interface')
 
         for (pci_bus, pci_id) in self.pci_devices_info:
 
-            if not dcts.accepted_nic(pci_id):
+            if not dts.accepted_nic(pci_id):
                 self.logger.info("DUT: [000:%s %s] %s" % (pci_bus, pci_id,
                                                           skipped))
                 continue
@@ -344,6 +416,11 @@ class Dut(Crb):
             if pci_id == '8086:10fb':
                 self.send_expect("echo 0000:%s > /sys/bus/pci/drivers/ixgbe/bind" % pci_bus, "# ")
             intf = self.get_interface_name(bus_id, devfun_id)
+
+            out = self.send_expect("ip link show %s" % intf, "# ")
+            if "DOWN" in out:
+                self.send_expect("ip link set %s up" % intf, "# ")
+                time.sleep(5)
 
             self.logger.info("DUT: [000:%s %s] %s" % (pci_bus,
                                                       pci_id,
@@ -378,13 +455,16 @@ class Dut(Crb):
                                     intf, 'mac': macaddr, 'ipv6': ipv6, 'numa': numa})
 
     def scan_ports_uncached_freebsd(self):
+        """
+        Scan Freebsd ports and collect port's pci id, mac adress, ipv6 address.
+        """
         self.ports_info = []
 
-        skipped = dcts.RED('Skipped: Unknown/not selected')
+        skipped = dts.RED('Skipped: Unknown/not selected')
 
         for (pci_bus, pci_id) in self.pci_devices_info:
 
-            if not dcts.accepted_nic(pci_id):
+            if not dts.accepted_nic(pci_id):
                 self.logger.info("DUT: [%s %s] %s" % (pci_bus, pci_id,
                                                       skipped))
                 continue

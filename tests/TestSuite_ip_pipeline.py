@@ -1,10 +1,37 @@
-# <COPYRIGHT_TAG>
+# BSD LICENSE
+#
+# Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+#
+#   * Redistributions of source code must retain the above copyright
+#     notice, this list of conditions and the following disclaimer.
+#   * Redistributions in binary form must reproduce the above copyright
+#     notice, this list of conditions and the following disclaimer in
+#     the documentation and/or other materials provided with the
+#     distribution.
+#   * Neither the name of Intel Corporation nor the names of its
+#     contributors may be used to endorse or promote products derived
+#     from this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+# OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
 DPDK Test suite.
-
 Test userland 10Gb PMD
-
 """
 
 from scapy.layers.inet import Ether, IP, TCP
@@ -12,20 +39,10 @@ from scapy.utils import struct, socket, PcapWriter
 from settings import HEADER_SIZE
 from test_case import TestCase
 from time import sleep
-import dcts
-
-#
-#
-# Test class.
-#
+import dts
 
 
 class TestIPPipeline(TestCase):
-
-    #
-    #
-    # Utility methods and other non-test code.
-    #
     payload_watermark = 'TestPF'
 
     frame_sizes = [64, 65, 128, 1024]
@@ -141,7 +158,7 @@ class TestIPPipeline(TestCase):
             pcap0_file,
             pcap1_file)
 
-        command_line = "./examples/ip_pipeline/build/ip_pipeline -c %s -n %d --use-device %s -- -p 0x3" % \
+        command_line = "./examples/ip_pipeline/build/ip_pipeline -c %s -n %d -vdev %s -- -p 0x3" % \
             (self.coremask,
              self.dut.get_memory_channels(),
              pcap_config)
@@ -260,11 +277,7 @@ class TestIPPipeline(TestCase):
         for port in ['rx', 'tx']:
             self.verify(stats[port] == expected[port],
                         'Frames expected (%s) and received (%s) mismatch on %s port' % (
-                            expected[
-                                port],
-                            stats[
-                                port],
-                            port))
+                expected[port], stats[port], port))
 
     def pipeline_command(self, command):
         out = self.dut.send_expect(command, 'pipeline>')
@@ -303,11 +316,6 @@ class TestIPPipeline(TestCase):
         self.dut.send_expect('link 0 down', 'pipeline>')
         self.dut.send_expect('link 1 down', 'pipeline>')
 
-    #
-    #
-    #
-    # Test cases.
-    #
     def set_up_all(self):
         """
         Run at the start of each test suite.
@@ -326,7 +334,7 @@ class TestIPPipeline(TestCase):
         out = self.dut.build_dpdk_apps("./examples/ip_pipeline")
         self.verify("Error" not in out, "Compilation error")
 
-        self.ports_mask = dcts.create_mask(
+        self.ports_mask = dts.create_mask(
             [self.dut_ports[0], self.dut_ports[1]])
         self.coremask = "0x3e"  # IP Pipeline app requires FIVE cores
 
@@ -358,7 +366,7 @@ class TestIPPipeline(TestCase):
 
         for frames_number in TestIPPipeline.number_of_frames:
             for inter in TestIPPipeline.inter:
-                print dcts.BLUE(
+                print dts.BLUE(
                     "\tNumber of frames %d, interval %.1f" % (frames_number,
                                                               inter))
                 stats = self.send_and_sniff_pcap_file(pcap_file, frames_number,
@@ -392,8 +400,8 @@ class TestIPPipeline(TestCase):
             self.create_pcap_file(pcap_file, frame_size, 100, True)
             self.tester.session.copy_file_to(pcap_file)
 
-            print dcts.BLUE("\tFrame size %d, interval %.1f" % (frame_size,
-                                                                inter))
+            print dts.BLUE("\tFrame size %d, interval %.1f" % (frame_size,
+                                                               inter))
 
             stats = self.send_and_sniff_pcap_file(pcap_file, frames_number,
                                                   1, 0, inter)
@@ -406,6 +414,132 @@ class TestIPPipeline(TestCase):
 
             expected = {'tx': frames_number, 'rx': 0}
             self.check_results(stats, expected)
+
+    def test_pcap_incremental_ip(self):
+        """
+        Check variable number of frames with incremental IP addresses using
+        PCAP driver as input for the pipeline.
+        """
+        pcap_file = 'ip_pipeline.pcap'
+        frame_size = 64
+
+        self.dut.session.copy_file_to(TestIPPipeline.dummy_pcap)
+
+        for number in TestIPPipeline.number_of_frames:
+
+            print dts.BLUE("\t%d frames, incremental IP address" % (number))
+
+            self.create_pcap_file(pcap_file, frame_size, number, True)
+            self.dut.session.copy_file_to(pcap_file)
+
+            self.start_ip_pipeline_pcap(TestIPPipeline.dummy_pcap,
+                                        pcap_file)
+            self.dut.send_expect(
+                'run examples/ip_pipeline/ip_pipeline.sh', 'pipeline>', 10)
+
+            self.dut.send_expect('link 0 up', 'pipeline>')
+            self.dut.send_expect('link 1 up', 'pipeline>')
+
+            sleep(1)
+
+            self.dut.send_expect('link 0 down', 'pipeline>')
+            self.dut.send_expect('link 1 down', 'pipeline>')
+
+            self.quit_ip_pipeline()
+
+            rx_stats = self.number_of_packets('/tmp/port0out.pcap', 'dut')
+            tx_stats = self.number_of_packets('/tmp/port1out.pcap', 'dut')
+
+            stats = {'tx': tx_stats, 'rx': rx_stats}
+            expected = {'tx': 0, 'rx': number}
+
+            self.check_results(stats, expected)
+
+    def test_pcap_frame_sizes(self):
+        """
+        Check variable number of frames with different sizes and
+        incremental IP addresses using PCAP driver as input for the pipeline.
+        """
+        pcap_file = 'ip_pipeline.pcap'
+        self.dut.session.copy_file_to(TestIPPipeline.dummy_pcap)
+
+        for frame_size in TestIPPipeline.frame_sizes:
+            for number in TestIPPipeline.number_of_frames:
+
+                print dts.BLUE("\t%d frames of size %d frames" % (
+                    number, frame_size))
+
+                self.create_pcap_file(pcap_file, frame_size, number, True)
+                self.dut.session.copy_file_to(pcap_file)
+
+                self.start_ip_pipeline_pcap(TestIPPipeline.dummy_pcap,
+                                            pcap_file)
+                self.dut.send_expect(
+                    'run examples/ip_pipeline/ip_pipeline.sh', 'pipeline>', 10)
+
+                self.dut.send_expect('link 0 up', 'pipeline>')
+                self.dut.send_expect('link 1 up', 'pipeline>')
+
+                sleep(5)
+
+                self.dut.send_expect('link 0 down', 'pipeline>')
+                self.dut.send_expect('link 1 down', 'pipeline>')
+
+                self.quit_ip_pipeline()
+
+                rx_stats = self.number_of_packets('/tmp/port0out.pcap', 'dut')
+                tx_stats = self.number_of_packets('/tmp/port1out.pcap', 'dut')
+
+                stats = {'tx': tx_stats, 'rx': rx_stats}
+                expected = {'tx': 0, 'rx': number}
+
+                self.check_results(stats, expected)
+
+    def _test_pcap(self):
+        """
+        Check variable number of frames with different sizes and
+        incremental/fixed IP addresses using PCAP driver as input for the
+        pipeline.
+        """
+        pcap_file = 'ip_pipeline.pcap'
+
+        self.dut.session.copy_file_to(TestIPPipeline.dummy_pcap)
+
+        for frame_size in TestIPPipeline.frame_sizes:
+            for increment in TestIPPipeline.incremental_ip_address:
+                for number in TestIPPipeline.number_of_frames:
+
+                    print dts.BLUE("\t%d frames of size %d frames, incremental IP address %s" % (
+                        number, frame_size, increment))
+
+                    self.create_pcap_file(pcap_file, frame_size, number,
+                                          increment)
+                    self.dut.session.copy_file_to(pcap_file)
+
+                    self.start_ip_pipeline_pcap(TestIPPipeline.dummy_pcap,
+                                                pcap_file)
+                    self.dut.send_expect(
+                        'run examples/ip_pipeline/ip_pipeline.sh', 'pipeline>', 10)
+
+                    self.dut.send_expect('link 0 up', 'pipeline>')
+                    self.dut.send_expect('link 1 up', 'pipeline>')
+
+                    sleep(5)
+
+                    self.dut.send_expect('link 0 down', 'pipeline>')
+                    self.dut.send_expect('link 1 down', 'pipeline>')
+
+                    self.quit_ip_pipeline()
+
+                    rx_stats = self.number_of_packets(
+                        '/tmp/port0out.pcap', 'dut')
+                    tx_stats = self.number_of_packets(
+                        '/tmp/port1out.pcap', 'dut')
+
+                    stats = {'tx': tx_stats, 'rx': rx_stats}
+                    expected = {'tx': 0, 'rx': number}
+
+                    self.check_results(stats, expected)
 
     def test_flow_management(self):
         """

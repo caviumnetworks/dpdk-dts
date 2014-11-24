@@ -1,4 +1,33 @@
-# <COPYRIGHT_TAG>
+# BSD LICENSE
+#
+# Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+#
+#   * Redistributions of source code must retain the above copyright
+#     notice, this list of conditions and the following disclaimer.
+#   * Redistributions in binary form must reproduce the above copyright
+#     notice, this list of conditions and the following disclaimer in
+#     the documentation and/or other materials provided with the
+#     distribution.
+#   * Neither the name of Intel Corporation nor the names of its
+#     contributors may be used to endorse or promote products derived
+#     from this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+# OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
 DPDK Test suite.
@@ -7,26 +36,16 @@ Test support of RX/TX Checksum Offload Features by Poll Mode Drivers.
 
 """
 
-import dcts
+import dts
 import string
 import re
 import rst
 
 from test_case import TestCase
-
-#
-#
-# Test class.
-#
+from pmd_output import PmdOutput
 
 
 class TestChecksumOffload(TestCase):
-
-    #
-    #
-    #
-    # Test cases.
-    #
 
     def set_up_all(self):
         """
@@ -44,8 +63,10 @@ class TestChecksumOffload(TestCase):
         cores = self.dut.get_core_list("1S/2C/2T")
         self.verify(cores is not None, "Insufficient cores for speed testing")
 
-        self.coreMask = dcts.create_mask(cores)
-        self.portMask = dcts.create_mask([self.dut_ports[0], self.dut_ports[1]])
+        self.pmdout = PmdOutput(self.dut)
+
+        self.coreMask = dts.create_mask(cores)
+        self.portMask = dts.create_mask([self.dut_ports[0], self.dut_ports[1]])
         self.ports_socket = self.dut.get_numa_id(self.dut_ports[0])
 
     def set_up(self):
@@ -53,7 +74,7 @@ class TestChecksumOffload(TestCase):
         Run before each test case.
         """
         if self.dut.want_func_tests:
-            self.dut.send_expect("./%s/build/app/test-pmd/testpmd -c %s -n 1 -- -i --burst=1 --txpt=32 --txht=8 --txwt=0 --txfreet=0 --rxfreet=64 --mbcache=250 --portmask=%s --disable-hw-vlan --enable-rx-cksum --crc-strip" % (self.target, self.coreMask, self.portMask), "testpmd>", 120)
+            self.pmdout.start_testpmd("1S/2C/2T", "--portmask=%s " % (self.portMask) + "--disable-hw-vlan --enable-rx-cksum --crc-strip")
             self.dut.send_expect("set verbose 1", "testpmd>")
             self.dut.send_expect("set fwd csum", "testpmd>")
 
@@ -250,7 +271,7 @@ class TestChecksumOffload(TestCase):
             result.append(Pps[str(size)])
             result.append(Pct[str(size)])
 
-        dcts.results_table_add_row(result)
+        dts.results_table_add_row(result)
 
     def test_perf_checksum_throughtput(self):
         """
@@ -269,8 +290,7 @@ class TestChecksumOffload(TestCase):
         }
 
         lcore = "1S/2C/1T"
-        coreMask = dcts.create_mask(self.dut.get_core_list(lcore, socket=self.ports_socket))
-        portMask = dcts.create_mask([self.dut_ports[0], self.dut_ports[1]])
+        portMask = dts.create_mask([self.dut_ports[0], self.dut_ports[1]])
 
         for mode in ["sw", "hw"]:
             self.logger.info("%s performance" % mode)
@@ -280,9 +300,9 @@ class TestChecksumOffload(TestCase):
                 tblheader.append("%sB mpps" % str(size))
                 tblheader.append("%sB %%   " % str(size))
 
-            dcts.results_table_add_header(tblheader)
+            dts.results_table_add_header(tblheader)
 
-            self.dut.send_expect("./%s/build/app/test-pmd/testpmd -c%s -n %d -- -i --nb-cores=1 --txpt=40 --txht=4 --txwt=0 --rxfreet=64 --mbcache=250 --portmask=%s" % (self.target, coreMask, self.dut.get_memory_channels(), portMask), "testpmd>", 120)
+            self.pmdout.start_testpmd(lcore, "--portmask=%s" % self.portMask, socket=self.ports_socket)
 
             self.dut.send_expect("set verbose 1", "testpmd> ")
             self.dut.send_expect("set fwd csum", "testpmd> ")
@@ -301,7 +321,7 @@ class TestChecksumOffload(TestCase):
 
             self.dut.send_expect("stop", "testpmd> ")
             self.dut.send_expect("quit", "#", 10)
-            dcts.results_table_print()
+            dts.results_table_print()
 
     def tear_down(self):
         """

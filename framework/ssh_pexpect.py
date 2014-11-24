@@ -1,5 +1,3 @@
-# <COPYRIGHT_TAG>
-
 import time
 import pexpect
 import pxssh
@@ -37,8 +35,7 @@ class SSHPexpect(object):
 
     def __prompt(self, command, timeout):
         if not self.session.prompt(timeout):
-            self.session.read(len(self.session.before))
-            raise TimeoutException(command, self.get_output_before())
+            raise TimeoutException(command, self.get_output_all())
 
     def __sendline(self, command):
         if len(command) == 2 and command.startswith('^'):
@@ -53,6 +50,12 @@ class SSHPexpect(object):
             before[0] = ""
 
         return before[0]
+
+    def get_output_all(self):
+        self.session.flush()
+        output = self.session.before
+        output.replace("[PEXPECT]", "")
+        return output
 
     def close(self):
         if self.isalive():
@@ -75,6 +78,13 @@ class SSHPexpect(object):
         command = 'scp {0} {1}@{2}:'.format(filename, self.username, self.host)
         self._spawn_scp(command, password)
 
+    def copy_file_from(self, filename, password=''):
+        """
+        copy a remote file to a local place.
+        """
+        command = 'scp {1}@{2}:{0} .'.format(filename, self.username, self.host)
+        self._spawn_scp(command, password)
+
     def _spawn_scp(self, scp_cmd, password):
         """
         Transfer a file with SCP
@@ -84,7 +94,7 @@ class SSHPexpect(object):
         time.sleep(0.5)
         ssh_newkey = 'Are you sure you want to continue connecting'
         i = p.expect([ssh_newkey, 'password: ', "# ", pexpect.EOF,
-                      pexpect.TIMEOUT], 8)
+                      pexpect.TIMEOUT], 120)
         if i == 0:  # add once in trust list
             p.sendline('yes')
             i = p.expect([ssh_newkey, '[pP]assword: ', pexpect.EOF], 2)

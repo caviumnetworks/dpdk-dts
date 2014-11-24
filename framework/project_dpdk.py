@@ -1,8 +1,37 @@
-# <COPYRIGHT_TAG>
+# BSD LICENSE
+#
+# Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+#
+#   * Redistributions of source code must retain the above copyright
+#     notice, this list of conditions and the following disclaimer.
+#   * Redistributions in binary form must reproduce the above copyright
+#     notice, this list of conditions and the following disclaimer in
+#     the documentation and/or other materials provided with the
+#     distribution.
+#   * Neither the name of Intel Corporation nor the names of its
+#     contributors may be used to endorse or promote products derived
+#     from this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+# OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import os
 import re
-import dcts
+import dts
 
 from settings import NICS
 from ssh_connection import SSHConnection
@@ -16,7 +45,7 @@ from settings import IXIA
 class DPDKdut(Dut):
 
     """
-    DPDK project class for DUT. DCTS will call set_target function to setup
+    DPDK project class for DUT. DTS will call set_target function to setup
     build, memory and kernel module.
     """
 
@@ -25,14 +54,18 @@ class DPDKdut(Dut):
         super(DPDKdut, self).__init__(crb, serializer)
 
     def set_target(self, target):
+        """
+        Set env variable, these have to be setup all the time. Some tests
+        need to compile example apps by themselves and will fail otherwise.
+        Set hugepage on DUT and install modules required by DPDK.
+        Configure default ixgbe PMD function.
+        """
         self.set_toolchain(target)
 
-        # set env variable
-        # These have to be setup all the time. Some tests need to compile
-        # example apps by themselves and will fail otherwise.
         self.send_expect("export RTE_TARGET=" + target, "#")
         self.send_expect("export RTE_SDK=`pwd`", "#")
 
+        self.set_rxtx_mode()
         if not self.skip_setup:
             self.build_install_dpdk(target)
 
@@ -40,24 +73,39 @@ class DPDKdut(Dut):
         self.setup_modules(target)
 
         if self.get_os_type() == 'linux':
-            self.bind_interfaces_linux()
+            self.bind_interfaces_linux(dts.drivername)
 
     def setup_modules(self, target):
+        """
+        Install DPDK required kernel module on DUT.
+        """
         setup_modules = getattr(self, 'setup_modules_%s' % self.get_os_type())
         setup_modules(target)
 
     def setup_modules_linux(self, target):
-        self.send_expect("modprobe uio", "#", 70)
-        self.send_expect("rmmod -f igb_uio", "#", 70)
-        self.send_expect("insmod ./" + target + "/kmod/igb_uio.ko", "#", 60)
-        out = self.send_expect("lsmod | grep igb_uio", "#")
-        assert ("igb_uio" in out), "Failed to insmod igb_uio"
+        if dts.drivername == "vfio-pci":
+            self.send_expect("rmmod vfio_pci", "#", 70)
+            self.send_expect("rmmod vfio_iommu_type1", "#", 70)
+            self.send_expect("rmmod vfio", "#", 70)
+            self.send_expect("modprobe vfio", "#", 70)
+            self.send_expect("modprobe vfio-pci", "#", 70)
+            out = self.send_expect("lsmod | grep vfio_iommu_type1", "#")
+            assert ("vfio_iommu_type1" in out), "Failed to setup vfio-pci"
+        else:
+            self.send_expect("modprobe uio", "#", 70)
+            self.send_expect("rmmod -f igb_uio", "#", 70)
+            self.send_expect("insmod ./" + target + "/kmod/igb_uio.ko", "#", 60)
+            out = self.send_expect("lsmod | grep igb_uio", "#")
+            assert ("igb_uio" in out), "Failed to insmod igb_uio"
 
     def setup_modules_freebsd(self, target):
+        """
+        Install DPDK required Freebsd kernel module on DUT.
+        """
         binding_list = ''
 
         for (pci_bus, pci_id) in self.pci_devices_info:
-            if dcts.accepted_nic(pci_id):
+            if dts.accepted_nic(pci_id):
                 binding_list += '%s,' % (pci_bus)
 
         self.send_expect("kldunload if_ixgbe.ko", "#")
@@ -66,11 +114,43 @@ class DPDKdut(Dut):
         out = self.send_expect("kldstat", "#")
         assert ("nic_uio" in out), "Failed to insmod nic_uio"
 
+    def set_rxtx_mode(self):
+        """
+        Set default RX/TX PMD function, now only take effect on ixgbe.
+        """
+        [arch, machine, env, toolchain] = self.target.split('-')
+        if 'mode' not in self.crb:
+            mode = 'default'
+        else:
+            mode = self.crb['mode']
+
+        if mode is 'scalar':
+            self.send_expect("sed -i -e 's/CONFIG_RTE_IXGBE_INC_VECTOR=.*$/"
+                             + "CONFIG_RTE_IXGBE_INC_VECTOR=n/' config/common_%s" % env, "# ", 30)
+            self.send_expect("sed -i -e 's/CONFIG_RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC=.*$/"
+                             + "CONFIG_RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC=y/' config/common_%s" % env, "# ", 30)
+        if mode is 'full':
+            self.send_expect("sed -i -e 's/CONFIG_RTE_IXGBE_INC_VECTOR=.*$/"
+                             + "CONFIG_RTE_IXGBE_INC_VECTOR=n/' config/common_%s" % env, "# ", 30)
+            self.send_expect("sed -i -e 's/CONFIG_RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC=.*$/"
+                             + "CONFIG_RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC=n/' config/common_%s" % env, "# ", 30)
+        if mode is 'vector':
+            self.send_expect("sed -i -e 's/CONFIG_RTE_IXGBE_INC_VECTOR=.*$/"
+                             + "CONFIG_RTE_IXGBE_INC_VECTOR=y/' config/common_%s" % env, "# ", 30)
+            self.send_expect("sed -i -e 's/CONFIG_RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC=.*$/"
+                             + "CONFIG_RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC=y/' config/common_%s" % env, "# ", 30)
+
     def build_install_dpdk(self, target, extra_options=''):
+        """
+        Build DPDK source code with specified target.
+        """
         build_install_dpdk = getattr(self, 'build_install_dpdk_%s' % self.get_os_type())
         build_install_dpdk(target, extra_options)
 
     def build_install_dpdk_linux(self, target, extra_options):
+        """
+        Build DPDK source code on linux with specified target.
+        """
         # clean all
         self.send_expect("rm -rf " + target, "#")
 
@@ -86,6 +166,9 @@ class DPDKdut(Dut):
         assert ("No rule to make" not in out), "No rule to make error..."
 
     def build_install_dpdk_freebsd(self, target, extra_options):
+        """
+        Build DPDK source code on Freebsd with specified target.
+        """
         # clean all
         self.send_expect("rm -rf " + target, "#")
 
@@ -104,6 +187,9 @@ class DPDKdut(Dut):
         assert ("No rule to make" not in out), "No rule to make error..."
 
     def prerequisites(self, pkgName, patch):
+        """
+        Copy DPDK package to DUT and apply patch files.
+        """
         if not self.skip_setup:
             assert (os.path.isfile(pkgName) is True), "Invalid package"
 
@@ -146,7 +232,7 @@ class DPDKdut(Dut):
 
         current_nic = 0
         for (pci_bus, pci_id) in self.pci_devices_info:
-            if dcts.accepted_nic(pci_id):
+            if dts.accepted_nic(pci_id):
 
                 if nics_to_bind is None or current_nic in nics_to_bind:
                     binding_list += '%s ' % (pci_bus)
@@ -164,7 +250,7 @@ class DPDKdut(Dut):
 
         current_nic = 0
         for (pci_bus, pci_id) in self.pci_devices_info:
-            if dcts.accepted_nic(pci_id):
+            if dts.accepted_nic(pci_id):
 
                 if nics_to_bind is None or current_nic in nics_to_bind:
                     binding_list += '%s ' % (pci_bus)
@@ -174,22 +260,37 @@ class DPDKdut(Dut):
         self.send_expect('tools/dpdk_nic_bind.py %s' % binding_list, '# ', 30)
 
     def build_dpdk_apps(self, folder, extra_options=''):
+        """
+        Build dpdk sample applications.
+        """
         build_dpdk_apps = getattr(self, 'build_dpdk_apps_%s' % self.get_os_type())
         return build_dpdk_apps(folder, extra_options)
 
     def build_dpdk_apps_linux(self, folder, extra_options):
+        """
+        Build dpdk sample applications on linux.
+        """
         return self.send_expect("make -j -C %s %s" % (folder, extra_options),
                                 "# ", 90)
 
     def build_dpdk_apps_freebsd(self, folder, extra_options):
+        """
+        Build dpdk sample applications on Freebsd.
+        """
         return self.send_expect("make -j -C %s %s CC=gcc48" % (folder, extra_options),
                                 "# ", 90)
 
-    def create_blacklist_string(self, target, nic):
-        create_blacklist_string = getattr(self, 'create_blacklist_string_%s' % self.get_os_type())
-        return create_blacklist_string(target, nic)
+    def get_blacklist_string(self, target, nic):
+        """
+        Get black list command string.
+        """
+        get_blacklist_string = getattr(self, 'get_blacklist_string_%s' % self.get_os_type())
+        return get_blacklist_string(target, nic)
 
-    def create_blacklist_string_linux(self, target, nic):
+    def get_blacklist_string_linux(self, target, nic):
+        """
+        Get black list command string on Linux.
+        """
         blacklist = ''
         dutPorts = self.get_ports(nic)
         self.restore_interfaces()
@@ -200,7 +301,10 @@ class DPDKdut(Dut):
                 blacklist += '-b 0000:%s ' % self.ports_info[port]['pci']
         return blacklist
 
-    def create_blacklist_string_freebsd(self, target, nic):
+    def get_blacklist_string_freebsd(self, target, nic):
+        """
+        Get black list command string on Freebsd.
+        """
         blacklist = ''
         # No blacklist option in FreeBSD
         return blacklist
@@ -209,7 +313,7 @@ class DPDKdut(Dut):
 class DPDKtester(Tester):
 
     """
-    DPDK project class for tester. DCTS will call prerequisites function to setup
+    DPDK project class for tester. DTS will call prerequisites function to setup
     interface and generate port map.
     """
 
@@ -218,6 +322,9 @@ class DPDKtester(Tester):
         super(DPDKtester, self).__init__(crb, serializer)
 
     def prerequisites(self, perf_test=False):
+        """
+        Setup hugepage on tester and copy validation required files to tester.
+        """
         self.kill_all()
 
         if not self.skip_setup:
@@ -227,8 +334,12 @@ class DPDKtester(Tester):
                 self.set_huge_pages(1024)
 
             self.session.copy_file_to("tgen.tgz")
+            self.session.copy_file_to("tclclient.tgz")
             # unpack tgen
             out = self.send_expect("tar zxf tgen.tgz", "# ")
+            assert "Error" not in out
+            # unpack tclclient
+            out = self.send_expect("tar zxf tclclient.tgz", "# ")
             assert "Error" not in out
 
         self.send_expect("modprobe uio", "# ")
@@ -242,11 +353,13 @@ class DPDKtester(Tester):
                     self.logger.info("Use hardware packet generator")
             except Exception as e:
                 self.logger.warning("Use default software pktgen")
-
-            assert (os.path.isfile("/root/igb_uio.ko") is True), "Can not find igb_uio for performance"
-            self.setup_memory()
+                assert (os.path.isfile("/root/igb_uio.ko") is True), "Can not find /root/igb_uio.ko for performance"
+                self.setup_memory()
 
     def setup_memory(self, hugepages=-1):
+        """
+        Setup hugepage on tester.
+        """
         hugepages_size = self.send_expect("awk '/Hugepagesize/ {print $2}' /proc/meminfo", "# ")
 
         if int(hugepages_size) < (1024 * 1024):

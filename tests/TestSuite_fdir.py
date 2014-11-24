@@ -1,29 +1,66 @@
-# <COPYRIGHT_TAG>
+# BSD LICENSE
+#
+# Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+#
+#   * Redistributions of source code must retain the above copyright
+#     notice, this list of conditions and the following disclaimer.
+#   * Redistributions in binary form must reproduce the above copyright
+#     notice, this list of conditions and the following disclaimer in
+#     the documentation and/or other materials provided with the
+#     distribution.
+#   * Neither the name of Intel Corporation nor the names of its
+#     contributors may be used to endorse or promote products derived
+#     from this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+# OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
 DPDK Test suite.
-
 Test 82599 Flow Director Support in DPDK
 """
 
-import dcts
+import dts
 import time
 
 
 from test_case import TestCase
-
-#
-#
-# Test class.
-#
+from pmd_output import PmdOutput
 
 
 class TestFdir(TestCase):
 
-    #
-    #
-    # Utility methods and other non-test code.
-    #
+    def set_up_all(self):
+        """
+        Run at the start of each test suite.
+        """
+        self.verify('bsdapp' not in self.target, "FDIR not support freebsd")
+        self.verify(self.nic in ["kawela", "niantic"], "NIC Unsupported: " + str(self.nic))
+
+        ports = self.dut.get_ports(self.nic)
+        self.verify(len(ports) >= 2, "Not enough ports available")
+
+        self.pmdout = PmdOutput(self.dut)
+
+    def set_up(self):
+        """
+        Run before each test case.
+        """
+        pass
 
     def send_and_verify(self, condition, packet):
         """
@@ -42,27 +79,6 @@ class TestFdir(TestCase):
         else:
             self.verify("PKT_RX_PKT_RX_FDIR" not in out, "FDIR hash displayed when not required")
 
-    #
-    #
-    #
-    # Test cases.
-    #
-    def set_up_all(self):
-        """
-        Run at the start of each test suite.
-        """
-        self.verify('bsdapp' not in self.target, "FDIR not support freebsd")
-        self.verify(self.nic in ["kawela", "niantic"], "NIC Unsupported: " + str(self.nic))
-
-        ports = self.dut.get_ports(self.nic)
-        self.verify(len(ports) >= 2, "Not enough ports available")
-
-    def set_up(self):
-        """
-        Run before each test case.
-        """
-        pass
-
     def test_fdir_space(self):
         """
         Setting memory reserved for FDir filters.
@@ -70,17 +86,17 @@ class TestFdir(TestCase):
 
         dutPorts = self.dut.get_ports(self.nic)
 
-        self.dut.send_expect("./%s/app/testpmd -c 0xff -n 1 -- -i --rxq=2 --txq=2 --disable-rss --pkt-filter-mode=perfect --pkt-filter-size=64K" % self.target, "testpmd>", 120)
+        self.pmdout.start_testpmd("all", "--rxq=2 --txq=2 --disable-rss --pkt-filter-mode=perfect --pkt-filter-size=64K")
         out = self.dut.send_expect("show port fdir %s" % dutPorts[0], "testpmd>")
         self.dut.send_expect("quit", "# ", 30)
         self.verify("free:     2048" in out, "Free space doesn't match the expected value")
 
-        self.dut.send_expect("./%s/app/testpmd -c 0xff -n 1 -- -i --rxq=2 --txq=2 --disable-rss --pkt-filter-mode=perfect --pkt-filter-size=128K" % self.target, "testpmd>", 120)
+        self.pmdout.start_testpmd("all", "--rxq=2 --txq=2 --disable-rss --pkt-filter-mode=perfect --pkt-filter-size=128K")
         out = self.dut.send_expect("show port fdir %s" % dutPorts[0], "testpmd>")
         self.dut.send_expect("quit", "# ", 30)
         self.verify("free:     4096" in out, "Free space doesn't match the expected value")
 
-        self.dut.send_expect("./%s/app/testpmd -c 0xff -n 1 -- -i --rxq=2 --txq=2 --disable-rss --pkt-filter-mode=perfect --pkt-filter-size=256K" % self.target, "testpmd>", 120)
+        self.pmdout.start_testpmd("all", "--rxq=2 --txq=2 --disable-rss --pkt-filter-mode=perfect --pkt-filter-size=256K")
         out = self.dut.send_expect("show port fdir %s" % dutPorts[0], "testpmd>")
         self.dut.send_expect("quit", "# ", 30)
         self.verify("free:     8192" in out, "Free space doesn't match the expected value")
@@ -88,6 +104,14 @@ class TestFdir(TestCase):
     def test_fdir_signatures(self):
         """
         FDir signature matching mode.
+        There are three different reporting modes, that can be set in testpmd using the ``--pkt-filter-report-hash`` command line
+        argument:
+            --pkt-filter-report-hash=none
+            --pkt-filter-report-hash=match
+            --pkt-filter-report-hash=always
+        The test for each mode is following the steps below.
+          - Start the ``testpmd`` application by using paramter of each mode.
+          - Send the ``p_udp`` packet with Scapy on the traffic generator and check that FDir information is printed
         """
 
         dutPorts = self.dut.get_ports(self.nic)
@@ -95,7 +119,7 @@ class TestFdir(TestCase):
         itf = self.tester.get_interface(localPort)
 
         self.dut.kill_all()
-        self.dut.send_expect("./%s/app/testpmd -c 0xff -n 1 -- -i --portmask=%s --rxq=2 --txq=2 --disable-rss --pkt-filter-mode=perfect --pkt-filter-report-hash=none" % (self.target, dcts.create_mask([dutPorts[0]])), "testpmd>", 120)
+        self.pmdout.start_testpmd("all", "--portmask=%s --rxq=2 --txq=2 --disable-rss --pkt-filter-mode=perfect --pkt-filter-report-hash=none" % dts.create_mask([dutPorts[0]]))
         self.dut.send_expect("set verbose 1", "testpmd>")
         self.dut.send_expect("set fwd rxonly", "testpmd>")
         self.dut.send_expect("set nbcore 3", "testpmd>")
@@ -107,7 +131,7 @@ class TestFdir(TestCase):
 
         self.dut.send_expect("quit", "# ", 30)
 
-        self.dut.send_expect("./%s/app/testpmd -c 0xff -n 1 -- -i --portmask=%s --rxq=2 --txq=2 --disable-rss --pkt-filter-mode=perfect --pkt-filter-report-hash=match" % (self.target, dcts.create_mask([dutPorts[0]])), "testpmd>", 120)
+        self.pmdout.start_testpmd("all", "--portmask=%s --rxq=2 --txq=2 --disable-rss --pkt-filter-mode=perfect --pkt-filter-report-hash=match" % dts.create_mask([dutPorts[0]]))
         self.dut.send_expect("set verbose 1", "testpmd>")
         self.dut.send_expect("set fwd rxonly", "testpmd>")
         self.dut.send_expect("set nbcore 3", "testpmd>")
@@ -129,7 +153,7 @@ class TestFdir(TestCase):
 
         self.dut.send_expect("quit", "# ", 30)
 
-        self.dut.send_expect("./%s/app/testpmd -c 0xff -n 1 -- -i --portmask=%s --rxq=2 --txq=2 --disable-rss --pkt-filter-mode=perfect --pkt-filter-report-hash=always" % (self.target, dcts.create_mask([dutPorts[0]])), "testpmd>", 120)
+        self.pmdout.start_testpmd("all", "--portmask=%s --rxq=2 --txq=2 --disable-rss --pkt-filter-mode=perfect --pkt-filter-report-hash=always" % dts.create_mask([dutPorts[0]]))
         self.dut.send_expect("set verbose 1", "testpmd>")
         self.dut.send_expect("set fwd rxonly", "testpmd>")
         self.dut.send_expect("set nbcore 3", "testpmd>")
@@ -144,6 +168,12 @@ class TestFdir(TestCase):
     def test_fdir_matching(self):
         """
         FDir matching mode
+        This test adds signature filters to the hardware, and then checks
+        whether sent packets match those filters.
+        The test for each mode is following the steps below.
+          - Start the ``testpmd`` application
+          - Add filter with upd, tcp sctp, IP4 or IP6
+          - Send the packet and validate the filter function.
         """
 
         dutPorts = self.dut.get_ports(self.nic)
@@ -151,7 +181,7 @@ class TestFdir(TestCase):
         itf = self.tester.get_interface(localPort)
 
         self.dut.kill_all()
-        self.dut.send_expect("./%s/app/testpmd -c 0xff -n 1 -- -i --portmask=%s --rxq=2 --txq=2 --disable-rss --pkt-filter-mode=signature --pkt-filter-report-hash=match" % (self.target, dcts.create_mask([dutPorts[0]])), "testpmd>", 120)
+        self.pmdout.start_testpmd("all", "--portmask=%s --rxq=2 --txq=2 --disable-rss --pkt-filter-mode=signature --pkt-filter-report-hash=match" % dts.create_mask([dutPorts[0]]))
         self.dut.send_expect("set verbose 1", "testpmd>")
         self.dut.send_expect("set fwd rxonly", "testpmd>")
         self.dut.send_expect("set nbcore 3", "testpmd>")
@@ -196,6 +226,11 @@ class TestFdir(TestCase):
     def test_fdir_perfect_matching(self):
         """
         FDir perfect matching mode.
+        This test adds perfect-match filters to the hardware, and then checks whether sent packets match those filters.
+        The test for each mode is following the steps below.
+          - Start the ``testpmd`` application with perfect match;
+          - Add filter with upd, tcp sctp, IP4;
+          - Send the packet and validate the perfect filter function.
         """
 
         dutPorts = self.dut.get_ports(self.nic)
@@ -203,7 +238,7 @@ class TestFdir(TestCase):
         itf = self.tester.get_interface(localPort)
 
         self.dut.kill_all()
-        self.dut.send_expect("./%s/app/testpmd -c 0xff -n 1 -- -i --portmask=%s --rxq=2 --txq=2 --disable-rss --pkt-filter-mode=perfect --pkt-filter-report-hash=match" % (self.target, dcts.create_mask([dutPorts[0]])), "testpmd>", 120)
+        self.pmdout.start_testpmd("all", "--portmask=%s --rxq=2 --txq=2 --disable-rss --pkt-filter-mode=perfect --pkt-filter-report-hash=match" % dts.create_mask([dutPorts[0]]))
         self.dut.send_expect("set verbose 1", "testpmd>")
         self.dut.send_expect("set fwd rxonly", "testpmd>")
         self.dut.send_expect("set nbcore 3", "testpmd>")
@@ -225,6 +260,8 @@ class TestFdir(TestCase):
     def test_fdir_filter_masks(self):
         """
         FDir filter masks.
+        This tests the functionality of the setting FDir masks to to affect which
+        fields, or parts of fields are used in the matching process.
         """
 
         dutPorts = self.dut.get_ports(self.nic)
@@ -232,7 +269,7 @@ class TestFdir(TestCase):
         itf = self.tester.get_interface(localPort)
 
         self.dut.kill_all()
-        self.dut.send_expect("./%s/app/testpmd -c 0xff  -n 1 -- -i --portmask=%s --rxq=2 --txq=2 --disable-rss --pkt-filter-mode=perfect --pkt-filter-size=64K --pkt-filter-report-hash=match" % (self.target, dcts.create_mask([dutPorts[0]])), "testpmd>", 120)
+        self.pmdout.start_testpmd("all", "--portmask=%s --rxq=2 --txq=2 --disable-rss --pkt-filter-mode=perfect --pkt-filter-size=64K --pkt-filter-report-hash=match" % dts.create_mask([dutPorts[0]]))
         self.dut.send_expect("set verbose 1", "testpmd>")
         self.dut.send_expect("set fwd rxonly", "testpmd>")
         self.dut.send_expect("set nbcore 3", "testpmd>")
@@ -266,6 +303,10 @@ class TestFdir(TestCase):
     def test_fdir_flexbytes_filtering(self):
         """
         FDir flexbytes filtering
+        The FDir feature supports setting up filters that can match on any two byte field
+        within the first 64 bytes of a packet. Which byte offset to use is set by passing
+        command line arguments to ``testpmd``. In this test a value of ``18`` corresponds
+        to the bytes at offset 36 and 37, as the offset is in 2-byte units
         """
 
         dutPorts = self.dut.get_ports(self.nic)
@@ -273,7 +314,7 @@ class TestFdir(TestCase):
         itf = self.tester.get_interface(localPort)
 
         self.dut.kill_all()
-        self.dut.send_expect("./%s/app/testpmd -c 0xff  -n 1 -- -i --portmask=%s --rxq=2 --txq=2 --disable-rss --pkt-filter-mode=perfect --pkt-filter-size=64K --pkt-filter-report-hash=match --pkt-filter-flexbytes-offset=18" % (self.target, dcts.create_mask([dutPorts[0]])), "testpmd>", 120)
+        self.pmdout.start_testpmd("all", "--portmask=%s --rxq=2 --txq=2 --disable-rss --pkt-filter-mode=perfect --pkt-filter-size=64K --pkt-filter-report-hash=match --pkt-filter-flexbytes-offset=18" % dts.create_mask([dutPorts[0]]))
         self.dut.send_expect("set verbose 1", "testpmd>")
         self.dut.send_expect("set fwd rxonly", "testpmd>")
         self.dut.send_expect("set nbcore 3", "testpmd>")
@@ -302,7 +343,7 @@ class TestFdir(TestCase):
         itf = self.tester.get_interface(localPort)
 
         self.dut.kill_all()
-        self.dut.send_expect("./%s/app/testpmd -c 0xff -n 1 -- -i --portmask=%s --nb-cores=2 --rxq=2 --txq=2 --disable-rss --pkt-filter-mode=perfect" % (self.target, dcts.create_mask([dutPorts[0]])), "testpmd>", 120)
+        self.pmdout.start_testpmd("all", "--portmask=%s --nb-cores=2 --rxq=2 --txq=2 --disable-rss --pkt-filter-mode=perfect" % dts.create_mask([dutPorts[0]]))
         self.dut.send_expect("set verbose 1", "testpmd>")
         self.dut.send_expect("set fwd rxonly", "testpmd>")
         # "rx_vlan add all" has been removed from testpmd

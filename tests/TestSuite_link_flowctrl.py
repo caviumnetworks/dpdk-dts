@@ -1,31 +1,49 @@
-# <COPYRIGHT_TAG>
+# BSD LICENSE
+#
+# Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+#
+#   * Redistributions of source code must retain the above copyright
+#     notice, this list of conditions and the following disclaimer.
+#   * Redistributions in binary form must reproduce the above copyright
+#     notice, this list of conditions and the following disclaimer in
+#     the documentation and/or other materials provided with the
+#     distribution.
+#   * Neither the name of Intel Corporation nor the names of its
+#     contributors may be used to endorse or promote products derived
+#     from this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+# OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
 DPDK Test suite.
-
 Test for Ethernet Link Flow Control Features by Poll Mode Drivers
-
 """
 
-import dcts
+import dts
 import re
 
 from time import sleep
 from test_case import TestCase
-
-#
-#
-# Test class.
-#
+from pmd_output import PmdOutput
+from settings import HEADER_SIZE
 
 
 class TestLinkFlowctrl(TestCase):
-
-    #
-    #
-    #
-    # Test cases.
-    #
     pause_frame_dst = "01:80:C2:00:00:01"
     pause_frame_type = "0x8808"
     pause_frame_opcode = "\\x00\\x01"
@@ -37,10 +55,7 @@ class TestLinkFlowctrl(TestCase):
     frames_to_sent = 10
 
     packet_size = 66    # 66 allows frame loss
-    ip_header_size = 20
-    udp_header_size = 8
-    eth_header_size = 18
-    payload_size = packet_size - eth_header_size - ip_header_size - udp_header_size
+    payload_size = packet_size - HEADER_SIZE['eth'] - HEADER_SIZE['ip'] - HEADER_SIZE['udp']
 
     def set_up_all(self):
         """
@@ -57,13 +72,11 @@ class TestLinkFlowctrl(TestCase):
 
         self.tx_port = self.dutPorts[1]
 
-        self.portMask = dcts.create_mask([self.rx_port, self.tx_port])
+        self.portMask = dts.create_mask([self.rx_port, self.tx_port])
         self.memChannels = self.dut.get_memory_channels()
 
-        cmdline = "./%s/app/testpmd -c ffffff -n %s -- -i --burst=1" % (self.target, self.memChannels) + \
-            "--txpt=32 --txht=8 --txwt=0 --txfreet=0  --mbcache=250 --portmask=%s" % self.portMask
-
-        self.dut.send_expect(cmdline, "testpmd> ", 120)
+        self.pmdout = PmdOutput(self.dut)
+        self.pmdout.start_testpmd("all", "--portmask=%s" % self.portMask)
 
     def pause_frame_loss_test(self, rx_flow_control='off',
                               tx_flow_control='off',

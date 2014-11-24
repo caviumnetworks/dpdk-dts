@@ -1,30 +1,48 @@
-# <COPYRIGHT_TAG>
+# BSD LICENSE
+#
+# Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+#
+#   * Redistributions of source code must retain the above copyright
+#     notice, this list of conditions and the following disclaimer.
+#   * Redistributions in binary form must reproduce the above copyright
+#     notice, this list of conditions and the following disclaimer in
+#     the documentation and/or other materials provided with the
+#     distribution.
+#   * Neither the name of Intel Corporation nor the names of its
+#     contributors may be used to endorse or promote products derived
+#     from this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+# OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
 DPDK Test suite.
-
 Test support of IEEE1588 Precise Time Protocol.
 """
 
-import dcts
+import dts
 import time
 
 
 from test_case import TestCase
-
-#
-#
-# Test class.
-#
+from pmd_output import PmdOutput
 
 
 class TestIeee1588(TestCase):
-
-    #
-    #
-    #
-    # Test cases.
-    #
 
     def set_up_all(self):
         """
@@ -45,8 +63,8 @@ class TestIeee1588(TestCase):
         self.dut.skip_setup = False
         self.dut.build_install_dpdk(self.target)
 
-        self.dut.send_expect("./%s/app/testpmd -c ffffff -n 3 -- -i --rxpt=0 --rxht=0 --rxwt=0 --txpt=39 --txht=0 --txwt=0" % self.target,
-                             "testpmd> ", 100)
+        self.pmdout = PmdOutput(self.dut)
+        self.pmdout.start_testpmd("all")
 
     def set_up(self):
         """
@@ -88,11 +106,11 @@ class TestIeee1588(TestCase):
         time.sleep(1)
         out = self.dut.send_expect("stop", "testpmd> ")
 
-        text = dcts.regexp(out, "(.*) by hardware")
+        text = dts.regexp(out, "(.*) by hardware")
         self.verify("IEEE1588 PTP V2 SYNC" in text, "Not filtered " + text)
 
-        rx_time = dcts.regexp(out, "RX timestamp value (0x[0-9a-fA-F]+)")
-        tx_time = dcts.regexp(out, "TX timestamp value (0x[0-9a-fA-F]+)")
+        rx_time = dts.regexp(out, "RX timestamp value (0x[0-9a-fA-F]+)")
+        tx_time = dts.regexp(out, "TX timestamp value (0x[0-9a-fA-F]+)")
 
         self.verify(rx_time is not None, "RX timestamp error ")
         self.verify(tx_time is not None, "TX timestamp error ")

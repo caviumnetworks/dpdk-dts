@@ -1,4 +1,34 @@
-# <COPYRIGHT_TAG>
+# BSD LICENSE
+#
+# Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+#
+#   * Redistributions of source code must retain the above copyright
+#     notice, this list of conditions and the following disclaimer.
+#   * Redistributions in binary form must reproduce the above copyright
+#     notice, this list of conditions and the following disclaimer in
+#     the documentation and/or other materials provided with the
+#     distribution.
+#   * Neither the name of Intel Corporation nor the names of its
+#     contributors may be used to endorse or promote products derived
+#     from this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+# OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 import logging
 import os
 import sys
@@ -6,16 +36,18 @@ import inspect
 import re
 
 """
-DCTS logger module with several log level. DCTS framwork and TestSuite log
+DTS logger module with several log level. DTS framwork and TestSuite log
 will saved into different log files.
 """
-logging.DCTS_DUT_CMD = logging.INFO + 1
-logging.DCTS_DUT_OUTPUT = logging.DEBUG + 1
-logging.DCTS_DUT_RESULT = logging.WARNING + 1
+verbose = False
 
-logging.DCTS_TESTER_CMD = logging.INFO + 2
-logging.DCTS_TESTER_OUTPUT = logging.DEBUG + 2
-logging.DCTS_TESTER_RESULT = logging.WARNING + 2
+logging.DTS_DUT_CMD = logging.INFO + 1
+logging.DTS_DUT_OUTPUT = logging.DEBUG + 1
+logging.DTS_DUT_RESULT = logging.WARNING + 1
+
+logging.DTS_TESTER_CMD = logging.INFO + 2
+logging.DTS_TESTER_OUTPUT = logging.DEBUG + 2
+logging.DTS_TESTER_RESULT = logging.WARNING + 2
 
 logging.SUITE_DUT_CMD = logging.INFO + 3
 logging.SUITE_DUT_OUTPUT = logging.DEBUG + 3
@@ -23,16 +55,16 @@ logging.SUITE_DUT_OUTPUT = logging.DEBUG + 3
 logging.SUITE_TESTER_CMD = logging.INFO + 4
 logging.SUITE_TESTER_OUTPUT = logging.DEBUG + 4
 
-logging.DCTS_IXIA_CMD = logging.INFO + 5
-logging.DCTS_IXIA_OUTPUT = logging.DEBUG + 5
+logging.DTS_IXIA_CMD = logging.INFO + 5
+logging.DTS_IXIA_OUTPUT = logging.DEBUG + 5
 
-logging.addLevelName(logging.DCTS_DUT_CMD, 'DCTS_DUT_CMD')
-logging.addLevelName(logging.DCTS_DUT_OUTPUT, 'DCTS_DUT_OUTPUT')
-logging.addLevelName(logging.DCTS_DUT_RESULT, 'DCTS_DUT_RESUTL')
+logging.addLevelName(logging.DTS_DUT_CMD, 'DTS_DUT_CMD')
+logging.addLevelName(logging.DTS_DUT_OUTPUT, 'DTS_DUT_OUTPUT')
+logging.addLevelName(logging.DTS_DUT_RESULT, 'DTS_DUT_RESUTL')
 
-logging.addLevelName(logging.DCTS_TESTER_CMD, 'DCTS_TESTER_CMD')
-logging.addLevelName(logging.DCTS_TESTER_OUTPUT, 'DCTS_TESTER_OUTPUT')
-logging.addLevelName(logging.DCTS_TESTER_RESULT, 'DCTS_TESTER_RESULT')
+logging.addLevelName(logging.DTS_TESTER_CMD, 'DTS_TESTER_CMD')
+logging.addLevelName(logging.DTS_TESTER_OUTPUT, 'DTS_TESTER_OUTPUT')
+logging.addLevelName(logging.DTS_TESTER_RESULT, 'DTS_TESTER_RESULT')
 
 logging.addLevelName(logging.SUITE_DUT_CMD, 'SUITE_DUT_CMD')
 logging.addLevelName(logging.SUITE_DUT_OUTPUT, 'SUITE_DUT_OUTPUT')
@@ -40,8 +72,8 @@ logging.addLevelName(logging.SUITE_DUT_OUTPUT, 'SUITE_DUT_OUTPUT')
 logging.addLevelName(logging.SUITE_TESTER_CMD, 'SUITE_TESTER_CMD')
 logging.addLevelName(logging.SUITE_TESTER_OUTPUT, 'SUITE_TESTER_OUTPUT')
 
-logging.addLevelName(logging.DCTS_IXIA_CMD, 'DCTS_IXIA_CMD')
-logging.addLevelName(logging.DCTS_IXIA_OUTPUT, 'DCTS_IXIA_OUTPUT')
+logging.addLevelName(logging.DTS_IXIA_CMD, 'DTS_IXIA_CMD')
+logging.addLevelName(logging.DTS_IXIA_OUTPUT, 'DTS_IXIA_OUTPUT')
 
 message_fmt = '%(asctime)s %(levelname)20s: %(message)s'
 date_fmt = '%d/%m/%Y %H:%M:%S'
@@ -54,25 +86,33 @@ def RED(text):
     return "\x1B[" + "31;1m" + text + "\x1B[" + "0m"
 
 
+def set_verbose():
+    global verbose
+    verbose = True
+
+
 class BaseLoggerAdapter(logging.LoggerAdapter):
+    """
+    Upper layer of original logging module.
+    """
 
-    def dcts_dut_cmd(self, msg, *args, **kwargs):
-        self.log(logging.DCTS_DUT_CMD, msg, *args, **kwargs)
+    def dts_dut_cmd(self, msg, *args, **kwargs):
+        self.log(logging.DTS_DUT_CMD, msg, *args, **kwargs)
 
-    def dcts_dut_output(self, msg, *args, **kwargs):
-        self.log(logging.DCTS_DUT_OUTPUT, msg, *args, **kwargs)
+    def dts_dut_output(self, msg, *args, **kwargs):
+        self.log(logging.DTS_DUT_OUTPUT, msg, *args, **kwargs)
 
-    def dcts_dut_result(self, msg, *args, **kwargs):
-        self.log(logging.DCTS_DUT_RESULT, msg, *args, **kwargs)
+    def dts_dut_result(self, msg, *args, **kwargs):
+        self.log(logging.DTS_DUT_RESULT, msg, *args, **kwargs)
 
-    def dcts_tester_cmd(self, msg, *args, **kwargs):
-        self.log(logging.DCTS_TESTER_CMD, msg, *args, **kwargs)
+    def dts_tester_cmd(self, msg, *args, **kwargs):
+        self.log(logging.DTS_TESTER_CMD, msg, *args, **kwargs)
 
-    def dcts_tester_output(self, msg, *args, **kwargs):
-        self.log(logging.DCTS_TESTER_CMD, msg, *args, **kwargs)
+    def dts_tester_output(self, msg, *args, **kwargs):
+        self.log(logging.DTS_TESTER_CMD, msg, *args, **kwargs)
 
-    def dcts_tester_result(self, msg, *args, **kwargs):
-        self.log(logging.DCTS_TESTER_RESULT, msg, *args, **kwargs)
+    def dts_tester_result(self, msg, *args, **kwargs):
+        self.log(logging.DTS_TESTER_RESULT, msg, *args, **kwargs)
 
     def suite_dut_cmd(self, msg, *args, **kwargs):
         self.log(logging.SUITE_DUT_CMD, msg, *args, **kwargs)
@@ -86,30 +126,33 @@ class BaseLoggerAdapter(logging.LoggerAdapter):
     def suite_tester_output(self, msg, *args, **kwargs):
         self.log(logging.SUITE_TESTER_OUTPUT, msg, *args, **kwargs)
 
-    def dcts_ixia_cmd(self, msg, *args, **kwargs):
-        self.log(logging.DCTS_IXIA_CMD, msg, *args, **kwargs)
+    def dts_ixia_cmd(self, msg, *args, **kwargs):
+        self.log(logging.DTS_IXIA_CMD, msg, *args, **kwargs)
 
-    def dcts_ixia_output(self, msg, *args, **kwargs):
-        self.log(logging.DCTS_IXIA_OUTPUT, msg, *args, **kwargs)
+    def dts_ixia_output(self, msg, *args, **kwargs):
+        self.log(logging.DTS_IXIA_OUTPUT, msg, *args, **kwargs)
 
 
 class ColorHandler(logging.StreamHandler):
+    """
+    Color of DTS log format.
+    """
     LEVEL_COLORS = {
         logging.DEBUG: '',  # SYSTEM
-        logging.DCTS_DUT_OUTPUT: '\033[00;37m',  # WHITE
-        logging.DCTS_TESTER_OUTPUT: '\033[00;37m',  # WHITE
+        logging.DTS_DUT_OUTPUT: '\033[00;37m',  # WHITE
+        logging.DTS_TESTER_OUTPUT: '\033[00;37m',  # WHITE
         logging.SUITE_DUT_OUTPUT: '\033[00;37m',  # WHITE
         logging.SUITE_TESTER_OUTPUT: '\033[00;37m',  # WHITE
         logging.INFO: '\033[00;36m',  # CYAN
-        logging.DCTS_DUT_CMD: '',  # SYSTEM
-        logging.DCTS_TESTER_CMD: '',  # SYSTEM
+        logging.DTS_DUT_CMD: '',  # SYSTEM
+        logging.DTS_TESTER_CMD: '',  # SYSTEM
         logging.SUITE_DUT_CMD: '',  # SYSTEM
         logging.SUITE_TESTER_CMD: '',  # SYSTEM
-        logging.DCTS_IXIA_CMD: '',  # SYSTEM
-        logging.DCTS_IXIA_OUTPUT: '',  # SYSTEM
+        logging.DTS_IXIA_CMD: '',  # SYSTEM
+        logging.DTS_IXIA_OUTPUT: '',  # SYSTEM
         logging.WARN: '\033[01;33m',  # BOLD YELLOW
-        logging.DCTS_DUT_RESULT: '\033[01;34m',  # BOLD BLUE
-        logging.DCTS_TESTER_RESULT: '\033[01;34m',  # BOLD BLUE
+        logging.DTS_DUT_RESULT: '\033[01;34m',  # BOLD BLUE
+        logging.DTS_TESTER_RESULT: '\033[01;34m',  # BOLD BLUE
         logging.ERROR: '\033[01;31m',  # BOLD RED
         logging.CRITICAL: '\033[01;31m',  # BOLD RED
     }
@@ -119,10 +162,9 @@ class ColorHandler(logging.StreamHandler):
         return logging.StreamHandler.format(self, record)
 
 
-class DCTSLOG(BaseLoggerAdapter):
-
+class DTSLOG(BaseLoggerAdapter):
     """
-    dcts log class for framework and testsuite
+    DTS log class for framework and testsuite.
     """
 
     def __init__(self, logger, crb="suite"):
@@ -138,24 +180,32 @@ class DCTSLOG(BaseLoggerAdapter):
         if log_dir is None:
             self.log_path = os.getcwd() + "/../output"
         else:
-            self.log_path = log_dir    # log dir should contain tag/crb global value and mod in dcts
-        self.dcts_log = "dcts.log"
+            self.log_path = log_dir    # log dir should contain tag/crb global value and mod in dts
+        self.dts_log = "dts.log"
 
         self.logger = logger
         self.logger.setLevel(logging.DEBUG)
 
         self.crb = crb
-        super(DCTSLOG, self).__init__(self.logger, dict(crb=self.crb))
+        super(DTSLOG, self).__init__(self.logger, dict(crb=self.crb))
 
         self.fh = None
         self.ch = None
 
     def __log_hander(self, fh, ch):
+        """
+        Config stream handler and file handler.
+        """
         fh.setFormatter(logging.Formatter(message_fmt, date_fmt))
         ch.setFormatter(logging.Formatter(stream_fmt, date_fmt))
 
         fh.setLevel(logging.DEBUG)   # file hander default level
-        ch.setLevel(logging.INFO)    # console handler default level
+        global verbose
+        if verbose is True:
+            ch.setLevel(logging.DEBUG)
+        else:
+            ch.setLevel(logging.INFO)   # console handler default level
+
         self.logger.addHandler(fh)
         self.logger.addHandler(ch)
 
@@ -168,43 +218,69 @@ class DCTSLOG(BaseLoggerAdapter):
         self.ch = ch
 
     def warning(self, message):
+        """
+        DTS warnning level log function.
+        """
         self.logger.log(self.warn_lvl, message)
 
     def info(self, message):
+        """
+        DTS information level log function.
+        """
         self.logger.log(self.info_lvl, message)
 
     def error(self, message):
+        """
+        DTS error level log function.
+        """
         self.logger.log(self.error_lvl, message)
 
     def debug(self, message):
+        """
+        DTS debug level log function.
+        """
         self.logger.log(self.debug_lvl, message)
 
     def set_logfile_path(self, path):
+        """
+        Configure the log file path.
+        """
         self.log_path = path
 
     def set_stream_level(self, lvl):
+        """
+        Configure the stream level, logger level >= stream level will be
+        output on the screen.
+        """
         self.ch.setLevel(lvl)
 
     def set_logfile_level(self, lvl):
+        """
+        Configure the file handler level, logger level >= logfile level will
+        be saved into log file.
+        """
         self.fh.setLevel(lvl)
 
     def config_execution(self, crb):
-        log_file = self.log_path + '/' + self.dcts_log
+        """
+        Reconfigure stream&logfile level and reset info,debug,warn level.
+        """
+        log_file = self.log_path + '/' + self.dts_log
         fh = logging.FileHandler(log_file)
         ch = ColorHandler()
         self.__log_hander(fh, ch)
 
         if crb == "dut":
-            self.info_lvl = logging.DCTS_DUT_CMD
-            self.debug_lvl = logging.DCTS_DUT_OUTPUT
-            self.warn_lvl = logging.DCTS_DUT_RESULT
+            self.info_lvl = logging.DTS_DUT_CMD
+            self.debug_lvl = logging.DTS_DUT_OUTPUT
+            self.warn_lvl = logging.DTS_DUT_RESULT
         elif crb == "tester":
-            self.info_lvl = logging.DCTS_TESTER_CMD
-            self.debug_lvl = logging.DCTS_TESTER_OUTPUT
-            self.warn_lvl = logging.DCTS_TESTER_RESULT
+            self.info_lvl = logging.DTS_TESTER_CMD
+            self.debug_lvl = logging.DTS_TESTER_OUTPUT
+            self.warn_lvl = logging.DTS_TESTER_RESULT
         elif crb == "ixia":
-            self.info_lvl = logging.DCTS_IXIA_CMD
-            self.debug_lvl = logging.DCTS_IXIA_OUTPUT
+            self.info_lvl = logging.DTS_IXIA_CMD
+            self.debug_lvl = logging.DTS_IXIA_OUTPUT
         else:
             self.error_lvl = logging.ERROR
             self.warn_lvl = logging.WARNING
@@ -212,6 +288,9 @@ class DCTSLOG(BaseLoggerAdapter):
             self.debug_lvl = logging.DEBUG
 
     def config_suite(self, suitename, crb=None):
+        """
+        Reconfigure stream&logfile level and reset info,debug level.
+        """
         log_file = self.log_path + '/' + suitename + '.log'
         fh = logging.FileHandler(log_file)
         ch = ColorHandler()
@@ -224,10 +303,13 @@ class DCTSLOG(BaseLoggerAdapter):
             self.info_lvl = logging.SUITE_TESTER_CMD
             self.debug_lvl = logging.SUITE_TESTER_OUTPUT
         elif crb == "ixia":
-            self.info_lvl = logging.DCTS_IXIA_CMD
-            self.debug_lvl = logging.DCTS_IXIA_OUTPUT
+            self.info_lvl = logging.DTS_IXIA_CMD
+            self.debug_lvl = logging.DTS_IXIA_OUTPUT
 
     def logger_exit(self):
+        """
+        Remove stream handler and logfile handler.
+        """
         if self.fh is not None:
             self.logger.removeHandler(self.fh)
         if self.ch is not None:
@@ -235,7 +317,10 @@ class DCTSLOG(BaseLoggerAdapter):
 
 
 def getLogger(name, crb="suite"):
-    logger = DCTSLOG(logging.getLogger(name), crb)
+    """
+    Get logger handler and if there's no handler for specified CRB will create one.
+    """
+    logger = DTSLOG(logging.getLogger(name), crb)
     return logger
 
 
@@ -246,6 +331,9 @@ _TESTCASE_RESULT_FORMAT_PATTERN = r'Test Case (.*) Result (.*):'
 
 
 class LogParser(object):
+    """
+    Module for parsing saved log file, will implement later.
+    """
 
     def __init__(self, log_path):
         self.log_path = log_path
@@ -320,7 +408,7 @@ class LogParser(object):
     def parse_logfile(self):
         loglist = []
 
-        out_type = 'DCTS_DUT_OUTPUT'
+        out_type = 'DTS_DUT_OUTPUT'
         for line in self.log_handler:
             tmp = {}
             line = line.replace('\n', '')

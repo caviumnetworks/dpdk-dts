@@ -1,32 +1,48 @@
-# <COPYRIGHT_TAG>
+# BSD LICENSE
+#
+# Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+#
+#   * Redistributions of source code must retain the above copyright
+#     notice, this list of conditions and the following disclaimer.
+#   * Redistributions in binary form must reproduce the above copyright
+#     notice, this list of conditions and the following disclaimer in
+#     the documentation and/or other materials provided with the
+#     distribution.
+#   * Neither the name of Intel Corporation nor the names of its
+#     contributors may be used to endorse or promote products derived
+#     from this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+# OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
 DPDK Test suite.
-
 Multi-process Test.
-
 """
 
-import dcts
+import dts
 import time
 from etgen import IxiaPacketGenerator
 
 executions = []
 from test_case import TestCase
 
-#
-#
-# Test class.
-#
-
 
 class TestMultiprocess(TestCase, IxiaPacketGenerator):
-
-    #
-    #
-    #
-    # Test cases.
-    #
 
     def set_up_all(self):
         """
@@ -160,9 +176,9 @@ class TestMultiprocess(TestCase, IxiaPacketGenerator):
         """
 
         self.dut.kill_all()
-
-        self.dut.send_expect("./examples/multi_process/simple_mp/simple_mp/%s/simple_mp -n 1 -c 3 -m 64 &" % self.target, "Finished Process Init")
+        self.dut.send_expect("./examples/multi_process/simple_mp/simple_mp/%s/simple_mp -n 1 -c 3 -m 64 &" % self.target, "Finished Process Init", 20)
         out = self.dut.send_expect("./examples/multi_process/simple_mp/simple_mp/%s/simple_mp -n 1 -c C" % self.target, "# ")
+
         self.verify("Is another primary process running" in out,
                     "No other primary process detected")
 
@@ -197,15 +213,15 @@ class TestMultiprocess(TestCase, IxiaPacketGenerator):
         for execution in validExecutions:
             coreList = self.dut.get_core_list(execution['cores'])
 
-            coreMask = dcts.create_mask(self.dut.get_core_list('1S/1C/1T'))
-            portMask = dcts.create_mask([dutPorts[0], dutPorts[1]])
+            coreMask = dts.create_mask(self.dut.get_core_list('1S/1C/1T'))
+            portMask = dts.create_mask([dutPorts[0], dutPorts[1]])
             self.dut.send_expect("./examples/multi_process/client_server_mp/mp_server/client_server_mp/mp_server/%s/mp_server -n %d -c %s -- -p %s -n %d" % (self.target, self.dut.get_memory_channels(), "0xA0", portMask, execution['nprocs']), "Finished Process Init", 20)
             self.dut.send_expect("^Z", "\r\n")
             self.dut.send_expect("bg", "# ")
 
             for n in range(execution['nprocs']):
                 time.sleep(5)
-                coreMask = dcts.create_mask([coreList[n]])
+                coreMask = dts.create_mask([coreList[n]])
                 self.dut.send_expect("./examples/multi_process/client_server_mp/mp_client/client_server_mp/mp_client/%s/mp_client -n %d -c %s --proc-type=secondary -- -n %d" % (self.target, self.dut.get_memory_channels(), coreMask, n), "Finished Process Init")
                 self.dut.send_expect("^Z", "\r\n")
                 self.dut.send_expect("bg", "# ")
@@ -220,12 +236,12 @@ class TestMultiprocess(TestCase, IxiaPacketGenerator):
         for n in range(len(executions)):
             self.verify(executions[n]['pps'] is not 0, "No traffic detected")
 
-        dcts.results_table_add_header(['Server threads', 'Server Cores/Threads', 'Num-procs', 'Sockets/Cores/Threads', 'Num Ports', 'Frame Size', '%-age Line Rate', 'Packet Rate(mpps)'])
+        dts.results_table_add_header(['Server threads', 'Server Cores/Threads', 'Num-procs', 'Sockets/Cores/Threads', 'Num Ports', 'Frame Size', '%-age Line Rate', 'Packet Rate(mpps)'])
 
         for execution in validExecutions:
-            dcts.results_table_add_row([1, '1S/1C/1T', execution['nprocs'], execution['cores'], 2, 64, execution['pps'] / float(100000000 / (8 * 84)), execution['pps'] / float(1000000)])
+            dts.results_table_add_row([1, '1S/1C/1T', execution['nprocs'], execution['cores'], 2, 64, execution['pps'] / float(100000000 / (8 * 84)), execution['pps'] / float(1000000)])
 
-        dcts.results_table_print()
+        dts.results_table_print()
 
     def ip(self, port, frag, src, proto, tos, dst, chksum, len, options, version, flags, ihl, ttl, id):
         self.add_tcl_cmd("protocol config -name ip")

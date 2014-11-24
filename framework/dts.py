@@ -1,4 +1,33 @@
-# <COPYRIGHT_TAG>
+# BSD LICENSE
+#
+# Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+#
+#   * Redistributions of source code must retain the above copyright
+#     notice, this list of conditions and the following disclaimer.
+#   * Redistributions in binary form must reproduce the above copyright
+#     notice, this list of conditions and the following disclaimer in
+#     the documentation and/or other materials provided with the
+#     distribution.
+#   * Neither the name of Intel Corporation nor the names of its
+#     contributors may be used to endorse or promote products derived
+#     from this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+# OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import re           # regression module
 import ConfigParser  # config parse module
@@ -75,18 +104,26 @@ def regexp(s, to_match, allString=False):
 
 
 def pprint(some_dict):
+    """
+    Print JSON format dictionary object.
+    """
     return json.dumps(some_dict, sort_keys=True, indent=4)
 
 
 def report(text, frame=False, annex=False):
+    """
+    Save report text into rst file.
+    """
     if frame:
         rst.write_frame(text, annex)
     else:
         rst.write_text(text, annex)
 
 
-# exit function will close session to DUT and tester
 def close_crb_sessions():
+    """
+    Close session to DUT and tester.
+    """
     if dut is not None:
         dut.close()
     if tester is not None:
@@ -120,16 +157,19 @@ def get_crb_os(crb):
     return 'linux'
 
 
-# Parse execution file parameters
-def dcts_parse_param(section):
+def dts_parse_param(section):
+    """
+    Parse execution file parameters.
+    """
     global performance_only
     global functional_only
     global paramDict
+    global drivername
     performance_only = False
     functional_only = False
     # Set parameters
     parameters = config.get(section, 'parameters').split(':')
-    drivername = config.get(section, "drivername").split('=')[-1]
+    drivername = config.get(section, 'drivername').split('=')[-1]
     paramDict = dict()
     for param in parameters:
         (key, _, value) = param.partition('=')
@@ -144,8 +184,10 @@ def dcts_parse_param(section):
         functional_only = True
 
 
-# Parse execution file configuration
-def dcts_parse_config(section):
+def dts_parse_config(section):
+    """
+    Parse execution file configuration.
+    """
     duts = [dut_.strip() for dut_ in config.get(section,
                                                 'crbs').split(',')]
     targets = [target.strip()
@@ -158,8 +200,10 @@ def dcts_parse_config(section):
     return duts, targets, test_suites, nics
 
 
-# load project module and return crb instance
 def get_project_obj(project_name, super_class, crbInst, serializer):
+    """
+    Load project module and return crb instance.
+    """
     project_obj = None
     try:
         project_module = __import__("project_" + project_name)
@@ -169,17 +213,19 @@ def get_project_obj(project_name, super_class, crbInst, serializer):
         if project_obj is None:
             project_obj = super_class(crbInst, serializer)
     except Exception as e:
-        log_handler.info("LOAD PROJECT MODULE INFO: " + e)
+        log_handler.info("LOAD PROJECT MODULE INFO: " + str(e))
         project_obj = super_class(crbInst, serializer)
 
     return project_obj
 
 
-# config logger to SUITE.log
-def dcts_log_testsuite(test_suite, log_handler, test_classname):
+def dts_log_testsuite(test_suite, log_handler, test_classname):
+    """
+    Change to SUITE self logger handler.
+    """
     test_suite.logger = getLogger(test_classname)
     test_suite.logger.config_suite(test_classname)
-    log_handler.config_suite(test_classname, 'dcts')
+    log_handler.config_suite(test_classname, 'dts')
     dut.logger.config_suite(test_classname, 'dut')
     tester.logger.config_suite(test_classname, 'tester')
     try:
@@ -190,9 +236,11 @@ def dcts_log_testsuite(test_suite, log_handler, test_classname):
         pass
 
 
-# config logger to dcts.log
-def dcts_log_execution(log_handler):
-    log_handler.config_execution('dcts')
+def dts_log_execution(log_handler):
+    """
+    Change to DTS default logger handler.
+    """
+    log_handler.config_execution('dts')
     dut.logger.config_execution('dut')
     tester.logger.config_execution('tester')
     try:
@@ -203,8 +251,10 @@ def dcts_log_execution(log_handler):
         pass
 
 
-# create dcts crbs and initialize them
-def dcts_crbs_init(crbInst, skip_setup, read_cache, project, base_dir):
+def dts_crbs_init(crbInst, skip_setup, read_cache, project, base_dir):
+    """
+    Create dts dut/tester instance and initialize them.
+    """
     global dut
     global tester
     serializer.set_serialized_filename('../.%s.cache' % crbInst['IP'])
@@ -223,14 +273,18 @@ def dcts_crbs_init(crbInst, skip_setup, read_cache, project, base_dir):
     tester.init_ext_gen()
 
 
-# when crbs exit remove logger handler
-def dcts_crbs_exit():
+def dts_crbs_exit():
+    """
+    Remove logger handler when exit.
+    """
     dut.logger.logger_exit()
     tester.logger.logger_exit()
 
 
-# run dcts prerequisties function
-def dcts_run_prerequisties(pkgName, patch):
+def dts_run_prerequisties(pkgName, patch):
+    """
+    Run dts prerequisties function.
+    """
     try:
         dut.prerequisites(pkgName, patch)
         tester.prerequisites(performance_only)
@@ -244,8 +298,10 @@ def dcts_run_prerequisties(pkgName, patch):
         return False
 
 
-# run each target in execution
-def dcts_run_target(crbInst, targets, test_suites, nics):
+def dts_run_target(crbInst, targets, test_suites, nics):
+    """
+    Run each target in execution targets.
+    """
     for target in targets:
         log_handler.info("\nTARGET " + target)
         result.target = target
@@ -267,7 +323,7 @@ def dcts_run_target(crbInst, targets, test_suites, nics):
         nic = nics[0]
         result.nic = nic
 
-        dcts_run_suite(crbInst, test_suites, target, nic)
+        dts_run_suite(crbInst, test_suites, target, nic)
 
     dut.restore_interfaces()
     dut.close()
@@ -275,8 +331,10 @@ def dcts_run_target(crbInst, targets, test_suites, nics):
     tester.close()
 
 
-# run each suite in target
-def dcts_run_suite(crbInst, test_suites, target, nic):
+def dts_run_suite(crbInst, test_suites, target, nic):
+    """
+    Run each suite in test suite list.
+    """
     try:
         for test_suite in test_suites:
             # prepare rst report file
@@ -286,7 +344,7 @@ def dcts_run_suite(crbInst, test_suites, target, nic):
             for test_classname, test_class in get_subclasses(test_module, TestCase):
 
                 test_suite = test_class(dut, tester, target, nic)
-                dcts_log_testsuite(test_suite, log_handler, test_classname)
+                dts_log_testsuite(test_suite, log_handler, test_classname)
 
                 log_handler.info("\nTEST SUITE : " + test_classname)
                 log_handler.info("NIC :        " + nic)
@@ -297,23 +355,24 @@ def dcts_run_suite(crbInst, test_suites, target, nic):
                     test_cases_as_blocked(test_suite)
 
                 log_handler.info("\nTEST SUITE ENDED: " + test_classname)
-                dcts_log_execution(log_handler)
+                dts_log_execution(log_handler)
 
             dut.kill_all()
     except VerifyFailure:
         log_handler.error(" !!! DEBUG IT: " + traceback.format_exc())
     except KeyboardInterrupt:
         log_handler.error(" !!! STOPPING DCTS")
+    except Exception as e:
+        log_handler.error(str(e))
     finally:
         execute_test_tear_down_all(test_suite)
 
 
-# main process of dcts
 def run_all(config_file, pkgName, git, patch, skip_setup,
             read_cache, project, suite_dir, test_cases,
-            base_dir, output_dir):
+            base_dir, output_dir, verbose):
     """
-    Run all test suites in the config file
+    Main process of DTS, it will run all test suites in the config file.
     """
 
     global config
@@ -330,9 +389,12 @@ def run_all(config_file, pkgName, git, patch, skip_setup,
         os.mkdir(output_dir)
 
     # init log_handler handler
+    if verbose is True:
+        logger.set_verbose()
+
     logger.log_dir = output_dir
-    log_handler = getLogger('dcts')
-    log_handler.config_execution('dcts')
+    log_handler = getLogger('dts')
+    log_handler.config_execution('dts')
 
     # run designated test case
     requested_tests = test_cases
@@ -357,10 +419,10 @@ def run_all(config_file, pkgName, git, patch, skip_setup,
 
     # for all Exectuion sections
     for section in config.sections():
-        dcts_parse_param(section)
+        dts_parse_param(section)
 
         # verify if the delimiter is good if the lists are vertical
-        duts, targets, test_suites, nics = dcts_parse_config(section)
+        duts, targets, test_suites, nics = dts_parse_config(section)
 
         for dutIP in duts:
             log_handler.info("\nDUT " + dutIP)
@@ -380,22 +442,24 @@ def run_all(config_file, pkgName, git, patch, skip_setup,
             result.dut = dutIP
 
             # init dut, tester crb
-            dcts_crbs_init(crbInst, skip_setup, read_cache, project, base_dir)
+            dts_crbs_init(crbInst, skip_setup, read_cache, project, base_dir)
 
             # Run DUT prerequisites
-            if dcts_run_prerequisties(pkgName, patch) is False:
-                dcts_crbs_exit()
+            if dts_run_prerequisties(pkgName, patch) is False:
+                dts_crbs_exit()
                 continue
 
-            dcts_run_target(crbInst, targets, test_suites, nics)
+            dts_run_target(crbInst, targets, test_suites, nics)
 
-            dcts_crbs_exit()
+            dts_crbs_exit()
 
     save_all_results()
 
 
-# save result as test case blocked
 def test_cases_as_blocked(test_suite):
+    """
+    Save result as test case blocked.
+    """
     if functional_only:
         for test_case in get_functional_test_cases(test_suite):
             result.test_case = test_case.__name__
@@ -406,25 +470,33 @@ def test_cases_as_blocked(test_suite):
             result.test_case_blocked('set_up_all failed')
 
 
-# get module attribute name and attribute
 def get_subclasses(module, clazz):
+    """
+    Get module attribute name and attribute.
+    """
     for subclazz_name, subclazz in inspect.getmembers(module):
         if hasattr(subclazz, '__bases__') and clazz in subclazz.__bases__:
             yield (subclazz_name, subclazz)
 
 
-# get all functional test cases
 def get_functional_test_cases(test_suite):
+    """
+    Get all functional test cases.
+    """
     return get_test_cases(test_suite, r'test_(?!perf_)')
 
 
-# get all performance test cases
 def get_performance_test_cases(test_suite):
+    """
+    Get all performance test cases.
+    """
     return get_test_cases(test_suite, r'test_perf_')
 
 
-# check if test case has been requested
 def has_it_been_requested(test_case, test_name_regex):
+    """
+    Check whether test case has been requested for validation.
+    """
     name_matches = re.match(test_name_regex, test_case.__name__)
 
     if requested_tests is not None:
@@ -433,16 +505,20 @@ def has_it_been_requested(test_case, test_name_regex):
     return name_matches
 
 
-# return all case list which matched regex
 def get_test_cases(test_suite, test_name_regex):
+    """
+    Return case list which name matched regex.
+    """
     for test_case_name in dir(test_suite):
         test_case = getattr(test_suite, test_case_name)
         if callable(test_case) and has_it_been_requested(test_case, test_name_regex):
             yield test_case
 
 
-# execute suite setup_all function
 def execute_test_setup_all(test_case):
+    """
+    Execute suite setup_all function before cases.
+    """
     try:
         test_case.set_up_all()
         return True
@@ -451,8 +527,10 @@ def execute_test_setup_all(test_case):
         return False
 
 
-# execute all test cases in one suite
 def execute_all_test_cases(test_suite):
+    """
+    Execute all test cases in one suite.
+    """
     if functional_only:
         for test_case in get_functional_test_cases(test_suite):
             execute_test_case(test_suite, test_case)
@@ -461,8 +539,11 @@ def execute_all_test_cases(test_suite):
             execute_test_case(test_suite, test_case)
 
 
-# execute one test case in one suite
 def execute_test_case(test_suite, test_case):
+    """
+    Execute specified test case in specified suite. If any exception occured in
+    validation process, save the result and tear down this case.
+    """
     result.test_case = test_case.__name__
 
     rst.write_title("Test Case: " + test_case.__name__)
@@ -491,8 +572,10 @@ def execute_test_case(test_suite, test_case):
         raise KeyboardInterrupt("Stop DCTS")
     except TimeoutException as e:
         rst.write_result("FAIL")
-        result.test_case_failed(str(e))
-        log_handler.error('Test Case %s Result FAILED: ' % (test_case.__name__) + str(e))
+        msg = str(e)
+        result.test_case_failed(msg)
+        log_handler.error('Test Case %s Result FAILED: ' % (test_case.__name__) + msg)
+        log_handler.error('%s' % (e.get_output()))
     except Exception:
         trace = traceback.format_exc()
         result.test_case_failed(trace)
@@ -502,8 +585,10 @@ def execute_test_case(test_suite, test_case):
         save_all_results()
 
 
-# execute suite tear_down_all function
 def execute_test_tear_down_all(test_case):
+    """
+    execute suite tear_down_all function
+    """
     try:
         test_case.tear_down_all()
     except Exception:
@@ -513,8 +598,14 @@ def execute_test_tear_down_all(test_case):
     tester.kill_all()
 
 
-# add header to result table
 def results_table_add_header(header):
+    """
+    Add the title of result table.
+    Usage:
+    results_table_add_header(header)
+    results_table_add_row(row)
+    results_table_print()
+    """
     global table, results_table_header, results_table_rows
 
     results_table_rows = []
@@ -524,11 +615,16 @@ def results_table_add_header(header):
 
 
 def results_table_add_row(row):
+    """
+    Add one row to result table.
+    """
     results_table_rows.append(row)
 
 
-# show off result table
 def results_table_print():
+    """
+    Show off result table.
+    """
     table.add_rows(results_table_rows)
     table.header(results_table_header)
 
@@ -552,6 +648,9 @@ def results_plot_print(image, width=90):
 
 
 def create_mask(indexes):
+    """
+    Convert index to hex mask.
+    """
     val = 0
     for index in indexes:
         val |= 1 << int(index)
@@ -571,7 +670,9 @@ def show_speedup_options_messages(read_cache, skip_setup):
         log_handler.info('SKIP: The DPDK setup steps will be executed.')
 
 
-# save all result to files
 def save_all_results():
+    """
+    Save all result to files.
+    """
     excel_report.save(result)
     stats.save(result)

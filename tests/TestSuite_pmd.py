@@ -1,32 +1,50 @@
-# <COPYRIGHT_TAG>
+# BSD LICENSE
+#
+# Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+#
+#   * Redistributions of source code must retain the above copyright
+#     notice, this list of conditions and the following disclaimer.
+#   * Redistributions in binary form must reproduce the above copyright
+#     notice, this list of conditions and the following disclaimer in
+#     the documentation and/or other materials provided with the
+#     distribution.
+#   * Neither the name of Intel Corporation nor the names of its
+#     contributors may be used to endorse or promote products derived
+#     from this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+# OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
 DPDK Test suite.
-
 Test userland 10Gb PMD
-
 """
 
-import dcts
+import dts
 import re
 import time
 from test_case import TestCase
 from plotting import Plotting
 from time import sleep
 from settings import HEADER_SIZE
-
-#
-#
-# Test class.
-#
+from pmd_output import PmdOutput
 
 
 class TestPmd(TestCase):
-
-    #
-    #
-    # Utility methods and other non-test code.
-    #
 
     def plot_results(self, number_ports):
 
@@ -50,13 +68,8 @@ class TestPmd(TestCase):
             ylabel='% linerate',
             legend=cores_configs)
 
-        dcts.results_plot_print(image_path)
+        dts.results_plot_print(image_path)
 
-    #
-    #
-    #
-    # Test cases.
-    #
     def set_up_all(self):
         """
         Run at the start of each test suite.
@@ -105,6 +118,8 @@ class TestPmd(TestCase):
 
         self.plotting = Plotting(self.dut.crb['name'], self.target, self.nic)
 
+        self.pmdout = PmdOutput(self.dut)
+
     def set_up(self):
         """
         Run before each test case.
@@ -115,7 +130,7 @@ class TestPmd(TestCase):
         """
         PMD Performance Benchmarking with 4 ports.
         """
-        all_cores_mask = dcts.create_mask(self.dut.get_core_list("all"))
+        all_cores_mask = dts.create_mask(self.dut.get_core_list("all"))
 
         # prepare traffic generator input
         self.verify(len(self.dut_ports) >= 4,
@@ -147,29 +162,17 @@ class TestPmd(TestCase):
             else:
                 queues = 1
 
-            core_mask = dcts.create_mask(core_list)
-            port_mask = dcts.create_mask(self.dut.get_ports(self.nic))
+            core_mask = dts.create_mask(core_list)
+            port_mask = dts.create_mask(self.dut.get_ports(self.nic))
 
-            commandLine = "./%s/app/testpmd -c %s -n %d %s-- -i \
---coremask=%s --rxq=%d --txq=%d --rxd=512 --txd=512 --burst=32 --rxfreet=64 --mbcache=128 \
---portmask=%s --txpt=36 --txht=0 --txwt=0 --txfreet=32 --txrst=32" % (self.target,
-                                                                      all_cores_mask,
-                                                                      self.dut.get_memory_channels(
-                                                                      ),
-                                                                      self.blacklist,
-                                                                      core_mask,
-                                                                      queues,
-                                                                      queues,
-                                                                      port_mask
-                                                                      )
+            self.pmdout.start_testpmd("all", "--coremask=%s --rxq=%d --txq=%d --portmask=%s" % (core_mask, queues, queues, port_mask))
 
             info = "Executing PMD (mac fwd) using %s\n" % test_cycle['cores']
-            dcts.report(info, annex=True)
+            dts.report(info, annex=True)
             self.logger.info(info)
 
-            dcts.report(commandLine + "\n\n", frame=True, annex=True)
+            dts.report(commandLine + "\n\n", frame=True, annex=True)
 
-            self.dut.send_expect(commandLine, "testpmd> ", 100)
             # self.dut.send_expect("set fwd mac", "testpmd> ", 100)
             self.dut.send_expect("start", "testpmd> ")
 
@@ -200,7 +203,7 @@ class TestPmd(TestCase):
                             frame_size] is not 0, "No traffic detected")
 
         # Print results
-        dcts.results_table_add_header(self.table_header)
+        dts.results_table_add_header(self.table_header)
 
         for frame_size in self.frame_sizes:
             table_row = [frame_size]
@@ -209,17 +212,17 @@ class TestPmd(TestCase):
                 table_row.append(test_cycle['Mpps'][frame_size])
                 table_row.append(test_cycle['pct'][frame_size])
 
-            dcts.results_table_add_row(table_row)
+            dts.results_table_add_row(table_row)
 
         self.plot_results(number_ports=4)
-        dcts.results_table_print()
+        dts.results_table_print()
 
     def test_perf_pmd_performance_2ports(self):
         """
         PMD Performance Benchmarking with 2 ports.
         """
 
-        all_cores_mask = dcts.create_mask(self.dut.get_core_list("all"))
+        all_cores_mask = dts.create_mask(self.dut.get_core_list("all"))
 
         # prepare traffic generator input
         tgen_input = []
@@ -242,27 +245,16 @@ class TestPmd(TestCase):
             else:
                 queues = 1
 
-            core_mask = dcts.create_mask(core_list)
-            port_mask = dcts.create_mask([self.dut_ports[0], self.dut_ports[1]])
+            core_mask = dts.create_mask(core_list)
+            port_mask = dts.create_mask([self.dut_ports[0], self.dut_ports[1]])
 
-            command_line = "./%s/app/testpmd -c %s -n %d %s-- -i --coremask=%s \
---rxq=%d --txq=%d --rxd=512 --txd=512 --burst=32 --rxfreet=64 --mbcache=128 \
---portmask=%s --txpt=36 --txht=0 --txwt=0 --txfreet=32 --txrst=32" % (self.target,
-                                                                      all_cores_mask,
-                                                                      self.dut.get_memory_channels(
-                                                                      ),
-                                                                      self.blacklist,
-                                                                      core_mask,
-                                                                      queues,
-                                                                      queues,
-                                                                      port_mask)
+            self.pmdout.start_testpmd("all", "--coremask=%s --rxq=%d --txq=%d --portmask=%s" % (core_mask, queues, queues, port_mask))
+            command_line = self.pmdout.get_pmd_cmd()
 
             info = "Executing PMD using %s\n" % test_cycle['cores']
             self.logger.info(info)
-            dcts.report(info, annex=True)
-            dcts.report(command_line + "\n\n", frame=True, annex=True)
-
-            self.dut.send_expect(command_line, "testpmd> ", 100)
+            dts.report(info, annex=True)
+            dts.report(command_line + "\n\n", frame=True, annex=True)
 
             self.dut.send_expect("start", "testpmd> ")
             for frame_size in self.frame_sizes:
@@ -292,17 +284,17 @@ class TestPmd(TestCase):
                             frame_size] > 0, "No traffic detected")
 
         # Print results
-        dcts.results_table_add_header(self.table_header)
+        dts.results_table_add_header(self.table_header)
         for frame_size in self.frame_sizes:
             table_row = [frame_size]
             for test_cycle in self.test_cycles:
                 table_row.append(test_cycle['Mpps'][frame_size])
                 table_row.append(test_cycle['pct'][frame_size])
 
-            dcts.results_table_add_row(table_row)
+            dts.results_table_add_row(table_row)
 
         self.plot_results(number_ports=2)
-        dcts.results_table_print()
+        dts.results_table_print()
 
     def test_checksum_checking(self):
         """
@@ -311,26 +303,15 @@ class TestPmd(TestCase):
 
         self.dut.kill_all()
 
-        all_cores_mask = dcts.create_mask(self.dut.get_core_list("all"))
-        core_mask = dcts.create_mask(self.dut.get_core_list('1S/1C/1T',
-                                                            socket=self.ports_socket))
-        port_mask = dcts.create_mask([self.dut_ports[0], self.dut_ports[1]])
+        all_cores_mask = dts.create_mask(self.dut.get_core_list("all"))
+        core_mask = dts.create_mask(self.dut.get_core_list('1S/1C/1T',
+                                                           socket=self.ports_socket))
+        port_mask = dts.create_mask([self.dut_ports[0], self.dut_ports[1]])
 
         for rxfreet_value in self.rxfreet_values:
 
-            cmd = "./%s/app/testpmd -c %s -n %d %s-- \
---coremask=%s --portmask=%s --nb-cores=2 --enable-rx-cksum --disable-hw-vlan \
---disable-rss --crc-strip --rxd=1024 --txd=1024 --rxfreet=%d -i" % (self.target,
-                                                                    all_cores_mask,
-                                                                    self.dut.get_memory_channels(),
-                                                                    self.blacklist,
-                                                                    core_mask,
-                                                                    port_mask,
-                                                                    rxfreet_value
-                                                                    )
-
-            self.dut.send_expect(cmd, "testpmd> ", 120)
-            # self.dut.send_expect("set fwd csum", "testpmd> ")
+            self.pmdout.start_testpmd("all", "--coremask=%s --portmask=%s --nb-cores=2 --enable-rx-cksum --disable-hw-vlan --disable-rss --crc-strip --rxd=1024 --txd=1024 --rxfreet=%d" % (core_mask, port_mask, rxfreet_value))
+            self.dut.send_expect("set fwd csum", "testpmd> ")
             self.dut.send_expect("start", "testpmd> ")
 
             self.send_packet(self.frame_sizes[0], checksum_test=True)
@@ -352,23 +333,12 @@ class TestPmd(TestCase):
 
         self.dut.kill_all()
 
-        all_cores_mask = dcts.create_mask(self.dut.get_core_list("all"))
-        core_mask = dcts.create_mask(self.dut.get_core_list('1S/1C/1T',
-                                                            socket=self.ports_socket))
-        port_mask = dcts.create_mask([self.dut_ports[0], self.dut_ports[1]])
+        all_cores_mask = dts.create_mask(self.dut.get_core_list("all"))
+        core_mask = dts.create_mask(self.dut.get_core_list('1S/1C/1T',
+                                                           socket=self.ports_socket))
+        port_mask = dts.create_mask([self.dut_ports[0], self.dut_ports[1]])
 
-        cmd = "./%s/app/testpmd -c %s -n %d %s-- -i \
---coremask=%s --rxd=512 --txd=512 --burst=32 --rxfreet=64 --mbcache=128 \
---portmask=%s --txpt=36 --txht=0 --txwt=0 --txfreet=32 --txrst=32" % (self.target,
-                                                                      all_cores_mask,
-                                                                      self.dut.get_memory_channels(
-                                                                      ),
-                                                                      self.blacklist,
-                                                                      core_mask,
-                                                                      port_mask
-                                                                      )
-
-        self.dut.send_expect(cmd, "testpmd> ", 120)
+        self.pmdout.start_testpmd("all", "--coremask=%s --portmask=%s" % (core_mask, port_mask))
         self.dut.send_expect("start", "testpmd> ")
         for size in self.frame_sizes:
             self.send_packet(size)
@@ -389,34 +359,23 @@ class TestPmd(TestCase):
 
         return m
 
-    def get_stat(self, portid, rx_tx):
+    def get_stats(self, portid):
         """
         Get packets number from port statistic
         """
 
-        out = self.dut.send_expect("show port stats %d" % portid, "testpmd> ")
-
-        if rx_tx == "rx":
-            result_scanner = r"RX-packets: ([0-9]+) \s* RX-errors: ([0-9]+) \s* RX-bytes: ([0-9]+)"
-        elif rx_tx == "tx":
-            result_scanner = r"TX-packets: ([0-9]+) \s* TX-errors: ([0-9]+) \s* TX-bytes: ([0-9]+)"
-        else:
-            return None
-
-        scanner = re.compile(result_scanner, re.DOTALL)
-        m = scanner.search(out)
-
-        return m.groups()
+        stats = self.pmdout.get_pmd_stats(portid)
+        return stats
 
     def send_packet(self, frame_size, checksum_test=False):
         """
         Send 1 packet to portid
         """
 
-        gp0tx_pkts, _, gp0tx_bytes = [int(
-            _) for _ in self.get_stat(self.dut_ports[0], "tx")]
-        gp1rx_pkts, gp1rx_err, gp1rx_bytes = [int(
-            _) for _ in self.get_stat(self.dut_ports[1], "rx")]
+        port0_stats = self.get_stats(self.dut_ports[0])
+        gp0tx_pkts, gp0tx_bytes = [port0_stats['TX-packets'], port0_stats['TX-bytes']]
+        port1_stats = self.get_stats(self.dut_ports[1])
+        gp1rx_pkts, gp1rx_err, gp1rx_bytes = [port1_stats['RX-packets'], port1_stats['RX-errors'], port1_stats['RX-bytes']]
 
         interface = self.tester.get_interface(
             self.tester.get_local_port(self.dut_ports[1]))
@@ -438,10 +397,10 @@ class TestPmd(TestCase):
         out = self.tester.scapy_execute()
         time.sleep(.5)
 
-        p0tx_pkts, _, p0tx_bytes = [int(_) for _ in self.get_stat(
-            self.dut_ports[0], "tx")]
-        p1rx_pkts, p1rx_err, p1rx_bytes = [int(
-            _) for _ in self.get_stat(self.dut_ports[1], "rx")]
+        port0_stats = self.get_stats(self.dut_ports[0])
+        p0tx_pkts, p0tx_bytes = [port0_stats['TX-packets'], port0_stats['TX-bytes']]
+        port1_stats = self.get_stats(self.dut_ports[1])
+        p1rx_pkts, p1rx_err, p1rx_bytes = [port1_stats['RX-packets'], port1_stats['RX-errors'], port1_stats['RX-bytes']]
 
         p0tx_pkts -= gp0tx_pkts
         p0tx_bytes -= gp0tx_bytes

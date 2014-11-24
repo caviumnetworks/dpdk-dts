@@ -1,31 +1,48 @@
-# <COPYRIGHT_TAG>
+# BSD LICENSE
+#
+# Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+#
+#   * Redistributions of source code must retain the above copyright
+#     notice, this list of conditions and the following disclaimer.
+#   * Redistributions in binary form must reproduce the above copyright
+#     notice, this list of conditions and the following disclaimer in
+#     the documentation and/or other materials provided with the
+#     distribution.
+#   * Neither the name of Intel Corporation nor the names of its
+#     contributors may be used to endorse or promote products derived
+#     from this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+# OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
 DPDK Test suite.
-
 Test the support of VLAN Offload Features by Poll Mode Drivers.
-
 """
 
-import dcts
+import dts
 import time
 
 
 from test_case import TestCase
-
-#
-#
-# Test class.
-#
+from pmd_output import PmdOutput
 
 
 class TestVlan(TestCase):
-
-    #
-    #
-    #
-    # Test cases.
-    #
 
     def set_up_all(self):
         """
@@ -41,19 +58,15 @@ class TestVlan(TestCase):
         # Verify that enough ports are available
         self.verify(len(ports) >= 2, "Insufficient ports")
 
-        cores = self.dut.get_core_list('1S/2C/2T')
-        coreMask = dcts.create_mask(cores)
-
         ports = self.dut.get_ports(self.nic)
         global valports
         valports = [_ for _ in ports if self.tester.get_local_port(_) != -1]
 
-        portMask = dcts.create_mask(valports[:2])
+        portMask = dts.create_mask(valports[:2])
 
-        cmd = "./%s/build/app/test-pmd/testpmd -c %s -n 3 -- -i --burst=1 \
-               --mbcache=250 --portmask=%s" % (self.target, coreMask, portMask)
+        self.pmdout = PmdOutput(self.dut)
+        self.pmdout.start_testpmd("all", "--portmask=%s" % portMask)
 
-        self.dut.send_expect("%s" % cmd, "testpmd> ", 120)
         self.dut.send_expect("set verbose 1", "testpmd> ")
         out = self.dut.send_expect("set fwd mac", "testpmd> ")
         self.dut.send_expect("vlan set strip off %s" % valports[0], "testpmd> ")
@@ -118,6 +131,9 @@ class TestVlan(TestCase):
         out = self.dut.send_expect("stop", "testpmd> ")
 
     def test_vlan_strip_config_on(self):
+        """
+        Set vlan strip on
+        """
         self.dut.send_expect("vlan set strip on %s" % valports[0], "testpmd> ", 20)
         self.dut.send_expect("set promisc all off", "testpmd> ", 20)
         out = self.dut.send_expect("vlan set strip on %s" % valports[0], "testpmd> ", 20)
@@ -130,6 +146,10 @@ class TestVlan(TestCase):
         out = self.dut.send_expect("quit", "#", 120)
 
     def test_vlan_strip_config_off(self):
+        """
+        Set vlan strip off
+        """
+
         self.dut.send_expect("vlan set strip off %s" % valports[0], "testpmd> ", 20)
         out = self.dut.send_expect("show port info %s" % valports[0], "testpmd> ", 20)
         self.verify("strip off" in out, "Wrong strip:" + out)
