@@ -37,25 +37,26 @@ Test IPv4 fragmentation features in DPDK.
 import dts
 import string
 import re
+import time
 
 lpm_table_ipv4 = [
-    "{IPv4(100,10,0,0), 16, P2}",
-    "{IPv4(100,20,0,0), 16, P2}",
+    "{IPv4(100,10,0,0), 16, P1}",
+    "{IPv4(100,20,0,0), 16, P1}",
     "{IPv4(100,30,0,0), 16, P0}",
     "{IPv4(100,40,0,0), 16, P0}",
-    "{IPv4(100,50,0,0), 16, P2}",
-    "{IPv4(100,60,0,0), 16, P2}",
+    "{IPv4(100,50,0,0), 16, P1}",
+    "{IPv4(100,60,0,0), 16, P1}",
     "{IPv4(100,70,0,0), 16, P0}",
     "{IPv4(100,80,0,0), 16, P0}",
 ]
 
 lpm_table_ipv6 = [
-    "{{1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}, 48, P2}",
-    "{{2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}, 48, P2}",
+    "{{1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}, 48, P1}",
+    "{{2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}, 48, P1}",
     "{{3,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}, 48, P0}",
     "{{4,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}, 48, P0}",
-    "{{5,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}, 48, P2}",
-    "{{6,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}, 48, P2}",
+    "{{5,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}, 48, P1}",
+    "{{6,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}, 48, P1}",
     "{{7,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}, 48, P0}",
     "{{8,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}, 48, P0}",
 ]
@@ -84,7 +85,7 @@ class TestIpfrag(TestCase):
         print ports
 
         # Verify that enough ports are available
-        self.verify(len(ports) >= 4, "Insufficient ports for testing")
+        self.verify(len(ports) >= 2, "Insufficient ports for testing")
 
         self.ports_socket = self.dut.get_numa_id(ports[0])
 
@@ -92,9 +93,9 @@ class TestIpfrag(TestCase):
         cores = self.dut.get_core_list("2S/2C/2T")
         self.verify(cores is not None, "Insufficient cores for speed testing")
 
-        global P0, P2
+        global P0, P1
         P0 = ports[0]
-        P2 = ports[2]
+        P1 = ports[1]
 
         pat = re.compile("P([0123])")
 
@@ -127,8 +128,8 @@ l3fwd_ipv4_route_array[] = {\\\n"
         """
 
         coremask = dts.create_mask(cores)
-        portmask = dts.create_mask([P0, P2])
-        numPortThread = len([P0, P2]) / len(cores)
+        portmask = dts.create_mask([P0, P1])
+        numPortThread = len([P0, P1]) / len(cores)
         result = True
         errString = ''
 
@@ -137,7 +138,7 @@ l3fwd_ipv4_route_array[] = {\\\n"
             coremask, self.dut.get_memory_channels(), portmask, numPortThread), "IP_FRAG:", 120)
 
         txItf = self.tester.get_interface(self.tester.get_local_port(P0))
-        rxItf = self.tester.get_interface(self.tester.get_local_port(P2))
+        rxItf = self.tester.get_interface(self.tester.get_local_port(P1))
         dmac = self.dut.get_mac_address(P0)
         for size in pkt_sizes[::burst]:
             # simulate to set TG properties
@@ -152,7 +153,7 @@ l3fwd_ipv4_route_array[] = {\\\n"
             # set wait packet
             self.tester.scapy_background()
             self.tester.scapy_append('import string')
-            self.tester.scapy_append('p = sniff(iface="%s", count=%d)' % (rxItf, expPkts))
+            self.tester.scapy_append('p = sniff(iface="%s", count=%d, timeout=5)' % (rxItf, expPkts))
             self.tester.scapy_append('nr_packets=len(p)')
             self.tester.scapy_append('reslist = [p[i].sprintf("%IP.len%;%IP.id%;%IP.flags%;%IP.frag%") for i in range(nr_packets)]')
             self.tester.scapy_append('RESULT = string.join(reslist, ",")')
@@ -163,6 +164,7 @@ l3fwd_ipv4_route_array[] = {\\\n"
                 self.tester.scapy_append('sendp([Ether(dst="%s")/IP(dst="100.10.0.1",src="1.2.3.4",flags=%d)/Raw(load="X"*%d)], iface="%s")' % (dmac, val, pkt_sizes[pkt_sizes.index(size) + times] - 38, txItf))
 
             self.tester.scapy_execute()
+            time.sleep(5)
             out = self.tester.scapy_get_result()
             nr_packets = len(out.split(','))
             if funtion is not None:
@@ -184,8 +186,8 @@ l3fwd_ipv4_route_array[] = {\\\n"
         Perform functional fragmentation checks.
         """
         coremask = dts.create_mask(cores)
-        portmask = dts.create_mask([P0, P2])
-        numPortThread = len([P0, P2]) / len(cores)
+        portmask = dts.create_mask([P0, P1])
+        numPortThread = len([P0, P1]) / len(cores)
         result = True
         errString = ''
 
@@ -194,7 +196,7 @@ l3fwd_ipv4_route_array[] = {\\\n"
             coremask, self.dut.get_memory_channels(), portmask, numPortThread), "IP_FRAG:", 120)
 
         txItf = self.tester.get_interface(self.tester.get_local_port(P0))
-        rxItf = self.tester.get_interface(self.tester.get_local_port(P2))
+        rxItf = self.tester.get_interface(self.tester.get_local_port(P1))
         dmac = self.dut.get_mac_address(P0)
         for size in pkt_sizes[::burst]:
             # simulate to set TG properties
@@ -261,12 +263,12 @@ l3fwd_ipv4_route_array[] = {\\\n"
         sizelist = [1519, 1518]
         cores = self.dut.get_core_list("1S/1C/2T")
         self.tester.send_expect("ifconfig %s mtu 9200" % self.tester.get_interface(self.tester.get_local_port(P0)), "#")
-        self.tester.send_expect("ifconfig %s mtu 9200" % self.tester.get_interface(self.tester.get_local_port(P2)), "#")
+        self.tester.send_expect("ifconfig %s mtu 9200" % self.tester.get_interface(self.tester.get_local_port(P1)), "#")
 
         self.functional_check_ipv4(cores, sizelist, 2, 'nofrag')
         self.functional_check_ipv6(cores, sizelist, 2, 'nofrag')
         self.tester.send_expect("ifconfig %s mtu 1500" % self.tester.get_interface(self.tester.get_local_port(P0)), "#")
-        self.tester.send_expect("ifconfig %s mtu 1500" % self.tester.get_interface(self.tester.get_local_port(P2)), "#")
+        self.tester.send_expect("ifconfig %s mtu 1500" % self.tester.get_interface(self.tester.get_local_port(P1)), "#")
 
     def test_ipfrag_fragment(self):
         """
@@ -277,7 +279,7 @@ l3fwd_ipv4_route_array[] = {\\\n"
         cores = self.dut.get_core_list("1S/1C/2T")
 
         self.tester.send_expect("ifconfig %s mtu 9200" % self.tester.get_interface(self.tester.get_local_port(P0)), "#")
-        self.tester.send_expect("ifconfig %s mtu 9200" % self.tester.get_interface(self.tester.get_local_port(P2)), "#")
+        self.tester.send_expect("ifconfig %s mtu 9200" % self.tester.get_interface(self.tester.get_local_port(P1)), "#")
 
         def chkfunc(size, output):
             # check total size
@@ -294,7 +296,7 @@ l3fwd_ipv4_route_array[] = {\\\n"
         self.functional_check_ipv4(cores, sizelist, 1, 'frag', chkfunc)
         self.functional_check_ipv6(cores, sizelist, 1, 'frag', chkfunc)
         self.tester.send_expect("ifconfig %s mtu 1500" % self.tester.get_interface(self.tester.get_local_port(P0)), "#")
-        self.tester.send_expect("ifconfig %s mtu 1500" % self.tester.get_interface(self.tester.get_local_port(P2)), "#")
+        self.tester.send_expect("ifconfig %s mtu 1500" % self.tester.get_interface(self.tester.get_local_port(P1)), "#")
 
     def benchmark(self, index, lcore, num_pthreads, size_list):
         """
@@ -310,7 +312,7 @@ l3fwd_ipv4_route_array[] = {\\\n"
         else:
             core_mask = dts.create_mask(self.dut.get_core_list(lcore))
 
-        portmask = dts.create_mask([P0, P2])
+        portmask = dts.create_mask([P0, P1])
 
         self.dut.send_expect("examples/ip_fragmentation/build/ip_fragmentation -c %s -n %d -- -p %s -q %s" % (
             core_mask, self.dut.get_memory_channels(), portmask, num_pthreads), "IP_FRAG:", 120)
@@ -325,7 +327,7 @@ l3fwd_ipv4_route_array[] = {\\\n"
             self.tester.scapy_append('wrpcap("test1.pcap", [%s])' % string.join(flows, ','))
 
             # reserved for rx/tx bidirection test
-            dmac = self.dut.get_mac_address(P2)
+            dmac = self.dut.get_mac_address(P1)
             flows = ['Ether(dst="%s")/IP(src="1.2.3.4", dst="100.30.0.1", flags=0)/("X"*%d)' % (dmac, size - 38),
                      'Ether(dst="%s")/IP(src="1.2.3.4", dst="100.40.0.1", flags=0)/("X"*%d)' % (dmac, size - 38),
                      'Ether(dst="%s")/IPv6(dst="301:101:101:101:101:101:101:101",src="ee80:ee80:ee80:ee80:ee80:ee80:ee80:ee80")/Raw(load="X"*%d)' % (dmac, size - 58),
@@ -335,8 +337,8 @@ l3fwd_ipv4_route_array[] = {\\\n"
             self.tester.scapy_execute()
 
             tgenInput = []
-            tgenInput.append((self.tester.get_local_port(P0), self.tester.get_local_port(P2), "test1.pcap"))
-            tgenInput.append((self.tester.get_local_port(P2), self.tester.get_local_port(P0), "test2.pcap"))
+            tgenInput.append((self.tester.get_local_port(P0), self.tester.get_local_port(P1), "test1.pcap"))
+            tgenInput.append((self.tester.get_local_port(P1), self.tester.get_local_port(P0), "test2.pcap"))
 
             factor = (size + 1517) / 1518
             # wireSpd = 2 * 10000.0 / ((20 + size) * 8)
@@ -356,10 +358,8 @@ l3fwd_ipv4_route_array[] = {\\\n"
         """
         Performance test for 64, 1518, 1519, 2k and 9k.
         """
-
-        self.verify(self.nic == 'niantic', "throughtput case require niantic 10Gb self.nic")
         self.tester.send_expect("ifconfig %s mtu 9600" % self.tester.get_interface(self.tester.get_local_port(P0)), "#")
-        self.tester.send_expect("ifconfig %s mtu 9600" % self.tester.get_interface(self.tester.get_local_port(P2)), "#")
+        self.tester.send_expect("ifconfig %s mtu 9600" % self.tester.get_interface(self.tester.get_local_port(P1)), "#")
 
         sizes = [64, 1518, 1519, 2000, 9000]
 
@@ -379,7 +379,7 @@ l3fwd_ipv4_route_array[] = {\\\n"
         dts.results_table_print()
 
         self.tester.send_expect("ifconfig %s mtu 1500" % self.tester.get_interface(self.tester.get_local_port(P0)), "#")
-        self.tester.send_expect("ifconfig %s mtu 1500" % self.tester.get_interface(self.tester.get_local_port(P2)), "#")
+        self.tester.send_expect("ifconfig %s mtu 1500" % self.tester.get_interface(self.tester.get_local_port(P1)), "#")
 
     def tear_down(self):
         """

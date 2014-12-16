@@ -41,11 +41,9 @@ from exception import VerifyFailure
 
 
 class SoftwarePacketGenerator():
-
     """
     Software WindRiver packet generator for performance measurement.
     """
-
     def __init__(self, tester):
         self.tester = tester
 
@@ -91,10 +89,12 @@ class SoftwarePacketGenerator():
         cores_mask = dts.create_mask(self.tester.get_core_list("all"))
 
         self.tester.send_expect("./pktgen -n 2 -c %s --proc-type auto --socket-mem 256,256 -- -P -m \"%s\" %s"
-                                % (cores_mask, map_cmd, pcap_cmd), "Pktgen>", 100)
+                                % (cores_mask, map_cmd, pcap_cmd), "Pktgen >", 100)
 
         if rate_percent != 100:
             self.tester.send_expect("set all rate %s" % rate_percent, "Pktgen>")
+        else:
+            self.tester.send_expect("set all rate 100", "Pktgen>")
 
         self.tester.send_expect("start all", "Pktgen>")
         time.sleep(10)

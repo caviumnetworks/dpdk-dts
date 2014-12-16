@@ -124,20 +124,6 @@ class TestIPPipeline(TestCase):
 
         writer.close()
 
-    def enable_pmd_pcap(self, enable=True):
-
-        if enable:
-            self.dut.send_expect(
-                "sed -i 's/CONFIG_RTE_LIBRTE_PMD_PCAP=n$/CONFIG_RTE_LIBRTE_PMD_PCAP=y/' config/defconfig_%s" % self.target, "# ")
-        else:
-            self.dut.send_expect(
-                "sed -i 's/CONFIG_RTE_LIBRTE_PMD_PCAP=y$/CONFIG_RTE_LIBRTE_PMD_PCAP=n/' config/defconfig_%s" % self.target, "# ")
-
-        self.dut.build_install_dpdk(self.target)
-        out = self.dut.build_dpdk_apps("./examples/ip_pipeline")
-        self.verify("Error" not in out, "Compilation error")
-        self.dut.bind_interfaces_linux()
-
     def start_ip_pipeline(self, ports):
         command_line = "./examples/ip_pipeline/build/ip_pipeline -c %s -n %d -- -p %s" % \
             (self.coremask,
@@ -151,24 +137,6 @@ class TestIPPipeline(TestCase):
         self.verify("Aborted" not in out, "Error starting ip_pipeline")
         self.verify("PANIC" not in out, "Error starting ip_pipeline")
         self.verify("ERROR" not in out, "Error starting ip_pipeline")
-
-    def start_ip_pipeline_pcap(self, pcap0_file, pcap1_file):
-
-        pcap_config = "'eth_pcap0;rx_pcap=/root/%s;tx_pcap=/tmp/port0out.pcap,eth_pcap1;rx_pcap=/root/%s;tx_pcap=/tmp/port1out.pcap'" % (
-            pcap0_file,
-            pcap1_file)
-
-        command_line = "./examples/ip_pipeline/build/ip_pipeline -c %s -n %d -vdev %s -- -p 0x3" % \
-            (self.coremask,
-             self.dut.get_memory_channels(),
-             pcap_config)
-
-        out = self.dut.send_expect(command_line, 'pipeline>', 60)
-        sleep(5)    # 'Initialization completed' is not the last output, some
-        # seconds are still needed for init.
-
-        self.verify("Aborted" not in out, "Error starting ip_pipeline")
-        self.verify("PANIC" not in out, "Error starting ip_pipeline")
 
     def quit_ip_pipeline(self):
         self.dut.send_expect("quit", "# ", 5)
@@ -329,8 +297,6 @@ class TestIPPipeline(TestCase):
         self.verify(len(self.dut_ports) >= self.needed_ports[self.nic],
                     "Insufficient ports for speed testing")
 
-        # Enable the support for PCAP Driver
-        self.enable_pmd_pcap()
         out = self.dut.build_dpdk_apps("./examples/ip_pipeline")
         self.verify("Error" not in out, "Compilation error")
 
@@ -414,132 +380,6 @@ class TestIPPipeline(TestCase):
 
             expected = {'tx': frames_number, 'rx': 0}
             self.check_results(stats, expected)
-
-    def test_pcap_incremental_ip(self):
-        """
-        Check variable number of frames with incremental IP addresses using
-        PCAP driver as input for the pipeline.
-        """
-        pcap_file = 'ip_pipeline.pcap'
-        frame_size = 64
-
-        self.dut.session.copy_file_to(TestIPPipeline.dummy_pcap)
-
-        for number in TestIPPipeline.number_of_frames:
-
-            print dts.BLUE("\t%d frames, incremental IP address" % (number))
-
-            self.create_pcap_file(pcap_file, frame_size, number, True)
-            self.dut.session.copy_file_to(pcap_file)
-
-            self.start_ip_pipeline_pcap(TestIPPipeline.dummy_pcap,
-                                        pcap_file)
-            self.dut.send_expect(
-                'run examples/ip_pipeline/ip_pipeline.sh', 'pipeline>', 10)
-
-            self.dut.send_expect('link 0 up', 'pipeline>')
-            self.dut.send_expect('link 1 up', 'pipeline>')
-
-            sleep(1)
-
-            self.dut.send_expect('link 0 down', 'pipeline>')
-            self.dut.send_expect('link 1 down', 'pipeline>')
-
-            self.quit_ip_pipeline()
-
-            rx_stats = self.number_of_packets('/tmp/port0out.pcap', 'dut')
-            tx_stats = self.number_of_packets('/tmp/port1out.pcap', 'dut')
-
-            stats = {'tx': tx_stats, 'rx': rx_stats}
-            expected = {'tx': 0, 'rx': number}
-
-            self.check_results(stats, expected)
-
-    def test_pcap_frame_sizes(self):
-        """
-        Check variable number of frames with different sizes and
-        incremental IP addresses using PCAP driver as input for the pipeline.
-        """
-        pcap_file = 'ip_pipeline.pcap'
-        self.dut.session.copy_file_to(TestIPPipeline.dummy_pcap)
-
-        for frame_size in TestIPPipeline.frame_sizes:
-            for number in TestIPPipeline.number_of_frames:
-
-                print dts.BLUE("\t%d frames of size %d frames" % (
-                    number, frame_size))
-
-                self.create_pcap_file(pcap_file, frame_size, number, True)
-                self.dut.session.copy_file_to(pcap_file)
-
-                self.start_ip_pipeline_pcap(TestIPPipeline.dummy_pcap,
-                                            pcap_file)
-                self.dut.send_expect(
-                    'run examples/ip_pipeline/ip_pipeline.sh', 'pipeline>', 10)
-
-                self.dut.send_expect('link 0 up', 'pipeline>')
-                self.dut.send_expect('link 1 up', 'pipeline>')
-
-                sleep(5)
-
-                self.dut.send_expect('link 0 down', 'pipeline>')
-                self.dut.send_expect('link 1 down', 'pipeline>')
-
-                self.quit_ip_pipeline()
-
-                rx_stats = self.number_of_packets('/tmp/port0out.pcap', 'dut')
-                tx_stats = self.number_of_packets('/tmp/port1out.pcap', 'dut')
-
-                stats = {'tx': tx_stats, 'rx': rx_stats}
-                expected = {'tx': 0, 'rx': number}
-
-                self.check_results(stats, expected)
-
-    def _test_pcap(self):
-        """
-        Check variable number of frames with different sizes and
-        incremental/fixed IP addresses using PCAP driver as input for the
-        pipeline.
-        """
-        pcap_file = 'ip_pipeline.pcap'
-
-        self.dut.session.copy_file_to(TestIPPipeline.dummy_pcap)
-
-        for frame_size in TestIPPipeline.frame_sizes:
-            for increment in TestIPPipeline.incremental_ip_address:
-                for number in TestIPPipeline.number_of_frames:
-
-                    print dts.BLUE("\t%d frames of size %d frames, incremental IP address %s" % (
-                        number, frame_size, increment))
-
-                    self.create_pcap_file(pcap_file, frame_size, number,
-                                          increment)
-                    self.dut.session.copy_file_to(pcap_file)
-
-                    self.start_ip_pipeline_pcap(TestIPPipeline.dummy_pcap,
-                                                pcap_file)
-                    self.dut.send_expect(
-                        'run examples/ip_pipeline/ip_pipeline.sh', 'pipeline>', 10)
-
-                    self.dut.send_expect('link 0 up', 'pipeline>')
-                    self.dut.send_expect('link 1 up', 'pipeline>')
-
-                    sleep(5)
-
-                    self.dut.send_expect('link 0 down', 'pipeline>')
-                    self.dut.send_expect('link 1 down', 'pipeline>')
-
-                    self.quit_ip_pipeline()
-
-                    rx_stats = self.number_of_packets(
-                        '/tmp/port0out.pcap', 'dut')
-                    tx_stats = self.number_of_packets(
-                        '/tmp/port1out.pcap', 'dut')
-
-                    stats = {'tx': tx_stats, 'rx': rx_stats}
-                    expected = {'tx': 0, 'rx': number}
-
-                    self.check_results(stats, expected)
 
     def test_flow_management(self):
         """
@@ -695,7 +535,5 @@ class TestIPPipeline(TestCase):
         """
         Run after each test suite.
         """
-        # Disable the support for PCAP Driver
-        # self.enable_pmd_pcap(False)
         out = self.dut.build_dpdk_apps("./examples/ip_pipeline")
         self.verify("Error" not in out, "Compilation error")

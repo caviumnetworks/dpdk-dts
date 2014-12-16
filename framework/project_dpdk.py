@@ -62,6 +62,9 @@ class DPDKdut(Dut):
         """
         self.set_toolchain(target)
 
+        # set env variable
+        # These have to be setup all the time. Some tests need to compile
+        # example apps by themselves and will fail otherwise.
         self.send_expect("export RTE_TARGET=" + target, "#")
         self.send_expect("export RTE_SDK=`pwd`", "#")
 
@@ -353,7 +356,8 @@ class DPDKtester(Tester):
                     self.logger.info("Use hardware packet generator")
             except Exception as e:
                 self.logger.warning("Use default software pktgen")
-                assert (os.path.isfile("/root/igb_uio.ko") is True), "Can not find /root/igb_uio.ko for performance"
+                out = self.send_expect("ls /root/igb_uio.ko", "# ")
+                assert ("No such file or directory" not in out), "Can not find /root/igb_uio.ko for performance"
                 self.setup_memory()
 
     def setup_memory(self, hugepages=-1):

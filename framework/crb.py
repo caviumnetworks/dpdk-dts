@@ -91,11 +91,14 @@ class Crb(object):
         self.send_expect('mkdir -p /mnt/huge', '# ')
         self.send_expect('mount -t hugetlbfs nodev /mnt/huge', '# ')
 
-    def set_huge_pages(self, huge_pages):
+    def set_huge_pages(self, huge_pages, numa=-1):
         """
         Set numbers of huge pages
         """
-        self.send_expect('echo %d > /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages' % huge_pages, '# ', 5)
+        if numa == -1:
+            self.send_expect('echo %d > /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages' % huge_pages, '# ', 5)
+        else:
+            self.send_expect('echo %d > /sys/devices/system/node/node%d/hugepages/hugepages-2048kB/nr_hugepages' % (huge_pages, numa), '# ', 5)
 
     def set_speedup_options(self, read_cache, skip_setup):
         """

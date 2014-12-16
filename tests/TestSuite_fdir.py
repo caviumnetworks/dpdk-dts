@@ -48,9 +48,6 @@ class TestFdir(TestCase):
         """
         Run at the start of each test suite.
         """
-        self.verify('bsdapp' not in self.target, "FDIR not support freebsd")
-        self.verify(self.nic in ["kawela", "niantic"], "NIC Unsupported: " + str(self.nic))
-
         ports = self.dut.get_ports(self.nic)
         self.verify(len(ports) >= 2, "Not enough ports available")
 
@@ -75,9 +72,9 @@ class TestFdir(TestCase):
         time.sleep(.5)
         out = self.dut.send_expect("stop", "testpmd>")
         if condition:
-            self.verify("PKT_RX_PKT_RX_FDIR" in out, "FDIR hash not displayed when required")
+            self.verify("PKT_RX_FDIR" in out, "FDIR hash not displayed when required")
         else:
-            self.verify("PKT_RX_PKT_RX_FDIR" not in out, "FDIR hash displayed when not required")
+            self.verify("PKT_RX_FDIR" not in out, "FDIR hash displayed when not required")
 
     def test_fdir_space(self):
         """

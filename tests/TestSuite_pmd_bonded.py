@@ -31,7 +31,10 @@
 
 """
 DPDK Test suite.
+
+
 Test userland 10Gb PMD.
+
 """
 
 import time
@@ -885,6 +888,7 @@ UDP(sport=srcport, dport=destport)/Raw(load="\x50"*%s)], iface="%s", count=%d)' 
 
         new_mac = "00:11:22:00:33:44"
         self.set_mac_for_bonding_device(bond_port, new_mac)
+        self.start_port(bond_port)
         mac_address_1_now = self.get_port_mac(self.dut_ports[1])
         mac_address_2_now = self.get_port_mac(self.dut_ports[2])
         mac_address_bond_now = self.get_port_mac(bond_port)
@@ -1749,6 +1753,7 @@ UDP(sport=srcport, dport=destport)/Raw(load="\x50"*%s)], iface="%s", count=%d)' 
         if self.tester.get_os_type() == "linux":
             self.tester.send_expect("modprobe bonding mode=%d miimon=100" %
                                     int(bond_mode), "# ")
+            self.tester.send_expect("ifconfig %s up" % bond_name, "# ")
 
             tester_bond_intfs = [self.tester.get_interface(port) for port in tester_local_ports]
             for intf in tester_bond_intfs:
@@ -1826,76 +1831,6 @@ UDP(sport=srcport, dport=destport)/Raw(load="\x50"*%s)], iface="%s", count=%d)' 
                 pmd_bond_instance.detach_linux_bond_device(pmd_bond_instance.tester_bond,
                                                            *tester_local_ports)
         return clear_env
-
-    @setup_and_clear_lacp
-    def test_lacp_basic(self):
-        self.verify_bound_basic_opt(MODE_LACP)
-        self.verify_bound_mac_opt(MODE_LACP)
-        self.verify_bound_promisc_opt(MODE_LACP)
-
-    @setup_and_clear_lacp
-    def test_lacp_rx_tx(self):
-        slaves = {}
-        slaves['active'] = [self.dut_ports[0], self.dut_ports[1], self.dut_ports[2]]
-        slaves['inactive'] = []
-
-        bond_port = self.create_bonded_device(MODE_LACP, SOCKET_0)
-        self.add_slave_to_bonding_device(bond_port, False,
-                                         self.dut_ports[0],
-                                         self.dut_ports[1],
-                                         self.dut_ports[2])
-        self.dut.send_expect("set portlist %d,%d" % (self.dut_ports[3], bond_port), "testpmd> ")
-        self.start_port(bond_port)
-        self.start_all_ports()
-        self.dut.send_expect("start", "testpmd> ")
-        time.sleep(5)
-
-        self.verify_lacp_rx(self.dut_ports[3], bond_port, **slaves)
-        self.verify_lacp_tx(self.dut_ports[3], bond_port, 'L2', **slaves)
-
-    @setup_and_clear_lacp
-    def test_lacp_one_slave_down(self):
-        self.admin_tester_port(self.tester.get_local_port(self.dut_ports[0]), "down")
-
-        slaves = {}
-        slaves['active'] = [self.dut_ports[1], self.dut_ports[2]]
-        slaves['inactive'] = [self.dut_ports[0]]
-
-        bond_port = self.create_bonded_device(MODE_LACP, SOCKET_0)
-        self.add_slave_to_bonding_device(bond_port, False,
-                                         self.dut_ports[0],
-                                         self.dut_ports[1],
-                                         self.dut_ports[2])
-        self.dut.send_expect("set portlist %d,%d" % (self.dut_ports[3], bond_port), "testpmd> ")
-        self.start_port(bond_port)
-        self.start_all_ports()
-        self.dut.send_expect("start", "testpmd> ")
-
-        self.verify_lacp_rx(self.dut_ports[3], bond_port, **slaves)
-        self.verify_lacp_tx(self.dut_ports[3], bond_port, 'L2', **slaves)
-
-    @setup_and_clear_lacp
-    def test_lacp_all_slaves_down(self):
-        self.admin_tester_port(self.tester.get_local_port(self.dut_ports[0]), "down")
-        self.admin_tester_port(self.tester.get_local_port(self.dut_ports[1]), "down")
-        self.admin_tester_port(self.tester.get_local_port(self.dut_ports[2]), "down")
-
-        slaves = {}
-        slaves['active'] = []
-        slaves['inactive'] = [self.dut_ports[0], self.dut_ports[1], self.dut_ports[2]]
-
-        bond_port = self.create_bonded_device(MODE_LACP, SOCKET_0)
-        self.add_slave_to_bonding_device(bond_port, False,
-                                         self.dut_ports[0],
-                                         self.dut_ports[1],
-                                         self.dut_ports[2])
-        self.dut.send_expect("set portlist %d,%d" % (self.dut_ports[3], bond_port), "testpmd> ")
-        self.start_port(bond_port)
-        self.start_all_ports()
-        self.dut.send_expect("start", "testpmd> ")
-
-        self.verify_lacp_rx(self.dut_ports[3], bond_port, **slaves)
-        self.verify_lacp_tx(self.dut_ports[3], bond_port, 'L2', **slaves)
 
     def verify_tlb_rx(self, unbound_port, bond_port, **slaves):
         """
@@ -2033,7 +1968,6 @@ UDP(sport=srcport, dport=destport)/Raw(load="\x50"*%s)], iface="%s", count=%d)' 
         """
         self.dut.send_expect("quit", "# ")
 
-    @just_clear_lacp
     def tear_down_all(self):
         """
         Run after each test suite.

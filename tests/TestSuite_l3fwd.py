@@ -120,7 +120,7 @@ class TestL3fwd(TestCase):
         "{IPv4(13,101,0,0), 24, P3}",
     ]
 
-    frame_sizes = [64]  # , 65, 128]
+    frame_sizes = [64]  # 65, 128
 
     methods = ['lpm', 'exact']
 

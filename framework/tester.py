@@ -191,14 +191,11 @@ class Tester(Crb):
         """
         self.ports_info = []
 
-        self.logger.warning("Skipped: Unknown kernel interface")
-        self.logger.warning("Skipped: Unknown NIC")
-
         for (pci_bus, pci_id) in self.pci_devices_info:
             # ignore unknown card types
             if pci_id not in NICS.values():
                 self.logger.info("Tester: [000:%s %s] %s" % (pci_bus, pci_id,
-                                                             unknow_nic))
+                                                             "unknow_nic"))
                 continue
 
             addr_array = pci_bus.split(':')
@@ -209,7 +206,7 @@ class Tester(Crb):
 
             if "No such file" in intf:
                 self.logger.info("Tester: [000:%s %s] %s" % (pci_bus, pci_id,
-                                                             unknow_interface))
+                                                             "unknow_interface"))
                 continue
 
             self.logger.info("Tester: [000:%s %s] %s" % (pci_bus, pci_id, intf))
@@ -319,12 +316,12 @@ class Tester(Crb):
         if self.bgProcIsRunning:
             self.send_expect('subprocess.call("scapy -c sniff.py &", shell=True)', ">>> ")
             self.bgProcIsRunning = False
-        sleep(1)
+        sleep(2)
 
         for cmd in self.scapyCmds:
             self.send_expect(cmd, ">>> ", timeout)
 
-        sleep(1)
+        sleep(2)
         self.scapyCmds = []
         self.send_expect("exit()", "# ")
 

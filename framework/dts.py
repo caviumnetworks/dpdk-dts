@@ -195,6 +195,10 @@ def dts_parse_config(section):
     test_suites = [suite.strip()
                    for suite in config.get(section, 'test_suites').split(',')]
 
+    for suite in test_suites:
+        if suite == '':
+            test_suites.remove(suite)
+
     nics = [_.strip() for _ in paramDict['nic_type'].split(',')]
 
     return duts, targets, test_suites, nics

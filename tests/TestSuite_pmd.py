@@ -76,7 +76,6 @@ class TestPmd(TestCase):
 
         PMD prerequisites.
         """
-
         self.frame_sizes = [64, 65, 128, 256, 512, 1024, 1280, 1518]
 
         self.rxfreet_values = [0, 8, 16, 32, 64, 128]
@@ -407,6 +406,8 @@ class TestPmd(TestCase):
         p1rx_pkts -= gp1rx_pkts
         p1rx_bytes -= gp1rx_bytes
         p1rx_err -= gp1rx_err
+
+        time.sleep(5)
 
         self.verify(p0tx_pkts == p1rx_pkts,
                     "packet pass assert error, %d RX packets, %d TX packets" % (p1rx_pkts, p0tx_pkts))

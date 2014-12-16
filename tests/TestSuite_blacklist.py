@@ -56,7 +56,12 @@ class TestBlacklist(TestCase):
 
         self.ports = self.dut.get_ports(self.nic)
         self.verify(len(self.ports) >= 2, "Insufficient ports for testing")
-        self.regexp_blacklisted_port = "EAL: PCI device 0000:%s on NUMA socket [-0-9]+[^\n]*\nEAL:   probe driver[^\n]*\nEAL:   Device is blacklisted, not initializing"
+        [arch, machine, self.env, toolchain] = self.target.split('-')
+
+        if self.env == 'bsdapp':
+            self.regexp_blacklisted_port = "EAL: PCI device 0000:%02x:%s on NUMA socket [-0-9]+[^\n]*\nEAL:   probe driver[^\n]*\nEAL:   Device is blacklisted, not initializing"
+        else:
+            self.regexp_blacklisted_port = "EAL: PCI device 0000:%s on NUMA socket [-0-9]+[^\n]*\nEAL:   probe driver[^\n]*\nEAL:   Device is blacklisted, not initializing"
         self.pmdout = PmdOutput(self.dut)
 
     def set_up(self):
@@ -77,7 +82,11 @@ class TestBlacklist(TestCase):
             # Look for the PCI ID of each card followed by
             # "Device is blacklisted, not initializing" but avoid to consume more
             # than one device.
-            regexp_blacklisted_port = self.regexp_blacklisted_port % self.dut.ports_info[port]['pci']
+            if self.env == 'bsdapp':
+                pci = self.dut.ports_info[port]['pci']
+                regexp_blacklisted_port = self.regexp_blacklisted_port % (int(pci.split(':')[0], 16), pci.split(':')[1])
+            else:
+                regexp_blacklisted_port = self.regexp_blacklisted_port % self.dut.ports_info[port]['pci']
 
             matching_ports = dts.regexp(output, regexp_blacklisted_port, True)
 
