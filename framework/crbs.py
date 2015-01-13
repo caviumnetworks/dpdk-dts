@@ -3,12 +3,13 @@ Static configuration data for any CRBs that can be used.
 """
 from settings import IXIA
 
+# Todo: modify this script to a config file, like crbs.cfg
 crbs = [
-    {'IP': '10.239.128.117',
+    {'IP': '',
      'name': 'CrownPassCRB1',
-     'user': 'root',
-     'pass': 'tester',
-     'tester IP': '10.239.128.116',
+     'user': '',
+     'pass': '',
+     'tester IP': '',
      IXIA: None,
      'memory channels': 4,
      'bypass core0': True},
