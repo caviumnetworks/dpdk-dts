@@ -125,7 +125,8 @@ class Tester(Crb):
         self.restore_interfaces()
         self.scan_ports()
         self.map_available_ports()
-        assert len(self.ports_map) > 0
+        if self.ports_map == None or len(self.ports_map) == 0:
+            raise ValueError("ports_map should not be empty, please check all links")
 
     def get_local_port(self, remotePort):
         """
