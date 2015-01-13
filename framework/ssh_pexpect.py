@@ -12,12 +12,14 @@ Aslo support transfer files to tester or DUT.
 
 class SSHPexpect(object):
 
-    def __init__(self, host, username):
+    def __init__(self, host, username, password):
         try:
             self.session = pxssh.pxssh()
             self.username = username
             self.host = host
-            self.session.login(self.host, self.username)
+            self.password = password
+            self.session.login(self.host, self.username,
+                               self.password, original_prompt='[$#>]')
             self.send_expect('stty -echo', '# ', timeout=2)
         except Exception:
             raise SSHConnectionException(host)
@@ -69,21 +71,20 @@ class SSHPexpect(object):
         Copies a file from a remote place into local.
         """
         command = 'scp {0}@{1}:{2} .'.format(self.username, self.host, filename)
-        self._spawn_scp(command, password)
+        if password == '':
+            self._spawn_scp(command, self.password)
+        else:
+            self._spawn_scp(command, password)
 
     def copy_file_to(self, filename, password=''):
         """
         Sends a local file to a remote place.
         """
         command = 'scp {0} {1}@{2}:'.format(filename, self.username, self.host)
-        self._spawn_scp(command, password)
-
-    def copy_file_from(self, filename, password=''):
-        """
-        copy a remote file to a local place.
-        """
-        command = 'scp {1}@{2}:{0} .'.format(filename, self.username, self.host)
-        self._spawn_scp(command, password)
+        if password == '':
+            self._spawn_scp(command, self.password)
+        else:
+            self._spawn_scp(command, password)
 
     def _spawn_scp(self, scp_cmd, password):
         """

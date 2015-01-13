@@ -59,9 +59,11 @@ class Dut(Crb):
         super(Dut, self).__init__(crb, serializer)
         self.NAME = 'dut'
         self.logger = getLogger(self.NAME)
-        self.session = SSHConnection(self.get_ip_address(), self.NAME)
+        self.session = SSHConnection(self.get_ip_address(), self.NAME,
+                                     self.get_password())
         self.session.init_log(self.logger)
-        self.alt_session = SSHConnection(self.get_ip_address(), self.NAME)
+        self.alt_session = SSHConnection(self.get_ip_address(), self.NAME,
+                                         self.get_password())
         self.alt_session.init_log(self.logger)
         self.number_of_cores = 0
         self.tester = None
@@ -119,6 +121,12 @@ class Dut(Crb):
         Get DUT's ip address.
         """
         return self.crb['IP']
+
+    def get_password(self):
+        """
+        Get DUT's login password.
+        """
+        return self.crb['pass']
 
     def dut_prerequisites(self):
         """

@@ -61,9 +61,11 @@ class Tester(Crb):
         self.NAME = 'tester'
 
         self.logger = getLogger(self.NAME)
-        self.session = SSHConnection(self.get_ip_address(), self.NAME)
+        self.session = SSHConnection(self.get_ip_address(),
+                                     self.NAME, self.get_password())
         self.session.init_log(self.logger)
-        self.alt_session = SSHConnection(self.get_ip_address(), self.NAME)
+        self.alt_session = SSHConnection(self.get_ip_address(),
+                                         self.NAME, self.get_password())
         self.alt_session.init_log(self.logger)
 
         self.ports_map = []
@@ -87,6 +89,12 @@ class Tester(Crb):
         Get ip address of tester CRB.
         """
         return self.crb['tester IP']
+
+    def get_password(self):
+        """
+        Get tester login password of tester CRB.
+        """
+        return self.crb['tester pass']
 
     def has_external_traffic_generator(self):
         """

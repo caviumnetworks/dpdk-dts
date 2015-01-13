@@ -10,6 +10,7 @@ crbs = [
      'user': '',
      'pass': '',
      'tester IP': '',
+     'tester pass': '',
      IXIA: None,
      'memory channels': 4,
      'bypass core0': True},

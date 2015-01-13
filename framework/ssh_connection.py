@@ -40,8 +40,8 @@ class SSHConnection(object):
     Implement send_expect/copy function upper SSHPexpet module.
     """
 
-    def __init__(self, host, session_name):
-        self.session = SSHPexpect(host, USERNAME)
+    def __init__(self, host, session_name, password = ''):
+        self.session = SSHPexpect(host, USERNAME, password)
         self.name = session_name
 
     def init_log(self, logger):

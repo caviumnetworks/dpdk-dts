@@ -137,7 +137,9 @@ class IxiaPacketGenerator(SSHConnection):
         self.tester = tester
         self.NAME = 'ixia'
         self.logger = getLogger(self.NAME)
-        super(IxiaPacketGenerator, self).__init__(self.get_ip_address(), self.NAME)
+        super(IxiaPacketGenerator, self).__init__(self.get_ip_address(),
+                                                  self.NAME,
+                                                  self.get_password())
         super(IxiaPacketGenerator, self).init_log(self.logger)
 
         self.tcl_cmds = []
@@ -169,6 +171,9 @@ class IxiaPacketGenerator(SSHConnection):
 
     def get_ip_address(self):
         return self.tester.get_ip_address()
+
+    def get_password(self):
+        return self.tester.get_password()
 
     def add_tcl_cmd(self, cmd):
         """
