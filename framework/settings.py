@@ -50,7 +50,11 @@ NICS = {
     'springfountain': '8086:154a',
     'virtio': '1af4:1000',
     'avoton': '8086:1f41',
-    'avoton2c5': '8086:1f45'
+    'avoton2c5': '8086:1f45',
+    'I217V': '8086:153b',
+    'I217LM': '8086:153a',
+    'I218V': '8086:1559',
+    'I218LM': '8086:155a',
 }
 
 DRIVERS = {
@@ -72,6 +76,10 @@ DRIVERS = {
     'virtio': 'igb',
     'avoton': 'igb',
     'avoton2c5': 'igb',
+    'I217V': 'igb',
+    'I217LM': 'igb',
+    'I218V': 'igb',
+    'I218LM': 'igb',
 }
 
 """

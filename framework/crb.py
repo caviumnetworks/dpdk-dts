@@ -142,7 +142,9 @@ class Crb(object):
             self.send_expect("rmmod vfio_pci", "# ", 10)
             self.send_expect("rmmod vfio", "# ", 10)
         else:
-            self.send_expect("rmmod igb_uio", "# ", 10)
+            out = self.send_expect("lsmod | grep igb_uio", "#")
+            if "igb_uio" in out:
+                self.send_expect("rmmod -f igb_uio", "# ", 10)
         self.send_expect("modprobe igb", "# ", 20)
         self.send_expect("modprobe ixgbe", "# ", 20)
         self.send_expect("modprobe e1000e", "# ", 20)
@@ -151,14 +153,24 @@ class Crb(object):
 
         try:
             for (pci_bus, pci_id) in self.pci_devices_info:
+                """
+                Check if driver is already bound before binding it.
+                """
                 if pci_id in ('8086:10fb', '8086:151c', '8086:1528', '8086:1512', '8086:154a'):
-                    self.send_expect("echo 0000:%s > /sys/bus/pci/drivers/ixgbe/bind" % pci_bus, "# ")
+                    if not os.path.exists("/sys/bus/pci/drivers/ixgbe/"+"0000:"+pci_bus):
+                        self.send_expect("echo -n 0000:%s > /sys/bus/pci/drivers/ixgbe/bind" % pci_bus, "# ")
                 elif pci_id in ('8086:10e8', '8086:150e', '8086:1521', '8086:10c9', '8086:1526', '8086:1533'):
-                    self.send_expect("echo 0000:%s > /sys/bus/pci/drivers/igb/bind" % pci_bus, "# ")
+                    if not os.path.exists("/sys/bus/pci/drivers/igb/"+"0000:"+pci_bus):
+                        self.send_expect("echo -n 0000:%s > /sys/bus/pci/drivers/igb/bind" % pci_bus, "# ")
                 elif pci_id in('8086:10d3', '8086:10b9'):
-                    self.send_expect("echo 0000:%s > /sys/bus/pci/drivers/e1000e/bind" % pci_bus, "# ")
+                    if not os.path.exists("/sys/bus/pci/drivers/e1000e/"+"0000:"+pci_bus):
+                        self.send_expect("echo -n 0000:%s > /sys/bus/pci/drivers/e1000e/bind" % pci_bus, "# ")
+                elif pci_id in ('8086:153a', '8086:153b', '8086:155a', '8086:1559'):
+                    if not os.path.exists("/sys/bus/pci/drivers/e1000e/"+"0000:"+pci_bus):
+                        self.send_expect("echo -n 0000:%s > /sys/bus/pci/drivers/e1000e/bind" % pci_bus, "# ")
                 elif pci_id in ('8086:100f', '8086:100e'):
-                    self.send_expect("echo 0000:%s > /sys/bus/pci/drivers/e1000/bind" % pci_bus, "# ")
+                    if not os.path.exists("/sys/bus/pci/drivers/e1000/"+"0000:"+pci_bus):
+                        self.send_expect("echo -n 0000:%s > /sys/bus/pci/drivers/e1000/bind" % pci_bus, "# ")
                 elif pci_id in ('1af4:1000'):
                     self.send_expect("echo 0000%s > /sys/bus/pci/drivers/virtio-pci/bind" % pci_bus, "# ")
                 else:
@@ -226,7 +238,7 @@ class Crb(object):
         """
         Get interface name of specified pci device on linux.
         """
-        command = 'ls /sys/bus/pci/devices/0000:%s:%s/net' % (bus_id, devfun_id)
+        command = 'ls --color=never /sys/bus/pci/devices/0000:%s:%s/net' % (bus_id, devfun_id)
         return self.send_expect(command, '# ')
 
     def get_interface_name_freebsd(self, bus_id, devfun_id):

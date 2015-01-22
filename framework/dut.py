@@ -420,7 +420,10 @@ class Dut(Crb):
             out = self.send_expect("ip link show %s" % intf, "# ")
             if "DOWN" in out:
                 self.send_expect("ip link set %s up" % intf, "# ")
-                time.sleep(5)
+                """
+                I217 and I218 requires more time to acquire V6 address.
+                """
+                time.sleep(25)
 
             self.logger.info("DUT: [000:%s %s] %s" % (pci_bus,
                                                       pci_id,

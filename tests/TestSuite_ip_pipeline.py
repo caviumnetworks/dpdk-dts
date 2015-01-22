@@ -292,7 +292,11 @@ class TestIPPipeline(TestCase):
         """
 
         # Check for port availability
-        self.needed_ports = {"niantic": 2}
+        self.needed_ports = {"niantic": 2,
+                             "I217V": 1,
+                             "I217LM": 1,
+                             "I218V": 1,
+                             "I218LM": 1}
         self.dut_ports = self.dut.get_ports(self.nic)
         self.verify(len(self.dut_ports) >= self.needed_ports[self.nic],
                     "Insufficient ports for speed testing")

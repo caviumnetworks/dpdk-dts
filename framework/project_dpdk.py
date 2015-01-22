@@ -96,7 +96,9 @@ class DPDKdut(Dut):
             assert ("vfio_iommu_type1" in out), "Failed to setup vfio-pci"
         else:
             self.send_expect("modprobe uio", "#", 70)
-            self.send_expect("rmmod -f igb_uio", "#", 70)
+            out = self.send_expect("lsmod | grep igb_uio", "#")
+            if "igb_uio" in out:
+                self.send_expect("rmmod -f igb_uio", "#", 70)
             self.send_expect("insmod ./" + target + "/kmod/igb_uio.ko", "#", 60)
             out = self.send_expect("lsmod | grep igb_uio", "#")
             assert ("igb_uio" in out), "Failed to insmod igb_uio"

@@ -96,11 +96,15 @@ class TestPmd(TestCase):
                              "kawela_2": 2,
                              "bartonhills": 4,
                              "82545EM": 2,
-                             "82540EM": 2}
+                             "82540EM": 2,
+                             "I217V": 1,
+                             "I217LM": 1,
+                             "I218V": 1,
+                             "I218LM": 1}
 
         self.blacklist = ""
 
-        self.verify(self.nic in ["kawela_2", "niantic", "bartonhills", "82545EM", "82540EM"],
+        self.verify(self.nic in ["kawela_2", "niantic", "bartonhills", "82545EM", "82540EM", "I217V", "I217LM", "I218V", "I218LM"],
                     "NIC Unsupported: " + str(self.nic))
 
         # Based on h/w type, choose how many ports to use
