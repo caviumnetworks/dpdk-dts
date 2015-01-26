@@ -610,6 +610,20 @@ class TestL3fwd(TestCase):
         self.plot_2_ports()
         dts.results_table_print()
 
+    def ip(self, port, frag, src, proto, tos, dst, chksum, len, options, version, flags, ihl, ttl, id):
+        self.add_tcl_cmd("protocol config -name ip")
+        self.add_tcl_cmd('ip config -sourceIpAddr "%s"' % src)
+        self.add_tcl_cmd("ip config -sourceIpAddrMode ipRandom")
+        self.add_tcl_cmd('ip config -destIpAddr "%s"' % dst)
+        self.add_tcl_cmd("ip config -destIpAddrMode ipIdle")
+        self.add_tcl_cmd("ip config -ttl %d" % ttl)
+        self.add_tcl_cmd("ip config -totalLength %d" % len)
+        self.add_tcl_cmd("ip config -fragment %d" % frag)
+        self.add_tcl_cmd("ip config -ipProtocol ipV4ProtocolReserved255")
+        self.add_tcl_cmd("ip config -identifier %d" % id)
+        self.add_tcl_cmd("stream config -framesize %d" % (len + 18))
+        self.add_tcl_cmd("ip set %d %d %d" % (self.chasId, port['card'], port['port']))
+
     def tear_down(self):
         """
         Run after each test case.
