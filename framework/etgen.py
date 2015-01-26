@@ -581,13 +581,18 @@ class IxiaPacketGenerator(SSHConnection):
             out = self.send_expect("stat cget -bitsReceived", '% ', 10)
             self.logger.debug("port %d bits rate:" % (port) + out)
             bpsRate += int(out.strip())
+            out = self.send_expect("stat cget -oversize", '%', 10)
+            oversize += int(out.strip())
 
         self.logger.info("Rate: %f Mpps" % (rate * 1.0 / 1000000))
         self.logger.info("Mbps rate: %f Mbps" % (bpsRate * 1.0 / 1000000))
 
         self.send_expect("ixStopTransmit portList", "%", 30)
 
-        return (bpsRate, rate)
+        if rate == 0 and oversize > 0:
+            return (bpsRate, oversize)
+        else:
+            return (bpsRate, rate)
 
     def config_ixia_dcb_init(self, rxPort, txPort):
         """
