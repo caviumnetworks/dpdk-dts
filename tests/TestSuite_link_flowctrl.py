@@ -64,7 +64,7 @@ class TestLinkFlowctrl(TestCase):
         Link flow control Prerequisites
         """
 
-        self.dutPorts = self.dut.get_ports(self.nic)
+        self.dutPorts = self.dut.get_ports()
         self.verify(len(self.dutPorts) > 1, "Insuficient ports")
 
         self.rx_port = self.dutPorts[0]

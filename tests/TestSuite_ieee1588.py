@@ -52,7 +52,7 @@ class TestIeee1588(TestCase):
         IEEE1588 Prerequisites
         """
 
-        dutPorts = self.dut.get_ports(self.nic)
+        dutPorts = self.dut.get_ports()
         self.verify(len(dutPorts) > 0, "No ports found for " + self.nic)
 
         # Change the config file to support IEEE1588 and recompile the package.
@@ -82,7 +82,7 @@ class TestIeee1588(TestCase):
         time.sleep(1)  # Allow the output from the "start" command to finish before looking for a regexp in expect
 
         # use the first port on that self.nic
-        dutPorts = self.dut.get_ports(self.nic)
+        dutPorts = self.dut.get_ports()
         port = self.tester.get_local_port(dutPorts[0])
         itf = self.tester.get_interface(port)
 
@@ -125,7 +125,7 @@ class TestIeee1588(TestCase):
         time.sleep(3)
 
         # use the first port on that self.nic
-        dutPorts = self.dut.get_ports(self.nic)
+        dutPorts = self.dut.get_ports()
         port = self.tester.get_local_port(dutPorts[0])
         itf = self.tester.get_interface(port)
 

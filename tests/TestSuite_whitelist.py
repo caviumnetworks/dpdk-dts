@@ -55,7 +55,7 @@ class TestWhitelist(TestCase):
         self.frames_to_send = 1
 
         # Based on h/w type, choose how many ports to use
-        self.dutPorts = self.dut.get_ports(self.nic)
+        self.dutPorts = self.dut.get_ports()
 
         # Verify that enough ports are available
         self.verify(len(self.dutPorts) >= 1, "Insufficient ports")

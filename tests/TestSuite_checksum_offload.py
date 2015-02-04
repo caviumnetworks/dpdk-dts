@@ -54,7 +54,7 @@ class TestChecksumOffload(TestCase):
         Checksum offload prerequisites.
         """
         # Based on h/w type, choose how many ports to use
-        self.dut_ports = self.dut.get_ports_performance(self.nic)
+        self.dut_ports = self.dut.get_ports_performance()
 
         # Verify that enough ports are available
         self.verify(len(self.dut_ports) >= 2, "Insufficient ports for testing")

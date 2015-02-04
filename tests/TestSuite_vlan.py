@@ -53,12 +53,11 @@ class TestVlan(TestCase):
         """
 
         # Based on h/w type, choose how many ports to use
-        ports = self.dut.get_ports(self.nic)
+        ports = self.dut.get_ports()
 
         # Verify that enough ports are available
         self.verify(len(ports) >= 2, "Insufficient ports")
 
-        ports = self.dut.get_ports(self.nic)
         global valports
         valports = [_ for _ in ports if self.tester.get_local_port(_) != -1]
 

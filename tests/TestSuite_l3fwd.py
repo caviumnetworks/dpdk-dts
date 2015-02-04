@@ -309,9 +309,9 @@ class TestL3fwd(TestCase):
         L3fwd Prerequisites
         """
         # Based on h/w type, choose how many ports to use
-        ports = self.dut.get_ports(self.nic, socket=1)
+        ports = self.dut.get_ports(socket=1)
         if not ports:
-            ports = self.dut.get_ports(self.nic, socket=0)
+            ports = self.dut.get_ports(socket=0)
 
         # Verify that enough ports are available
         self.verify(len(ports) >= 2, "Insufficient ports for speed testing")
@@ -473,7 +473,7 @@ class TestL3fwd(TestCase):
         """
 
         # Based on h/w type, choose how many ports to use
-        ports = self.dut.get_ports(self.nic)
+        ports = self.dut.get_ports()
         # Verify that enough ports are available
         self.verify(len(ports) >= 4, "Insufficient ports for speed testing")
 

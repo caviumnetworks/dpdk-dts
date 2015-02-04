@@ -113,7 +113,7 @@ class TestJumboframes(TestCase):
         Prerequisite steps for each test suit.
         """
 
-        self.dut_ports = self.dut.get_ports(self.nic)
+        self.dut_ports = self.dut.get_ports()
         self.verify(len(self.dut_ports) >= 2, "Insufficient ports")
         self.rx_port = self.dut_ports[0]
         self.tx_port = self.dut_ports[1]

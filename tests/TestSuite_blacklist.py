@@ -54,7 +54,7 @@ class TestBlacklist(TestCase):
             Two Ports
         """
 
-        self.ports = self.dut.get_ports(self.nic)
+        self.ports = self.dut.get_ports()
         self.verify(len(self.ports) >= 2, "Insufficient ports for testing")
         [arch, machine, self.env, toolchain] = self.target.split('-')
 

@@ -792,7 +792,7 @@ UDP(sport=srcport, dport=destport)/Raw(load="\x50"*%s)], iface="%s", count=%d)' 
         self.ip_head_size = 20
         self.udp_header_size = 8
 
-        self.dut_ports = self.dut.get_ports(self.nic)
+        self.dut_ports = self.dut.get_ports()
 
         self.port_mask = dts.create_mask(self.dut_ports)
 

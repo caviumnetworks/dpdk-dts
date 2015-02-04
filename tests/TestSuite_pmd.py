@@ -108,7 +108,7 @@ class TestPmd(TestCase):
                     "NIC Unsupported: " + str(self.nic))
 
         # Based on h/w type, choose how many ports to use
-        self.dut_ports = self.dut.get_ports(self.nic)
+        self.dut_ports = self.dut.get_ports()
 
         # Verify that enough ports are available
         self.verify(len(self.dut_ports) >= self.needed_ports[self.nic],
@@ -166,7 +166,7 @@ class TestPmd(TestCase):
                 queues = 1
 
             core_mask = dts.create_mask(core_list)
-            port_mask = dts.create_mask(self.dut.get_ports(self.nic))
+            port_mask = dts.create_mask(self.dut.get_ports())
 
             self.pmdout.start_testpmd("all", "--coremask=%s --rxq=%d --txq=%d --portmask=%s" % (core_mask, queues, queues, port_mask))
 
