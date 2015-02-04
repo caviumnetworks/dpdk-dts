@@ -236,13 +236,10 @@ class DPDKdut(Dut):
         binding_list = '--bind=%s ' % driver
 
         current_nic = 0
-        for (pci_bus, pci_id) in self.pci_devices_info:
-            if dts.accepted_nic(pci_id):
-
-                if nics_to_bind is None or current_nic in nics_to_bind:
-                    binding_list += '%s ' % (pci_bus)
-
-                current_nic += 1
+        for port_info in self.ports_info:
+            if nics_to_bind is None or current_nic in nics_to_bind:
+                binding_list += '%s ' % (port_info['pci'])
+            current_nic += 1
 
         self.send_expect('tools/dpdk_nic_bind.py %s' % binding_list, '# ')
 
@@ -254,13 +251,10 @@ class DPDKdut(Dut):
         binding_list = '-u '
 
         current_nic = 0
-        for (pci_bus, pci_id) in self.pci_devices_info:
-            if dts.accepted_nic(pci_id):
-
-                if nics_to_bind is None or current_nic in nics_to_bind:
-                    binding_list += '%s ' % (pci_bus)
-
-                current_nic += 1
+        for port_info in self.ports_info:
+            if nics_to_bind is None or current_nic in nics_to_bind:
+                binding_list += '%s ' % (port_info['pci'])
+            current_nic += 1
 
         self.send_expect('tools/dpdk_nic_bind.py %s' % binding_list, '# ', 30)
 

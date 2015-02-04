@@ -33,6 +33,7 @@ import os
 import re
 import time
 import dts
+from config import UserConf
 from settings import NICS
 from ssh_connection import SSHConnection
 from crb import Crb
@@ -70,6 +71,7 @@ class Dut(Crb):
         self.cores = []
         self.architecture = None
         self.ports_info = None
+        self.conf = UserConf()
 
     def change_config_option(self, target, parameter, value):
         """
@@ -77,6 +79,14 @@ class Dut(Crb):
         """
         self.send_expect("sed -i 's/%s=.*$/%s=%s/'  config/defconfig_%s" %
                          (parameter, parameter, value, target), "# ")
+
+    def set_nic_types(self, nics):
+        """
+        Set CRB NICS ready to validated.
+        """
+        self.nics = nics
+        if 'cfg' in nics:
+            self.conf.load_ports_config(self.get_ip_address())
 
     def set_toolchain(self, target):
         """
@@ -144,8 +154,14 @@ class Dut(Crb):
 
         self.init_core_list()
         self.pci_devices_information()
-        self.restore_interfaces()
+        # scan ports before restore interface
         self.scan_ports()
+        # restore dut ports to kernel
+        self.restore_interfaces()
+        # rescan ports after interface up
+        self.rescan_ports()
+        # load port infor from config file
+        self.load_portconf()
         self.mount_procfs()
 
     def restore_interfaces(self):
@@ -167,11 +183,27 @@ class Dut(Crb):
         """
         Restore Linux interfaces.
         """
-        Crb.restore_interfaces(self)
+        for port in self.ports_info:
+            pci_bus = port['pci']
+            pci_id = port['type']
+            # get device driver
+            driver = dts.get_nic_driver(pci_id)
+            if driver is not None:
+                # unbind device driver
+                addr_array = pci_bus.split(':')
+                bus_id = addr_array[0]
+                devfun_id = addr_array[1]
 
-        if self.ports_info is not None:
-            for port in self.ports_info:
-                self.admin_ports_linux(port['intf'], 'up')
+                self.send_expect('echo 0000:%s > /sys/bus/pci/devices/0000\:%s\:%s/driver/unbind'
+                                 % (pci_bus, bus_id, devfun_id), '# ')
+                # bind to linux kernel driver
+                self.send_expect('modprobe %s' % driver, '# ')
+                self.send_expect('echo 0000:%s > /sys/bus/pci/drivers/%s/bind'
+                                 % (pci_bus, driver), '# ')
+                itf = self.get_interface_name(addr_array[0], addr_array[1])
+                self.send_expect("ifconfig %s up" % itf, "# ")
+            else:
+                self.logger.info("NOT FOUND DRIVER FOR PORT (%s|%s)!!!" % (pci_bus, pci_id))
 
     def setup_memory(self, hugepages=-1):
         """
@@ -259,7 +291,7 @@ class Dut(Crb):
 
         self.send_expect('tools/dpdk_nic_bind.py %s' % binding_list, '# ', 30)
 
-    def get_ports(self, nic_type, perf=None, socket=None):
+    def get_ports(self, nic_type='any', perf=None, socket=None):
         """
         Return DUT port list with the filter of NIC type, whether run IXIA
         performance test, whether request specified socket.
@@ -301,7 +333,7 @@ class Dut(Crb):
         else:
             return ports
 
-    def get_ports_performance(self, nic_type, perf=None, socket=None,
+    def get_ports_performance(self, nic_type='any', perf=None, socket=None,
                               force_same_socket=True,
                               force_different_nic=True):
         """
@@ -338,6 +370,15 @@ class Dut(Crb):
         biggest_set = max(accepted_sets, key=lambda s: len(s))
 
         return biggest_set
+
+    def get_peer_pci(self, port_num):
+        """
+        return the peer pci address of dut port
+        """
+        if 'peer' not in self.ports_info[port_num]:
+            return None
+        else:
+            return self.ports_info[port_num]['peer']
 
     def get_mac_address(self, port_num):
         """
@@ -381,6 +422,55 @@ class Dut(Crb):
         else:
             return 1
 
+    def check_ports_available(self, pci_bus, pci_id):
+        """
+        Check that whether auto scanned ports ready to use
+        """
+        pci_addr = "%s:%s" % (pci_bus, pci_id)
+        codenames = []
+        for nic in self.nics:
+            if nic == 'any':
+                return True
+            elif nic == 'cfg':
+                if self.conf.check_port_available(pci_bus) is True:
+                    return True
+            elif nic not in NICS.keys():
+                self.logger.warning("NOT SUPPORTED NIC TYPE: %s" % nic)
+            else:
+                codenames.append(NICS[nic])
+
+        if pci_id in codenames:
+            return True
+
+        return False
+
+    def rescan_ports(self):
+        unknow_interface = dts.RED('Skipped: unknow_interface')
+
+        for port_info in self.ports_info:
+            pci_bus = port_info['pci']
+            addr_array = pci_bus.split(':')
+            bus_id = addr_array[0]
+            devfun_id = addr_array[1]
+            intf = self.get_interface_name(bus_id, devfun_id)
+            if "No such file" in intf:
+                self.logger.info("DUT: [0000:%s] %s" % (pci_bus, unknow_interface))
+            out = self.send_expect("ip link show %s" % intf, "# ")
+            if "DOWN" in out:
+                self.send_expect("ip link set %s up" % intf, "# ")
+                time.sleep(5)
+            macaddr = self.get_mac_addr(intf, bus_id, devfun_id)
+            out = self.send_expect("ip -family inet6 address show dev %s | awk '/inet6/ { print $2 }'"
+                                   % intf, "# ")
+            ipv6 = out.split('/')[0]
+            # Unconnected ports don't have IPv6
+            if ":" not in ipv6:
+                ipv6 = "Not connected"
+
+            port_info['mac'] = macaddr
+            port_info['intf'] = intf
+            port_info['ipv6'] = ipv6
+
     def scan_ports(self):
         """
         Scan ports information or just read it from cache file.
@@ -411,8 +501,7 @@ class Dut(Crb):
         unknow_interface = dts.RED('Skipped: unknow_interface')
 
         for (pci_bus, pci_id) in self.pci_devices_info:
-
-            if not dts.accepted_nic(pci_id):
+            if self.check_ports_available(pci_bus, pci_id) is False:
                 self.logger.info("DUT: [000:%s %s] %s" % (pci_bus, pci_id,
                                                           skipped))
                 continue
@@ -420,50 +509,10 @@ class Dut(Crb):
             addr_array = pci_bus.split(':')
             bus_id = addr_array[0]
             devfun_id = addr_array[1]
-            self.send_expect("echo 0000:%s > /sys/bus/pci/drivers/igb_uio/unbind" % pci_bus, "# ")
-            if pci_id == '8086:10fb':
-                self.send_expect("echo 0000:%s > /sys/bus/pci/drivers/ixgbe/bind" % pci_bus, "# ")
-            intf = self.get_interface_name(bus_id, devfun_id)
 
-            out = self.send_expect("ip link show %s" % intf, "# ")
-            if "DOWN" in out:
-                self.send_expect("ip link set %s up" % intf, "# ")
-                """
-                I217 and I218 requires more time to acquire V6 address.
-                """
-                time.sleep(25)
-
-            self.logger.info("DUT: [000:%s %s] %s" % (pci_bus,
-                                                      pci_id,
-                                                      intf))
-
-            if "No such file" in intf:
-                self.logger.info("DUT: [000:%s %s] %s" % (pci_bus, pci_id,
-                                                          unknow_interface))
-                continue
-
-            macaddr = self.get_mac_addr(intf, bus_id, devfun_id)
-
-            out = self.send_expect("ip -family inet6 address show dev %s | awk '/inet6/ { print $2 }'"
-                                   % intf, "# ")
-            ipv6 = out.split('/')[0]
-
-            # Unconnected ports don't have IPv6
-            if ":" not in ipv6:
-                ipv6 = "Not connected"
-
-            numa = self.send_expect("cat /sys/bus/pci/devices/0000\:%s\:%s/numa_node" %
-                                    (bus_id, devfun_id), "# ")
-
-            try:
-                numa = int(numa)
-            except ValueError:
-                numa = -1
-                self.logger.warning("NUMA not available")
-
+            numa = self.get_device_numa(bus_id, devfun_id)
             # store the port info to port mapping
-            self.ports_info.append({'pci': pci_bus, 'type': pci_id, 'intf':
-                                    intf, 'mac': macaddr, 'ipv6': ipv6, 'numa': numa})
+            self.ports_info.append({'pci': pci_bus, 'type': pci_id, 'numa': numa})
 
     def scan_ports_uncached_freebsd(self):
         """
@@ -505,3 +554,22 @@ class Dut(Crb):
             # store the port info to port mapping
             self.ports_info.append({'pci': pci_str, 'type': pci_id, 'intf':
                                     intf, 'mac': macaddr, 'ipv6': ipv6, 'numa': -1})
+
+    def load_portconf(self):
+        """
+        Load port configurations for ports_info. If manually configured infor
+        not same as auto scanned, still use infor in configuration file.
+        """
+        for port in self.ports_info:
+            pci_bus = port['pci']
+            if pci_bus in self.conf.ports_cfg:
+                port_cfg = self.conf.ports_cfg[pci_bus]
+                port_cfg['source'] = 'cfg'
+            else:
+                port_cfg = {}
+
+            for key in ['intf', 'mac', 'numa', 'peer']:
+                if key in port_cfg:
+                    if key in port and port_cfg[key] != port[key]:
+                        self.logger.warning("CONGGURED %s NOT SAME AS SCANNED!!!" % (key.upper()))
+                    port[key] = port_cfg[key]

@@ -133,56 +133,6 @@ class Crb(object):
         """
         self.send_expect("ip link set  %s %s" % (eth, status), "# ")
 
-    def restore_interfaces(self):
-        """
-        Restore Linux interfaces.
-        """
-        if dts.drivername == "vfio-pci":
-            self.send_expect("rmmod vfio_iommu_type1", "# ", 10)
-            self.send_expect("rmmod vfio_pci", "# ", 10)
-            self.send_expect("rmmod vfio", "# ", 10)
-        else:
-            out = self.send_expect("lsmod | grep igb_uio", "#")
-            if "igb_uio" in out:
-                self.send_expect("rmmod -f igb_uio", "# ", 10)
-        self.send_expect("modprobe igb", "# ", 20)
-        self.send_expect("modprobe ixgbe", "# ", 20)
-        self.send_expect("modprobe e1000e", "# ", 20)
-        self.send_expect("modprobe e1000", "# ", 20)
-        self.send_expect("modprobe virtio_net", "# ", 20)
-
-        try:
-            for (pci_bus, pci_id) in self.pci_devices_info:
-                """
-                Check if driver is already bound before binding it.
-                """
-                if pci_id in ('8086:10fb', '8086:151c', '8086:1528', '8086:1512', '8086:154a'):
-                    if not os.path.exists("/sys/bus/pci/drivers/ixgbe/"+"0000:"+pci_bus):
-                        self.send_expect("echo -n 0000:%s > /sys/bus/pci/drivers/ixgbe/bind" % pci_bus, "# ")
-                elif pci_id in ('8086:10e8', '8086:150e', '8086:1521', '8086:10c9', '8086:1526', '8086:1533'):
-                    if not os.path.exists("/sys/bus/pci/drivers/igb/"+"0000:"+pci_bus):
-                        self.send_expect("echo -n 0000:%s > /sys/bus/pci/drivers/igb/bind" % pci_bus, "# ")
-                elif pci_id in('8086:10d3', '8086:10b9'):
-                    if not os.path.exists("/sys/bus/pci/drivers/e1000e/"+"0000:"+pci_bus):
-                        self.send_expect("echo -n 0000:%s > /sys/bus/pci/drivers/e1000e/bind" % pci_bus, "# ")
-                elif pci_id in ('8086:153a', '8086:153b', '8086:155a', '8086:1559'):
-                    if not os.path.exists("/sys/bus/pci/drivers/e1000e/"+"0000:"+pci_bus):
-                        self.send_expect("echo -n 0000:%s > /sys/bus/pci/drivers/e1000e/bind" % pci_bus, "# ")
-                elif pci_id in ('8086:100f', '8086:100e'):
-                    if not os.path.exists("/sys/bus/pci/drivers/e1000/"+"0000:"+pci_bus):
-                        self.send_expect("echo -n 0000:%s > /sys/bus/pci/drivers/e1000/bind" % pci_bus, "# ")
-                elif pci_id in ('1af4:1000'):
-                    self.send_expect("echo 0000%s > /sys/bus/pci/drivers/virtio-pci/bind" % pci_bus, "# ")
-                else:
-                    continue
-
-                addr_array = pci_bus.split(':')
-                itf = self.get_interface_name(addr_array[0], addr_array[1])
-                self.send_expect("ifconfig %s up" % itf, "# ")
-
-        except Exception as e:
-            self.logger.error("   !!! Restore ITF: " + e.message)
-
     def pci_devices_information(self):
         """
         Scan CRB pci device information and save it into cache file.
@@ -206,7 +156,7 @@ class Crb(object):
         Look for the NIC's information (PCI Id and card type).
         """
         out = self.send_expect("lspci -nn | grep -i eth", "# ")
-        rexp = r"([\da-f]{2}:[\da-f]{2}.\d{1}) Ethernet .* Intel Corporation .*?([\da-f]{4}:[\da-f]{4})"
+        rexp = r"([\da-f]{2}:[\da-f]{2}.\d{1}) Ethernet .*?([\da-f]{4}:[\da-f]{4})"
         pattern = re.compile(rexp)
         match = pattern.findall(out)
         self.pci_devices_info = []
@@ -275,6 +225,20 @@ class Crb(object):
         pattern = re.compile(rexp)
         match = pattern.findall(out)
         return match[0]
+
+    def get_device_numa(self, bus_id, devfun_id):
+        """
+        Get numa id of specified pci device
+        """
+        numa = self.send_expect("cat /sys/bus/pci/devices/0000\:%s\:%s/numa_node" %
+                                (bus_id, devfun_id), "# ")
+
+        try:
+            numa = int(numa)
+        except ValueError:
+            numa = -1
+            self.logger.warning("NUMA not available")
+        return numa
 
     def get_ipv6_addr(self, intf):
         """

@@ -133,7 +133,7 @@ class Tester(Crb):
         self.restore_interfaces()
         self.scan_ports()
         self.map_available_ports()
-        if self.ports_map == None or len(self.ports_map) == 0:
+        if self.ports_map is None or len(self.ports_map) == 0:
             raise ValueError("ports_map should not be empty, please check all links")
 
     def get_local_port(self, remotePort):
@@ -178,6 +178,24 @@ class Tester(Crb):
             return 'up'
         else:
             return 'down'
+
+    def restore_interfaces(self):
+        """
+        Restore Linux interfaces.
+        """
+        self.send_expect("modprobe igb", "# ", 20)
+        self.send_expect("modprobe ixgbe", "# ", 20)
+        self.send_expect("modprobe e1000e", "# ", 20)
+        self.send_expect("modprobe e1000", "# ", 20)
+
+        try:
+            for (pci_bus, pci_id) in self.pci_devices_info:
+                addr_array = pci_bus.split(':')
+                itf = self.get_interface_name(addr_array[0], addr_array[1])
+                self.send_expect("ifconfig %s up" % itf, "# ")
+
+        except Exception as e:
+            self.logger.error("   !!! Restore ITF: " + e.message)
 
     def scan_ports(self):
         """
@@ -262,6 +280,18 @@ class Tester(Crb):
         hits = [False] * len(self.ports_info)
 
         for dutPort in range(nrPorts):
+            peer = self.dut.get_peer_pci(dutPort)
+            if peer is not None:
+                for localPort in range(len(self.ports_info)):
+                    if self.ports_info[localPort]['pci'] == peer:
+                        hits[localPort] = True
+                        self.ports_map[dutPort] = localPort
+                        break
+                if self.ports_map[dutPort] == -1:
+                    self.logger.error("CONFIGURED TESTER PORT CANNOT FOUND!!!")
+                else:
+                    continue  # skip ping6 map
+
             for localPort in range(len(self.ports_info)):
                 if hits[localPort]:
                     continue
