@@ -42,7 +42,7 @@ import rst          # rst file support
 from crbs import crbs
 from tester import Tester
 from dut import Dut
-from settings import NICS
+from settings import NICS, DRIVERS
 from serializer import Serializer
 from exception import VerifyFailure
 from test_case import TestCase
@@ -131,6 +131,18 @@ def close_crb_sessions():
     log_handler.info("DTF ended")
 
 
+def get_nic_driver(pci_id):
+    """
+    Return linux driver for specified pci device
+    """
+    driverlist = dict(zip(NICS.values(), DRIVERS.keys()))
+    try:
+        driver = DRIVERS[driverlist[pci_id]]
+    except Exception as e:
+        driver = None
+    return driver
+
+
 def accepted_nic(pci_id):
     """
     Return True if the pci_id is a known NIC card in the settings file and if
@@ -201,7 +213,7 @@ def dts_parse_config(section):
 
     nics = [_.strip() for _ in paramDict['nic_type'].split(',')]
 
-    return duts, targets, test_suites, nics
+    return duts[0], targets, test_suites, nics
 
 
 def get_project_obj(project_name, super_class, crbInst, serializer):
@@ -255,7 +267,7 @@ def dts_log_execution(log_handler):
         pass
 
 
-def dts_crbs_init(crbInst, skip_setup, read_cache, project, base_dir):
+def dts_crbs_init(crbInst, skip_setup, read_cache, project, base_dir, nics):
     """
     Create dts dut/tester instance and initialize them.
     """
@@ -270,6 +282,7 @@ def dts_crbs_init(crbInst, skip_setup, read_cache, project, base_dir):
     tester.dut = dut
     dut.set_speedup_options(read_cache, skip_setup)
     dut.set_directory(base_dir)
+    dut.set_nic_types(nics)
     tester.set_speedup_options(read_cache, skip_setup)
     show_speedup_options_messages(read_cache, skip_setup)
     dut.set_test_types(func_tests=functional_only, perf_tests=performance_only)
@@ -426,36 +439,35 @@ def run_all(config_file, pkgName, git, patch, skip_setup,
         dts_parse_param(section)
 
         # verify if the delimiter is good if the lists are vertical
-        duts, targets, test_suites, nics = dts_parse_config(section)
+        dutIP, targets, test_suites, nics = dts_parse_config(section)
 
-        for dutIP in duts:
-            log_handler.info("\nDUT " + dutIP)
+        log_handler.info("\nDUT " + dutIP)
 
-            # look up in crbs - to find the matching IP
-            crbInst = None
-            for crb in crbs:
-                if crb['IP'] == dutIP:
-                    crbInst = crb
-                    break
+        # look up in crbs - to find the matching IP
+        crbInst = None
+        for crb in crbs:
+            if crb['IP'] == dutIP:
+                crbInst = crb
+                break
 
-            # only run on the dut in known crbs
-            if crbInst is None:
-                log_handler.error(" SKIP UNKNOWN CRB")
-                continue
+        # only run on the dut in known crbs
+        if crbInst is None:
+            log_handler.error(" SKIP UNKNOWN CRB")
+            continue
 
-            result.dut = dutIP
+        result.dut = dutIP
 
-            # init dut, tester crb
-            dts_crbs_init(crbInst, skip_setup, read_cache, project, base_dir)
+        # init dut, tester crb
+        dts_crbs_init(crbInst, skip_setup, read_cache, project, base_dir, nics)
 
-            # Run DUT prerequisites
-            if dts_run_prerequisties(pkgName, patch) is False:
-                dts_crbs_exit()
-                continue
-
-            dts_run_target(crbInst, targets, test_suites, nics)
-
+        # Run DUT prerequisites
+        if dts_run_prerequisties(pkgName, patch) is False:
             dts_crbs_exit()
+            continue
+
+        dts_run_target(crbInst, targets, test_suites, nics)
+
+        dts_crbs_exit()
 
     save_all_results()
 
