@@ -281,6 +281,7 @@ class Tester(Crb):
 
         for dutPort in range(nrPorts):
             peer = self.dut.get_peer_pci(dutPort)
+            dutpci = self.dut.ports_info[dutPort]['pci']
             if peer is not None:
                 for localPort in range(len(self.ports_info)):
                     if self.ports_info[localPort]['pci'] == peer:
@@ -294,6 +295,11 @@ class Tester(Crb):
 
             for localPort in range(len(self.ports_info)):
                 if hits[localPort]:
+                    continue
+
+                # skip ping self port
+                localpci = self.ports_info[localPort]['pci']
+                if (self.crb['IP'] == self.crb['tester IP']) and (dutpci == localpci):
                     continue
 
                 ipv6 = self.dut.get_ipv6_address(dutPort)
@@ -449,6 +455,7 @@ class Tester(Crb):
         """
         if not self.has_external_traffic_generator():
             self.alt_session.send_expect('killall scapy 2>/dev/null; echo tester', '# ', 5)
+        else:
             super(Tester, self).kill_all()
 
     def close(self):
