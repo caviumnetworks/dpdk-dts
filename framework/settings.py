@@ -55,6 +55,9 @@ NICS = {
     'I217LM': '8086:153a',
     'I218V': '8086:1559',
     'I218LM': '8086:155a',
+    'fortville_eagle': '8086:1572',
+    'fortville_spirit': '8086:1583',
+    'fortville_spirit_single': '8086:1584',
 }
 
 DRIVERS = {
@@ -80,6 +83,9 @@ DRIVERS = {
     'I217LM': 'igb',
     'I218V': 'igb',
     'I218LM': 'igb',
+    'fortville_eagle': 'i40e',
+    'fortville_spirit': 'i40e',
+    'fortville_spirit_single':'i40e'
 }
 
 """
