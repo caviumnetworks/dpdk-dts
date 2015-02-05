@@ -33,6 +33,7 @@
 Generic port and crbs configuration file load function
 """
 
+import re
 import ConfigParser  # config parse module
 import argparse      # prase arguments module
 
@@ -46,6 +47,7 @@ class UserConf():
         self.port_config = port_conf
         self.crb_config = crb_conf
         self.ports_cfg = {}
+        self.pci_regex = "([\da-f]{2}:[\da-f]{2}.\d{1})$"
         try:
             self.port_conf = ConfigParser.SafeConfigParser()
             self.port_conf.read(self.port_config)
@@ -61,12 +63,22 @@ class UserConf():
                      for port in self.port_conf.get(crb, 'ports').split(';')]
 
         for port in ports:
-            port_cfg = self.parse_port_param(port)
+            port_cfg = self.__parse_port_param(port)
+            # check pci BDF validity
             if 'pci' not in port_cfg:
+                print "NOT FOUND CONFIG FOR NO PCI ADDRESS!!!"
+                continue
+            m = re.match(self.pci_regex, port_cfg['pci'])
+            if m is None:
                 print "INVALID CONFIG FOR NO PCI ADDRESS!!!"
+                continue
+
             keys = port_cfg.keys()
             keys.remove('pci')
             self.ports_cfg[port_cfg['pci']] = {key: port_cfg[key] for key in keys}
+
+    def get_ports_config(self):
+        return self.ports_cfg
 
     def check_port_available(self, pci_addr):
         if pci_addr in self.ports_cfg.keys():
@@ -74,7 +86,7 @@ class UserConf():
         else:
             return False
 
-    def parse_port_param(self, port):
+    def __parse_port_param(self, port):
         portDict = dict()
 
         for param in port.split(','):

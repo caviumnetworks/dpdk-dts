@@ -562,8 +562,9 @@ class Dut(Crb):
         """
         for port in self.ports_info:
             pci_bus = port['pci']
-            if pci_bus in self.conf.ports_cfg:
-                port_cfg = self.conf.ports_cfg[pci_bus]
+            ports_cfg = self.conf.get_ports_config()
+            if pci_bus in ports_cfg:
+                port_cfg = ports_cfg[pci_bus]
                 port_cfg['source'] = 'cfg'
             else:
                 port_cfg = {}
