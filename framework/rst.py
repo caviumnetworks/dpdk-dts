@@ -52,8 +52,8 @@ Result:
     Result: PASS
 """
 
-path2Plan = '../test_plans'
-path2Result = '../output'
+path2Plan = 'test_plans'
+path2Result = 'output'
 rstName = ""
 rstAnnexName = ""
 

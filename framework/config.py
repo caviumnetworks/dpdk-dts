@@ -37,8 +37,8 @@ import re
 import ConfigParser  # config parse module
 import argparse      # prase arguments module
 
-portconf = "../conf/ports.cfg"
-crbconf = "../conf/crbs.cfg"
+portconf = "conf/ports.cfg"
+crbconf = "conf/crbs.cfg"
 
 
 class UserConf():

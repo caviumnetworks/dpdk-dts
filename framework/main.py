@@ -47,9 +47,9 @@ def git_build_package(gitLabel, gitPkg, output):
     gitURL = r"http://dpdk.org/git/dpdk"
     gitPrefix = r"dpdk/"
     print "git clone %s %s/%s" % (gitURL, output, gitPrefix)
-    os.system("git clone %s ../output/%s" % (gitURL, gitPrefix))
-    print "git archive --format=tar.gz --prefix=%s %s -o ../%s" % (gitPrefix, gitLabel, gitPkg)
-    os.system("cd ../output/%s && git archive --format=tar.gz --prefix=%s %s -o ../%s" % (gitPrefix, gitPrefix, gitLabel, gitPkg))
+    os.system("git clone %s output/%s" % (gitURL, gitPrefix))
+    print "git archive --format=tar.gz --prefix=%s %s -o %s" % (gitPrefix, gitLabel, gitPkg)
+    os.system("cd output/%s && git archive --format=tar.gz --prefix=%s %s -o %s" % (gitPrefix, gitPrefix, gitLabel, gitPkg))
 
 #
 # Main program begins here
@@ -60,7 +60,7 @@ def git_build_package(gitLabel, gitPkg, output):
 parser = argparse.ArgumentParser(description='DPDK test framework.')
 
 parser.add_argument('--config-file',
-                    default='../execution.cfg',
+                    default='execution.cfg',
                     help='configuration file that describes the test ' +
                     'cases, DUTs and targets')
 
@@ -72,11 +72,11 @@ parser.add_argument('--patch',
                     help='apply a patch to the package under test')
 
 parser.add_argument('--snapshot',
-                    default='../dpdk.tar.gz',
+                    default='dpdk.tar.gz',
                     help='snapshot .tgz file to use as input')
 
 parser.add_argument('--output',
-                    default='../output',
+                    default='output',
                     help='Output directory where dts log and result saved')
 
 parser.add_argument('-s', '--skip-setup',
@@ -95,7 +95,7 @@ parser.add_argument('-p', '--project',
                     help='specify that which project will be tested')
 
 parser.add_argument('--suite-dir',
-                    default='../tests',
+                    default='tests',
                     help='Test suite directory where test suites will be imported')
 
 parser.add_argument('-t', '--test-cases',

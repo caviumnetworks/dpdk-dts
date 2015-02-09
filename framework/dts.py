@@ -42,7 +42,7 @@ import rst          # rst file support
 from crbs import crbs
 from tester import Tester
 from dut import Dut
-from settings import NICS, DRIVERS
+from settings import FOLDERS, NICS, DRIVERS
 from serializer import Serializer
 from exception import VerifyFailure
 from test_case import TestCase
@@ -128,7 +128,7 @@ def close_crb_sessions():
         dut.close()
     if tester is not None:
         tester.close()
-    log_handler.info("DTF ended")
+    log_handler.info("DTS ended")
 
 
 def get_nic_driver(pci_id):
@@ -401,9 +401,17 @@ def run_all(config_file, pkgName, git, patch, skip_setup,
     global stats
     global log_handler
 
+    # change operation directory
+    os.chdir("../")
+
     # prepare the output folder
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
+
+    # add python module search path
+    for folder in FOLDERS.values():
+        sys.path.append(folder)
+    sys.path.append(suite_dir)
 
     # init log_handler handler
     if verbose is True:
@@ -423,7 +431,6 @@ def run_all(config_file, pkgName, git, patch, skip_setup,
     # register exit action
     atexit.register(close_crb_sessions)
 
-    sys.path.append(suite_dir)
     os.environ["TERM"] = "dumb"
 
     serializer = Serializer()

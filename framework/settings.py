@@ -28,6 +28,14 @@
 # THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+"""
+Folders for framework running enviornment.
+"""
+FOLDERS = {
+    'Framework'     : 'framework',
+    'Testscripts'   : 'tests',
+    'Configuration' : 'conf',
+}
 
 """
 Nics and its identifiers supported by the framework.
