@@ -61,8 +61,8 @@ class SSHConnection(object):
     def isalive(self):
         return self.session.isalive()
 
-    def copy_file_from(self, filename, password=''):
-        self.session.copy_file_from(filename, password)
+    def copy_file_from(self, src, dst = ".", password=''):
+        self.session.copy_file_from(src, dst, password)
 
-    def copy_file_to(self, filename, password=''):
-        self.session.copy_file_to(filename, password)
+    def copy_file_to(self, src, dst = "~/", password=''):
+        self.session.copy_file_to(src, dst, password)
