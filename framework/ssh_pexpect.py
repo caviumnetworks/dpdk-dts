@@ -66,21 +66,21 @@ class SSHPexpect(object):
     def isalive(self):
         return self.session.isalive()
 
-    def copy_file_from(self, filename, password=''):
+    def copy_file_from(self, src, dst = ".", password=''):
         """
         Copies a file from a remote place into local.
         """
-        command = 'scp {0}@{1}:{2} .'.format(self.username, self.host, filename)
+        command = 'scp {0}@{1}:{2} {3}'.format(self.username, self.host, src, dst)
         if password == '':
             self._spawn_scp(command, self.password)
         else:
             self._spawn_scp(command, password)
 
-    def copy_file_to(self, filename, password=''):
+    def copy_file_to(self, src, dst = "~/", password=''):
         """
         Sends a local file to a remote place.
         """
-        command = 'scp {0} {1}@{2}:'.format(filename, self.username, self.host)
+        command = 'scp {0} {1}@{2}:{3}'.format(src, self.username, self.host, dst)
         if password == '':
             self._spawn_scp(command, self.password)
         else:
