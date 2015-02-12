@@ -66,6 +66,7 @@ NICS = {
     'fortville_eagle': '8086:1572',
     'fortville_spirit': '8086:1583',
     'fortville_spirit_single': '8086:1584',
+    'redrockcanyou': '8086:15a4',
 }
 
 DRIVERS = {
@@ -93,7 +94,8 @@ DRIVERS = {
     'I218LM': 'igb',
     'fortville_eagle': 'i40e',
     'fortville_spirit': 'i40e',
-    'fortville_spirit_single':'i40e'
+    'fortville_spirit_single':'i40e',
+    'redrockcanyou': 'fm10k',
 }
 
 """
