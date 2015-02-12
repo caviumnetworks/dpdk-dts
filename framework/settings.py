@@ -55,6 +55,7 @@ NICS = {
     'I217LM': '8086:153a',
     'I218V': '8086:1559',
     'I218LM': '8086:155a',
+    'redrockcanyou': '8086:15a4',
 }
 
 DRIVERS = {
@@ -80,6 +81,7 @@ DRIVERS = {
     'I217LM': 'igb',
     'I218V': 'igb',
     'I218LM': 'igb',
+    'redrockcanyou': 'fm10k',
 }
 
 """
