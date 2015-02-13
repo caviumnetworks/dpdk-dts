@@ -51,6 +51,7 @@ class Dut(Crb):
     or CRBBareMetal.
     """
 
+    PORT_MAP_CACHE_KEY = 'dut_port_map'
     PORT_INFO_CACHE_KEY = 'dut_port_info'
     NUMBER_CORES_CACHE_KEY = 'dut_number_cores'
     CORE_LIST_CACHE_KEY = 'dut_core_list'
@@ -72,6 +73,7 @@ class Dut(Crb):
         self.architecture = None
         self.ports_info = None
         self.conf = UserConf()
+        self.ports_map = []
 
     def change_config_option(self, target, parameter, value):
         """
@@ -163,6 +165,11 @@ class Dut(Crb):
         # load port infor from config file
         self.load_portconf()
         self.mount_procfs()
+        # auto detect network topology
+        self.map_available_ports()
+        if self.ports_map is None or len(self.ports_map) == 0:
+            raise ValueError("ports_map should not be empty, please check all links")
+
 
     def restore_interfaces(self):
         """
@@ -577,3 +584,63 @@ class Dut(Crb):
                     if key in port and port_cfg[key] != port[key]:
                         self.logger.warning("CONGGURED %s NOT SAME AS SCANNED!!!" % (key.upper()))
                     port[key] = port_cfg[key]
+
+    def map_available_ports(self):
+        """
+        Load or generate network connection mapping list.
+        """
+        if self.read_cache:
+            self.ports_map = self.serializer.load(self.PORT_MAP_CACHE_KEY)
+
+        if not self.read_cache or self.ports_map is None:
+            self.map_available_ports_uncached()
+            self.serializer.save(self.PORT_MAP_CACHE_KEY, self.ports_map)
+            self.logger.warning("DUT PORT MAP: " + str(self.ports_map))
+
+    def map_available_ports_uncached(self):
+        """
+        Generate network connection mapping list.
+        """
+
+        nrPorts = len(self.ports_info)
+        if nrPorts == 0:
+            return
+
+        self.ports_map = [-1] * nrPorts
+
+        hits = [False] * len(self.tester.ports_info)
+
+        for dutPort in range(nrPorts):
+            peer = self.get_peer_pci(dutPort)
+            dutpci = self.ports_info[dutPort]['pci']
+            if peer is not None:
+                for remotePort in range(len(self.tester.ports_info)):
+                    if self.tester.ports_info[localPort]['pci'] == peer:
+                        hits[remotePort] = True
+                        self.ports_map[dutPort] = remotePort
+                        break
+                if self.ports_map[dutPort] == -1:
+                    self.logger.error("CONFIGURED TESTER PORT CANNOT FOUND!!!")
+                else:
+                    continue  # skip ping6 map
+
+            for remotePort in range(len(self.tester.ports_info)):
+                if hits[remotePort]:
+                    continue
+
+                # skip ping self port
+                remotepci = self.tester.ports_info[remotePort]['pci']
+                if (self.crb['IP'] == self.crb['tester IP']) and (dutpci == remotepci):
+                    continue
+
+                ipv6 = self.get_ipv6_address(dutPort)
+                if ipv6 == "Not connected":
+                    continue
+
+                out = self.tester.send_ping6(remotePort, ipv6, self.get_mac_address(dutPort))
+
+                if ('64 bytes from' in out):
+                    self.logger.info("PORT MAP: [dut %d: tester %d]" % (dutPort, remotePort))
+                    hits[remotePort] = True
+                    self.ports_map[dutPort] = remotePort
+                    break

@@ -303,8 +303,8 @@ def dts_run_prerequisties(pkgName, patch):
     Run dts prerequisties function.
     """
     try:
-        dut.prerequisites(pkgName, patch)
         tester.prerequisites(performance_only)
+        dut.prerequisites(pkgName, patch)
 
         serializer.save_to_file()
     except Exception as ex:

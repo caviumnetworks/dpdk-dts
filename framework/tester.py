@@ -50,7 +50,6 @@ class Tester(Crb):
     A config file and pcap file must have previously been copied
     to this machine.
     """
-    PORT_MAP_CACHE_KEY = 'tester_port_map'
     PORT_INFO_CACHE_KEY = 'tester_port_info'
     CORE_LIST_CACHE_KEY = 'tester_core_list'
     NUMBER_CORES_CACHE_KEY = 'tester_number_cores'
@@ -68,7 +67,6 @@ class Tester(Crb):
                                          self.NAME, self.get_password())
         self.alt_session.init_log(self.logger)
 
-        self.ports_map = []
         self.bgProcIsRunning = False
         self.dut = None
         self.inBg = 0
@@ -132,15 +130,12 @@ class Tester(Crb):
         self.pci_devices_information()
         self.restore_interfaces()
         self.scan_ports()
-        self.map_available_ports()
-        if self.ports_map is None or len(self.ports_map) == 0:
-            raise ValueError("ports_map should not be empty, please check all links")
 
     def get_local_port(self, remotePort):
         """
         Return tester local port connect to specified dut port.
         """
-        return self.ports_map[remotePort]
+        return self.dut.ports_map[remotePort]
 
     def get_local_port_type(self, remotePort):
         """
@@ -253,66 +248,6 @@ class Tester(Crb):
             return self.ixia_packet_gen.send_ping6(self.ports_info[localPort]['intf'], mac, ipv6)
         else:
             return self.send_expect("ping6 -w 5 -c 5 -A -I %s %s" % (self.ports_info[localPort]['intf'], ipv6), "# ", 10)
-
-    def map_available_ports(self):
-        """
-        Load or generate network connection mapping list.
-        """
-        if self.read_cache:
-            self.ports_map = self.serializer.load(self.PORT_MAP_CACHE_KEY)
-
-        if not self.read_cache or self.ports_map is None:
-            self.map_available_ports_uncached()
-            self.serializer.save(self.PORT_MAP_CACHE_KEY, self.ports_map)
-            self.logger.warning("DUT PORT MAP: " + str(self.ports_map))
-
-    def map_available_ports_uncached(self):
-        """
-        Generate network connection mapping list.
-        """
-
-        nrPorts = len(self.dut.ports_info)
-        if nrPorts == 0:
-            return
-
-        self.ports_map = [-1] * nrPorts
-
-        hits = [False] * len(self.ports_info)
-
-        for dutPort in range(nrPorts):
-            peer = self.dut.get_peer_pci(dutPort)
-            dutpci = self.dut.ports_info[dutPort]['pci']
-            if peer is not None:
-                for localPort in range(len(self.ports_info)):
-                    if self.ports_info[localPort]['pci'] == peer:
-                        hits[localPort] = True
-                        self.ports_map[dutPort] = localPort
-                        break
-                if self.ports_map[dutPort] == -1:
-                    self.logger.error("CONFIGURED TESTER PORT CANNOT FOUND!!!")
-                else:
-                    continue  # skip ping6 map
-
-            for localPort in range(len(self.ports_info)):
-                if hits[localPort]:
-                    continue
-
-                # skip ping self port
-                localpci = self.ports_info[localPort]['pci']
-                if (self.crb['IP'] == self.crb['tester IP']) and (dutpci == localpci):
-                    continue
-
-                ipv6 = self.dut.get_ipv6_address(dutPort)
-                if ipv6 == "Not connected":
-                    continue
-
-                out = self.send_ping6(localPort, ipv6, self.dut.get_mac_address(dutPort))
-
-                if ('64 bytes from' in out):
-                    self.logger.info("PORT MAP: [local %d: dut %d]" % (localPort, dutPort))
-                    hits[localPort] = True
-                    self.ports_map[dutPort] = localPort
-                    break
 
     def get_port_numa(self, port):
         """
