@@ -51,7 +51,7 @@ class SSHConnection(object):
 
     def send_expect(self, cmds, expected, timeout=15, verify=False):
         self.logger.info(cmds)
-        out = self.session.send_expect(cmds, expected, timeout, verify=False)
+        out = self.session.send_expect(cmds, expected, timeout, verify)
         self.logger.debug(out)
         return out
 

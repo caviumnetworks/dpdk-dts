@@ -43,23 +43,23 @@ import dts
 os.chdir("../")
 
 
-def git_build_package(gitLabel, gitPkg, output):
+def git_build_package(gitLabel, pkgName, depot="dep"):
     """
     generate package from git, if dpdk existed will pull latest code
     """
     gitURL = r"http://dpdk.org/git/dpdk"
     gitPrefix = r"dpdk/"
-    if os.path.exists("%s/%s" % (output, gitPrefix)) is True:
-        ret = os.system("cd %s/%s && git pull --force" % (output, gitPrefix))
+    if os.path.exists("%s/%s" % (depot, gitPrefix)) is True:
+        ret = os.system("cd %s/%s && git pull --force" % (depot, gitPrefix))
     else:
-        print "git clone %s %s/%s" % (gitURL, output, gitPrefix)
-        ret = os.system("git clone %s output/%s" % (gitURL, gitPrefix))
+        print "git clone %s %s/%s" % (gitURL, depot, gitPrefix)
+        ret = os.system("git clone %s %s/%s" % (gitURL, depot, gitPrefix))
     if ret is not 0:
         raise EnvironmentError
 
-    print "git archive --format=tar.gz --prefix=%s %s -o %s" % (gitPrefix, gitLabel, gitPkg)
-    ret = os.system("cd %s/%s && git archive --format=tar.gz --prefix=%s/ %s -o ../../%s"
-                    % (output, gitPrefix, gitPrefix, gitLabel, gitPkg))
+    print "git archive --format=tar.gz --prefix=%s %s -o %s" % (gitPrefix, gitLabel, pkgName)
+    ret = os.system("cd %s/%s && git archive --format=tar.gz --prefix=%s/ %s -o ../%s"
+                    % (depot, gitPrefix, gitPrefix, gitLabel, pkgName))
     if ret is not 0:
         raise EnvironmentError
 
@@ -79,7 +79,7 @@ parser.add_argument('--patch',
                     help='apply a patch to the package under test')
 
 parser.add_argument('--snapshot',
-                    default='dpdk.tar.gz',
+                    default='dep/dpdk.tar.gz',
                     help='snapshot .tgz file to use as input')
 
 parser.add_argument('--output',
@@ -110,7 +110,7 @@ parser.add_argument('-t', '--test-cases',
                     help='executes only the followings test cases')
 
 parser.add_argument('-d', '--dir',
-                    default='dpdk',
+                    default='~/dpdk',
                     help='Output directory where dpdk package is extracted')
 
 parser.add_argument('-v', '--verbose',
@@ -123,7 +123,7 @@ args = parser.parse_args()
 # prepare DPDK source test package, DTS will exited when failed.
 if args.git is not None:
     try:
-        git_build_package(args.git, args.snapshot, args.output)
+        git_build_package(args.git, os.path.split(args.snapshot)[1])
     except Exception:
         print "FAILED TO PREPARE DPDK PACKAGE!!!"
         sys.exit()

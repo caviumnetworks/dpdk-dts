@@ -198,10 +198,22 @@ class DPDKdut(Dut):
         if not self.skip_setup:
             assert (os.path.isfile(pkgName) is True), "Invalid package"
 
-            self.session.copy_file_to(pkgName)
+            p_dir, _ = os.path.split(self.base_dir)
+            # ToDo: make this configurable
+            dst_dir = "/tmp/"
+
+            out = self.send_expect("ll %s && cd %s" % (dst_dir, p_dir),
+                                   "#", verify = True)
+            if out == -1:
+                raise ValueError("Directiry %s or %s does not exist,"
+                                 "please check params -d"
+                                  % (p_dir, dst_dir))
+            self.session.copy_file_to(pkgName, dst_dir)
+
+            # put patches to p_dir/patches/
             if (patch is not None):
                 for p in patch:
-                    self.session.copy_file_to('../' + p)
+                    self.session.copy_file_to('dep/' + p, dst_dir)
 
             self.kill_all()
 
@@ -216,13 +228,25 @@ class DPDKdut(Dut):
             self.send_expect("rm -rf %s" % self.base_dir, "#")
 
             # unpack dpdk
-            out = self.send_expect("tar zxf " + pkgName.split('/')[-1], "# ", 20)
-            assert "Error" not in out
+            out = self.send_expect("tar zxf %s%s -C %s" %
+                                   (dst_dir, pkgName.split('/')[-1], p_dir),
+                                   "# ", 20, verify = True)
+            if out == -1:
+                raise ValueError("Extract dpdk package to %s failure,"
+                                 "please check params -d"
+                                  % (p_dir))
+
+            # check dpdk dir name is expect
+            out = self.send_expect("ls %s" % self.base_dir,
+                                   "# ", 20, verify = True)
+            if out == -1:
+                raise ValueError("dpdk dir %s mismatch, please check params -d"
+                                  % self.base_dir)
 
             if (patch is not None):
                 for p in patch:
-                    out = self.send_expect("patch -d %s -p1 < ../%s" %
-                                           (self.base_dir, p), "# ")
+                    out = self.send_expect("patch -d %s -p1 < %s" %
+                                           (self.base_dir, dst_dir + p), "# ")
                     assert "****" not in out
 
         self.dut_prerequisites()
