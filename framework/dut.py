@@ -227,6 +227,9 @@ class Dut(Crb):
                 arch_huge_pages = hugepages if hugepages > 0 else 1024
             elif self.architecture == "i686":
                 arch_huge_pages = hugepages if hugepages > 0 else 512
+            #set huge pagesize for x86_x32 abi target
+            elif self.architecture == "x86_x32":
+                arch_huge_pages = hugepages if hugepages > 0 else 256
 
             total_huge_pages = self.get_total_huge_pages()
 
