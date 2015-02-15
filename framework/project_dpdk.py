@@ -203,11 +203,11 @@ class DPDKdut(Dut):
             dst_dir = "/tmp/"
 
             out = self.send_expect("ll %s && cd %s" % (dst_dir, p_dir),
-                                   "#", verify = True)
+                                   "#", verify=True)
             if out == -1:
                 raise ValueError("Directiry %s or %s does not exist,"
                                  "please check params -d"
-                                  % (p_dir, dst_dir))
+                                 % (p_dir, dst_dir))
             self.session.copy_file_to(pkgName, dst_dir)
 
             # put patches to p_dir/patches/
@@ -230,18 +230,18 @@ class DPDKdut(Dut):
             # unpack dpdk
             out = self.send_expect("tar zxf %s%s -C %s" %
                                    (dst_dir, pkgName.split('/')[-1], p_dir),
-                                   "# ", 20, verify = True)
+                                   "# ", 20, verify=True)
             if out == -1:
                 raise ValueError("Extract dpdk package to %s failure,"
                                  "please check params -d"
-                                  % (p_dir))
+                                 % (p_dir))
 
             # check dpdk dir name is expect
             out = self.send_expect("ls %s" % self.base_dir,
-                                   "# ", 20, verify = True)
+                                   "# ", 20, verify=True)
             if out == -1:
                 raise ValueError("dpdk dir %s mismatch, please check params -d"
-                                  % self.base_dir)
+                                 % self.base_dir)
 
             if (patch is not None):
                 for p in patch:
