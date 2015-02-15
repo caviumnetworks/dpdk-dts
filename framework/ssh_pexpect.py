@@ -42,7 +42,7 @@ class SSHPexpect(object):
             if not int(ret_status):
                 return ret
             else:
-       self.logger.error("Command: %s failure!" % command)
+                self.logger.error("Command: %s failure!" % command)
                 return -1
         else:
             return ret

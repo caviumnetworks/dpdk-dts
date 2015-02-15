@@ -55,7 +55,8 @@ class Crb(object):
         self.serializer = serializer
         self.ports_info = None
 
-    def send_expect(self, cmds, expected, timeout=TIMEOUT, alt_session=False):
+    def send_expect(self, cmds, expected, timeout=TIMEOUT,
+                    alt_session=False, verify=False):
         """
         Send commands to crb and return string before expected string. If
         there's no expected string found before timeout, TimeoutException will
@@ -63,9 +64,10 @@ class Crb(object):
         """
 
         if alt_session:
-            return self.alt_session.session.send_expect(cmds, expected, timeout)
+            return self.alt_session.session.send_expect(cmds, expected,
+                                                        timeout, verify)
 
-        return self.session.send_expect(cmds, expected, timeout)
+        return self.session.send_expect(cmds, expected, timeout, verify)
 
     def set_test_types(self, func_tests, perf_tests):
         """
