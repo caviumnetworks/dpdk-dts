@@ -32,9 +32,9 @@
 Folders for framework running enviornment.
 """
 FOLDERS = {
-    'Framework'     : 'framework',
-    'Testscripts'   : 'tests',
-    'Configuration' : 'conf',
+    'Framework': 'framework',
+    'Testscripts': 'tests',
+    'Configuration': 'conf',
 }
 
 """
@@ -94,7 +94,7 @@ DRIVERS = {
     'I218LM': 'igb',
     'fortville_eagle': 'i40e',
     'fortville_spirit': 'i40e',
-    'fortville_spirit_single':'i40e',
+    'fortville_spirit_single': 'i40e',
     'redrockcanyou': 'fm10k',
 }
 

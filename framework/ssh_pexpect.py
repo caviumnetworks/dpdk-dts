@@ -78,7 +78,7 @@ class SSHPexpect(object):
     def isalive(self):
         return self.session.isalive()
 
-    def copy_file_from(self, src, dst = ".", password=''):
+    def copy_file_from(self, src, dst=".", password=''):
         """
         Copies a file from a remote place into local.
         """
@@ -88,7 +88,7 @@ class SSHPexpect(object):
         else:
             self._spawn_scp(command, password)
 
-    def copy_file_to(self, src, dst = "~/", password=''):
+    def copy_file_to(self, src, dst="~/", password=''):
         """
         Sends a local file to a remote place.
         """

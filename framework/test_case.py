@@ -79,6 +79,6 @@ class TestCase(object):
         elif self.nic in ["fortville_spirit", "fortville_spirit_single"]:
             bitrate *= 40
         elif self.nic == 'fortville_eagle':
-           bitrate *= 10
+            bitrate *= 10
 
         return bitrate * num_ports / 8 / (frame_size + 20)

@@ -170,7 +170,6 @@ class Dut(Crb):
         if self.ports_map is None or len(self.ports_map) == 0:
             raise ValueError("ports_map should not be empty, please check all links")
 
-
     def restore_interfaces(self):
         """
         Restore all ports's interfaces.
@@ -234,7 +233,7 @@ class Dut(Crb):
                 arch_huge_pages = hugepages if hugepages > 0 else 1024
             elif self.architecture == "i686":
                 arch_huge_pages = hugepages if hugepages > 0 else 512
-            #set huge pagesize for x86_x32 abi target
+            # set huge pagesize for x86_x32 abi target
             elif self.architecture == "x86_x32":
                 arch_huge_pages = hugepages if hugepages > 0 else 256
 
