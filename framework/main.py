@@ -35,26 +35,33 @@ A test framework for testing DPDK.
 """
 
 import os
+import sys
 import argparse
 import dts
+
+# change operation directory
+os.chdir("../")
 
 
 def git_build_package(gitLabel, gitPkg, output):
     """
-    generate package from git
-    run bash shell
+    generate package from git, if dpdk existed will pull latest code
     """
     gitURL = r"http://dpdk.org/git/dpdk"
     gitPrefix = r"dpdk/"
-    print "git clone %s %s/%s" % (gitURL, output, gitPrefix)
-    os.system("git clone %s output/%s" % (gitURL, gitPrefix))
+    if os.path.exists("%s/%s" % (output, gitPrefix)) is True:
+        ret = os.system("cd %s/%s && git pull --force" % (output, gitPrefix))
+    else:
+        print "git clone %s %s/%s" % (gitURL, output, gitPrefix)
+        ret = os.system("git clone %s output/%s" % (gitURL, gitPrefix))
+    if ret is not 0:
+        raise EnvironmentError
+
     print "git archive --format=tar.gz --prefix=%s %s -o %s" % (gitPrefix, gitLabel, gitPkg)
-    os.system("cd output/%s && git archive --format=tar.gz --prefix=%s %s -o %s" % (gitPrefix, gitPrefix, gitLabel, gitPkg))
-
-#
-# Main program begins here
-#
-
+    ret = os.system("cd %s/%s && git archive --format=tar.gz --prefix=%s/ %s -o ../../%s"
+                    % (output, gitPrefix, gitPrefix, gitLabel, gitPkg))
+    if ret is not 0:
+        raise EnvironmentError
 
 # Read cmd-line args
 parser = argparse.ArgumentParser(description='DPDK test framework.')
@@ -113,10 +120,15 @@ parser.add_argument('-v', '--verbose',
 args = parser.parse_args()
 
 
-# prepare DPDK source test package
+# prepare DPDK source test package, DTS will exited when failed.
 if args.git is not None:
-    git_build_package(args.git, args.snapshot, args.output)
+    try:
+        git_build_package(args.git, args.snapshot, args.output)
+    except Exception:
+        print "FAILED TO PREPARE DPDK PACKAGE!!!"
+        sys.exit()
 
+# Main program begins here
 dts.run_all(args.config_file, args.snapshot, args.git,
             args.patch, args.skip_setup, args.read_cache,
             args.project, args.suite_dir, args.test_cases,

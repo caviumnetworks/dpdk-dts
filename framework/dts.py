@@ -401,9 +401,6 @@ def run_all(config_file, pkgName, git, patch, skip_setup,
     global stats
     global log_handler
 
-    # change operation directory
-    os.chdir("../")
-
     # prepare the output folder
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
