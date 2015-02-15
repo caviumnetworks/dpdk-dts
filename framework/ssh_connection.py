@@ -49,9 +49,9 @@ class SSHConnection(object):
         self.logger.config_execution(self.name)
         self.session.init_log(logger, self.name)
 
-    def send_expect(self, cmds, expected, timeout=15):
+    def send_expect(self, cmds, expected, timeout=15, verify=False):
         self.logger.info(cmds)
-        out = self.session.send_expect(cmds, expected, timeout)
+        out = self.session.send_expect(cmds, expected, timeout, verify=False)
         self.logger.debug(out)
         return out
 

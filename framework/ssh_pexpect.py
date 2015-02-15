@@ -29,11 +29,23 @@ class SSHPexpect(object):
         self.logger.config_execution(name)
         self.logger.info("ssh %s@%s" % (self.username, self.host))
 
-    def send_expect(self, command, expected, timeout=15):
+    def send_expect_base(self, command, expected, timeout=15):
         self.session.PROMPT = expected
         self.__sendline(command)
         self.__prompt(command, timeout)
         return self.get_output_before()
+
+    def send_expect(self, command, expected, timeout=15, verify=False):
+        ret = self.send_expect_base(command, expected, timeout)
+        if verify:
+            ret_status = self.send_expect_base("echo $?", expected)
+            if not int(ret_status):
+                return ret
+            else:
+       self.logger.error("Command: %s failure!" % command)
+                return -1
+        else:
+            return ret
 
     def __prompt(self, command, timeout):
         if not self.session.prompt(timeout):
