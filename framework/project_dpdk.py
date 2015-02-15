@@ -332,8 +332,8 @@ class DPDKtester(Tester):
                 self.mount_huge_pages()
                 self.set_huge_pages(1024)
 
-            self.session.copy_file_to("tgen.tgz")
-            self.session.copy_file_to("tclclient.tgz")
+            self.session.copy_file_to("dep/tgen.tgz")
+            self.session.copy_file_to("dep/tclclient.tgz")
             # unpack tgen
             out = self.send_expect("tar zxf tgen.tgz", "# ")
             assert "Error" not in out
