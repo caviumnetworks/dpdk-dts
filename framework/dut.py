@@ -82,12 +82,12 @@ class Dut(Crb):
         self.send_expect("sed -i 's/%s=.*$/%s=%s/'  config/defconfig_%s" %
                          (parameter, parameter, value, target), "# ")
 
-    def set_nic_types(self, nics):
+    def set_nic_type(self, nic):
         """
         Set CRB NICS ready to validated.
         """
-        self.nics = nics
-        if 'cfg' in nics:
+        self.nic = nic
+        if 'cfg' in nic:
             self.conf.load_ports_config(self.get_ip_address())
 
     def set_toolchain(self, target):
@@ -167,6 +167,8 @@ class Dut(Crb):
         self.mount_procfs()
         # auto detect network topology
         self.map_available_ports()
+        # print latest ports_info
+        self.logger.info(dts.pprint(self.ports_info))
         if self.ports_map is None or len(self.ports_map) == 0:
             raise ValueError("ports_map should not be empty, please check all links")
 
@@ -305,7 +307,6 @@ class Dut(Crb):
         Return DUT port list with the filter of NIC type, whether run IXIA
         performance test, whether request specified socket.
         """
-
         ports = []
         candidates = []
 
@@ -313,33 +314,28 @@ class Dut(Crb):
             perf = self.want_perf_tests
 
         nictypes = []
-        if nic_type == 'any' and perf:
+        if nic_type == 'any':
+            for portid in range(len(self.ports_info)):
+                ports.append(portid)
             return ports
-
-        for nic in NICS.keys():
-            if ('any' == nic_type) or (nic_type in nic):
-                nictypes.append(nic)
-
-        for portid in range(len(self.ports_info)):
-            for nictype in nictypes:
-
-                if self.ports_info[portid]['type'] == NICS[nictype]:
-                    if (socket is None or
-                        self.ports_info[portid]['numa'] == -1 or
-                            socket == self.ports_info[portid]['numa']):
-
-                        if (self.ports_info[portid]['ipv6'] != "Not connected" and
-                                self.tester.get_local_port(portid) != -1):
-                            if perf and self.tester.get_local_port_type(portid) != "ixia":
-                                candidates.append(portid)
-                                continue
-                            elif False == perf and self.tester.get_local_port_type(portid) == "ixia":
-                                continue
-                            ports.append(portid)
-
-        if perf and not self.tester.has_external_traffic_generator():
-            return candidates
+        elif nic_type == 'cfg':
+            for portid in range(len(self.ports_info)):
+                if self.ports_info[portid]['source'] == 'cfg':
+                    ports.append(portid)
+            return ports
         else:
+            for portid in range(len(self.ports_info)):
+                port_info = self.ports_info[portid]
+                # match nic type
+                if port_info['type'] == NICS[nic_type]:
+                    # match numa or none numa awareness
+                    if (socket is None or
+                        port_info['numa'] == -1 or
+                            socket == port_info['numa']):
+                        # port has link
+                        if (port_info['ipv6'] != "Not connected" and
+                                self.tester.get_local_port(portid) != -1):
+                            ports.append(portid)
             return ports
 
     def get_ports_performance(self, nic_type='any', perf=None, socket=None,
@@ -410,6 +406,14 @@ class Dut(Crb):
 
         return self.ports_info[port_num]['numa']
 
+    def get_port_info(self, pci):
+        """
+        return port info by pci id
+        """
+        for port_info in self.ports_info:
+            if port_info['pci'] == pci:
+                return port_info
+
     def lcore_table_print(self, horizontal=False):
         if not horizontal:
             dts.results_table_add_header(['Socket', 'Core', 'Thread'])
@@ -436,20 +440,17 @@ class Dut(Crb):
         Check that whether auto scanned ports ready to use
         """
         pci_addr = "%s:%s" % (pci_bus, pci_id)
-        codenames = []
-        for nic in self.nics:
-            if nic == 'any':
-                return True
-            elif nic == 'cfg':
-                if self.conf.check_port_available(pci_bus) is True:
-                    return True
-            elif nic not in NICS.keys():
-                self.logger.warning("NOT SUPPORTED NIC TYPE: %s" % nic)
-            else:
-                codenames.append(NICS[nic])
-
-        if pci_id in codenames:
+        if self.nic == 'any':
             return True
+        elif self.nic == 'cfg':
+            if self.conf.check_port_available(pci_bus) is True:
+                return True
+        elif self.nic not in NICS.keys():
+            self.logger.warning("NOT SUPPORTED NIC TYPE: %s" % self.nic)
+        else:
+            codename = NICS[self.nic]
+            if pci_id == codename:
+                return True
 
         return False
 
@@ -490,8 +491,6 @@ class Dut(Crb):
         if not self.read_cache or self.ports_info is None:
             self.scan_ports_uncached()
             self.serializer.save(self.PORT_INFO_CACHE_KEY, self.ports_info)
-
-        self.logger.info(dts.pprint(self.ports_info))
 
     def scan_ports_uncached(self):
         """
@@ -578,10 +577,10 @@ class Dut(Crb):
             else:
                 port_cfg = {}
 
-            for key in ['intf', 'mac', 'numa', 'peer']:
+            for key in ['intf', 'mac', 'numa', 'peer', 'source']:
                 if key in port_cfg:
                     if key in port and port_cfg[key] != port[key]:
-                        self.logger.warning("CONGGURED %s NOT SAME AS SCANNED!!!" % (key.upper()))
+                        self.logger.warning("CONFIGURED %s NOT SAME AS SCANNED!!!" % (key.upper()))
                     port[key] = port_cfg[key]
 
     def map_available_ports(self):
@@ -594,17 +593,18 @@ class Dut(Crb):
         if not self.read_cache or self.ports_map is None:
             self.map_available_ports_uncached()
             self.serializer.save(self.PORT_MAP_CACHE_KEY, self.ports_map)
-            self.logger.warning("DUT PORT MAP: " + str(self.ports_map))
+
+        self.logger.warning("DUT PORT MAP: " + str(self.ports_map))
 
     def map_available_ports_uncached(self):
         """
         Generate network connection mapping list.
         """
-
         nrPorts = len(self.ports_info)
         if nrPorts == 0:
             return
 
+        remove = []
         self.ports_map = [-1] * nrPorts
 
         hits = [False] * len(self.tester.ports_info)
@@ -632,6 +632,7 @@ class Dut(Crb):
                 if (self.crb['IP'] == self.crb['tester IP']) and (dutpci == remotepci):
                     continue
 
+                # skip ping those not connected port
                 ipv6 = self.get_ipv6_address(dutPort)
                 if ipv6 == "Not connected":
                     continue
@@ -640,6 +641,18 @@ class Dut(Crb):
 
                 if ('64 bytes from' in out):
                     self.logger.info("PORT MAP: [dut %d: tester %d]" % (dutPort, remotePort))
-                    hits[remotePort] = True
                     self.ports_map[dutPort] = remotePort
+                    hits[remotePort] = True
+                    if self.crb['IP'] == self.crb['tester IP']:
+                        # remove dut port act as tester port
+                        remove_port = self.get_port_info(remotepci)
+                        if remove_port is not None:
+                            remove.append(remove_port)
+                        # skip ping from those port already act as dut port
+                        testerPort = self.tester.get_local_index(dutpci)
+                        if testerPort != -1:
+                            hits[testerPort] = True
                     break
+
+        for port in remove:
+            self.ports_info.remove(port)

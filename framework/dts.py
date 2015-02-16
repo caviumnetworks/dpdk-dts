@@ -64,7 +64,7 @@ results_table_rows = []
 results_table_header = []
 performance_only = False
 functional_only = False
-nics = None
+nic = None
 requested_tests = None
 dut = None
 tester = None
@@ -151,13 +151,12 @@ def accepted_nic(pci_id):
     if pci_id not in NICS.values():
         return False
 
-    if 'any' in nics:
+    if nic is 'any':
         return True
 
     else:
-        for selected_nic in nics:
-            if pci_id == NICS[selected_nic]:
-                return True
+        if pci_id == NICS[nic]:
+            return True
 
     return False
 
@@ -211,9 +210,9 @@ def dts_parse_config(section):
         if suite == '':
             test_suites.remove(suite)
 
-    nics = [_.strip() for _ in paramDict['nic_type'].split(',')]
+    nic = [_.strip() for _ in paramDict['nic_type'].split(',')][0]
 
-    return duts[0], targets, test_suites, nics
+    return duts[0], targets, test_suites, nic
 
 
 def get_project_obj(project_name, super_class, crbInst, serializer):
@@ -267,7 +266,7 @@ def dts_log_execution(log_handler):
         pass
 
 
-def dts_crbs_init(crbInst, skip_setup, read_cache, project, base_dir, nics):
+def dts_crbs_init(crbInst, skip_setup, read_cache, project, base_dir, nic):
     """
     Create dts dut/tester instance and initialize them.
     """
@@ -282,7 +281,7 @@ def dts_crbs_init(crbInst, skip_setup, read_cache, project, base_dir, nics):
     tester.dut = dut
     dut.set_speedup_options(read_cache, skip_setup)
     dut.set_directory(base_dir)
-    dut.set_nic_types(nics)
+    dut.set_nic_type(nic)
     tester.set_speedup_options(read_cache, skip_setup)
     show_speedup_options_messages(read_cache, skip_setup)
     dut.set_test_types(func_tests=functional_only, perf_tests=performance_only)
@@ -315,7 +314,7 @@ def dts_run_prerequisties(pkgName, patch):
         return False
 
 
-def dts_run_target(crbInst, targets, test_suites, nics):
+def dts_run_target(crbInst, targets, test_suites, nic):
     """
     Run each target in execution targets.
     """
@@ -336,8 +335,7 @@ def dts_run_target(crbInst, targets, test_suites, nics):
 
         if 'nic_type' not in paramDict:
             paramDict['nic_type'] = 'any'
-            nics = ['any']
-        nic = nics[0]
+            nic = 'any'
         result.nic = nic
 
         dts_run_suite(crbInst, test_suites, target, nic)
@@ -394,7 +392,7 @@ def run_all(config_file, pkgName, git, patch, skip_setup,
 
     global config
     global serializer
-    global nics
+    global nic
     global requested_tests
     global result
     global excel_report
