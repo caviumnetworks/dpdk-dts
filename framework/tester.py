@@ -143,6 +143,22 @@ class Tester(Crb):
         """
         return self.ports_info[self.get_local_port(remotePort)]['type']
 
+    def get_local_index(self, pci):
+        """
+        Return tester local port index by pci id
+        """
+        index = -1
+        for port in self.ports_info:
+            index += 1
+            if pci == port['pci']:
+                return index
+
+    def get_pci(self, localPort):
+        """
+        Return tester local port pci id.
+        """
+        return self.ports_info[localPort]['pci']
+
     def get_interface(self, localPort):
         """
         Return tester local port interface name.
@@ -245,7 +261,7 @@ class Tester(Crb):
         Send ping6 packet from local port with destination ipv6 address.
         """
         if self.ports_info[localPort]['type'] == 'ixia':
-            return self.ixia_packet_gen.send_ping6(self.ports_info[localPort]['intf'], mac, ipv6)
+            return self.ixia_packet_gen.send_ping6(self.ports_info[localPort]['pci'], mac, ipv6)
         else:
             return self.send_expect("ping6 -w 5 -c 5 -A -I %s %s" % (self.ports_info[localPort]['intf'], ipv6), "# ", 10)
 
@@ -384,13 +400,13 @@ class Tester(Crb):
             instance.__dict__ = self.ixia_packet_gen.__dict__
             instance.__dict__.update(current_attrs)
 
-    def kill_all(self):
+    def kill_all(self, killall=False):
         """
-        Kill all scapy process and DPDK applications on tester.
+        Kill all scapy process or DPDK application on tester.
         """
         if not self.has_external_traffic_generator():
             self.alt_session.send_expect('killall scapy 2>/dev/null; echo tester', '# ', 5)
-        else:
+        if killall:
             super(Tester, self).kill_all()
 
     def close(self):
