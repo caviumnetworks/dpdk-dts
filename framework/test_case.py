@@ -33,8 +33,9 @@
 A base class for creating DTF test cases.
 """
 
+import dts
 from exception import VerifyFailure
-from settings import DRIVERS
+from settings import DRIVERS, NICS
 
 
 class TestCase(object):
@@ -67,18 +68,32 @@ class TestCase(object):
 
         raise ValueError(nic_name)
 
+    def get_nic_name(self, pci_id):
+        for nic_name, pci in NICS.items():
+            if pci_id == pci:
+                return nic_name
+
+        raise ValueError(nic_name)
+
     def wirespeed(self, nic, frame_size, num_ports):
         """
         Calculate bit rate. It is depended for NICs
         """
         bitrate = 1000.0  # 1Gb ('.0' forces to operate as float)
-        if self.get_nic_driver(self.nic) == "ixgbe":
+        if self.nic == "any" or self.nic == "cfg":
+            driver = dts.get_nic_driver(self.dut.ports_info[0]['type'])
+            nic = self.get_nic_name(self.dut.ports_info[0]['type'])
+        else:
+            driver = self.get_nic_driver(self.nic)
+            nic = self.nic
+
+        if driver == "ixgbe":
             bitrate *= 10  # 10 Gb NICs
-        elif self.nic == "avoton2c5":
+        elif nic == "avoton2c5":
             bitrate *= 2.5  # 2.5 Gb NICs
-        elif self.nic in ["fortville_spirit", "fortville_spirit_single"]:
+        elif nic in ["fortville_spirit", "fortville_spirit_single"]:
             bitrate *= 40
-        elif self.nic == 'fortville_eagle':
+        elif nic == 'fortville_eagle':
             bitrate *= 10
 
         return bitrate * num_ports / 8 / (frame_size + 20)

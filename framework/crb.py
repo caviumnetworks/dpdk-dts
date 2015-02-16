@@ -286,7 +286,6 @@ class Crb(object):
                 | awk '/config/ {print $2}'` ; do kill -9 $i; done"
         self.alt_session.session.send_expect(cmd, "# ", 10)
         time.sleep(.7)
-        self.check_os_type()
 
     def close(self):
         """
