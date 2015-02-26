@@ -431,7 +431,7 @@ class IxiaPacketGenerator(SSHConnection):
         """
         Convert IXIA fake pci to IXIA port.
         """
-        ixia_pci_regex = "IXIA:(\d).(\d)"
+        ixia_pci_regex = "IXIA:(\d*).(\d*)"
         m = re.match(ixia_pci_regex, pci)
         if m is None:
             return {'card': -1, 'port': -1}

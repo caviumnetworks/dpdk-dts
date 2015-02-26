@@ -614,7 +614,7 @@ class Dut(Crb):
             dutpci = self.ports_info[dutPort]['pci']
             if peer is not None:
                 for remotePort in range(len(self.tester.ports_info)):
-                    if self.tester.ports_info[localPort]['pci'] == peer:
+                    if self.tester.ports_info[remotePort]['pci'] == peer:
                         hits[remotePort] = True
                         self.ports_map[dutPort] = remotePort
                         break
