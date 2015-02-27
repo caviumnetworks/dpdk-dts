@@ -191,7 +191,12 @@ class Crb(object):
         Get interface name of specified pci device on linux.
         """
         command = 'ls --color=never /sys/bus/pci/devices/0000:%s:%s/net' % (bus_id, devfun_id)
-        return self.send_expect(command, '# ')
+        out = self.send_expect(command, '# ', verify=True)
+        if out == -1:
+            name = ""
+        else:
+            name = out.split()[0]
+        return name
 
     def get_interface_name_freebsd(self, bus_id, devfun_id):
         """

@@ -202,7 +202,7 @@ class DPDKdut(Dut):
             # ToDo: make this configurable
             dst_dir = "/tmp/"
 
-            out = self.send_expect("ll %s && cd %s" % (dst_dir, p_dir),
+            out = self.send_expect("ls %s && cd %s" % (dst_dir, p_dir),
                                    "#", verify=True)
             if out == -1:
                 raise ValueError("Directiry %s or %s does not exist,"
