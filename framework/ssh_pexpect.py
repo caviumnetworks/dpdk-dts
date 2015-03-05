@@ -13,6 +13,7 @@ Aslo support transfer files to tester or DUT.
 class SSHPexpect(object):
 
     def __init__(self, host, username, password):
+        self.magic_prompt = "[MAGIC PROMPT]"
         try:
             self.session = pxssh.pxssh()
             self.username = username
@@ -30,6 +31,8 @@ class SSHPexpect(object):
         self.logger.info("ssh %s@%s" % (self.username, self.host))
 
     def send_expect_base(self, command, expected, timeout=15):
+        # clear buffer
+        self.__flush()
         self.session.PROMPT = expected
         self.__sendline(command)
         self.__prompt(command, timeout)
@@ -46,6 +49,10 @@ class SSHPexpect(object):
                 return -1
         else:
             return ret
+
+    def __flush(self):
+        self.session.PROMPT = self.magic_prompt
+        self.session.prompt(0.1)
 
     def __prompt(self, command, timeout):
         if not self.session.prompt(timeout):
