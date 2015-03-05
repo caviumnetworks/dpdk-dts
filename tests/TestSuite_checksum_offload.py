@@ -74,21 +74,21 @@ class TestChecksumOffload(TestCase):
         Run before each test case.
         """
         if self.dut.want_func_tests:
-            self.pmdout.start_testpmd("1S/2C/2T", "--portmask=%s " % (self.portMask) + "--disable-hw-vlan --enable-rx-cksum --crc-strip")
+            self.pmdout.start_testpmd("1S/2C/2T", "--portmask=%s " % (self.portMask) + "--disable-hw-vlan --enable-rx-cksum --crc-strip --txqflags=0")
             self.dut.send_expect("set verbose 1", "testpmd>")
             self.dut.send_expect("set fwd csum", "testpmd>")
 
     def checksum_enablehw(self, port):
-            self.dut.send_expect("tx_checksum set ip hw %d" % port, "testpmd>")
-            self.dut.send_expect("tx_checksum set udp hw %d" % port, "testpmd>")
-            self.dut.send_expect("tx_checksum set tcp hw %d" % port, "testpmd>")
-            self.dut.send_expect("tx_checksum set sctp hw %d" % port, "testpmd>")
+            self.dut.send_expect("csum set ip hw %d" % port, "testpmd>")
+            self.dut.send_expect("csum set udp hw %d" % port, "testpmd>")
+            self.dut.send_expect("csum set tcp hw %d" % port, "testpmd>")
+            self.dut.send_expect("csum set sctp hw %d" % port, "testpmd>")
 
     def checksum_enablesw(self, port):
-            self.dut.send_expect("tx_checksum set ip sw %d" % port, "testpmd>")
-            self.dut.send_expect("tx_checksum set udp sw %d" % port, "testpmd>")
-            self.dut.send_expect("tx_checksum set tcp sw %d" % port, "testpmd>")
-            self.dut.send_expect("tx_checksum set sctp sw %d" % port, "testpmd>")
+            self.dut.send_expect("csum set ip sw %d" % port, "testpmd>")
+            self.dut.send_expect("csum set udp sw %d" % port, "testpmd>")
+            self.dut.send_expect("csum set tcp sw %d" % port, "testpmd>")
+            self.dut.send_expect("csum set sctp sw %d" % port, "testpmd>")
 
     def checksum_validate(self, packets_sent, packets_expected):
         """
