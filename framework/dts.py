@@ -358,7 +358,7 @@ def dts_run_suite(crbInst, test_suites, target, nic):
             test_module = __import__('TestSuite_' + test_suite)
             for test_classname, test_class in get_subclasses(test_module, TestCase):
 
-                test_suite = test_class(dut, tester, target, nic)
+                test_suite = test_class(dut, tester, target)
                 dts_log_testsuite(test_suite, log_handler, test_classname)
 
                 log_handler.info("\nTEST SUITE : " + test_classname)

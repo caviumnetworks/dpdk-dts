@@ -136,3 +136,12 @@ TIMEOUT = 15
 Global macro for dts.
 """
 IXIA = "ixia"
+
+def nic_name_from_type(type):
+    """
+    strip nic code name by nic type
+    """
+    for name, nic_type in NICS.items():
+        if nic_type == type:
+            return name
+    return 'Unknown'

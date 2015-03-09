@@ -35,16 +35,20 @@ A base class for creating DTF test cases.
 
 import dts
 from exception import VerifyFailure
-from settings import DRIVERS, NICS
+from settings import DRIVERS, NICS, nic_name_from_type
 
 
 class TestCase(object):
 
-    def __init__(self, dut, tester, target, nic):
+    def __init__(self, dut, tester, target):
         self.dut = dut
         self.tester = tester
         self.target = target
-        self.nic = nic
+        self.nics = []
+        for portid in range(len(self.dut.ports_info)):
+            nic_type = self.dut.ports_info[portid]['type']
+            self.nics.append(nic_name_from_type(nic_type))
+        self.nic = self.nics[0]
 
     def set_up_all(self):
         pass
