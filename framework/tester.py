@@ -64,7 +64,7 @@ class Tester(Crb):
                                      self.NAME, self.get_password())
         self.session.init_log(self.logger)
         self.alt_session = SSHConnection(self.get_ip_address(),
-                                         self.NAME, self.get_password())
+                                         self.NAME + '_alt', self.get_password())
         self.alt_session.init_log(self.logger)
 
         self.bgProcIsRunning = False

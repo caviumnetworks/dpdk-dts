@@ -64,7 +64,7 @@ class Dut(Crb):
         self.session = SSHConnection(self.get_ip_address(), self.NAME,
                                      self.get_password())
         self.session.init_log(self.logger)
-        self.alt_session = SSHConnection(self.get_ip_address(), self.NAME,
+        self.alt_session = SSHConnection(self.get_ip_address(), self.NAME + '_alt',
                                          self.get_password())
         self.alt_session.init_log(self.logger)
         self.number_of_cores = 0
@@ -232,7 +232,7 @@ class Dut(Crb):
 
         if int(hugepages_size) < (1024 * 1024):
             if self.architecture == "x86_64":
-                arch_huge_pages = hugepages if hugepages > 0 else 1024
+                arch_huge_pages = hugepages if hugepages > 0 else 4096
             elif self.architecture == "i686":
                 arch_huge_pages = hugepages if hugepages > 0 else 512
             # set huge pagesize for x86_x32 abi target
