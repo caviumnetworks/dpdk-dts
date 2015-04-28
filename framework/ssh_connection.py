@@ -32,6 +32,10 @@
 from ssh_pexpect import SSHPexpect
 from settings import USERNAME
 
+"""
+Global structure for saving connections
+"""
+CONNECTIONS = []
 
 class SSHConnection(object):
 
@@ -43,6 +47,9 @@ class SSHConnection(object):
     def __init__(self, host, session_name, password=''):
         self.session = SSHPexpect(host, USERNAME, password)
         self.name = session_name
+        connection = {}
+        connection[self.name] = self.session
+        CONNECTIONS.append(connection)
 
     def init_log(self, logger):
         self.logger = logger

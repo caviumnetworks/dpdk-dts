@@ -1,6 +1,7 @@
 import time
 import pexpect
 import pxssh
+from debugger import ignore_keyintr, aware_keyintr
 from exception import TimeoutException, SSHConnectionException
 
 """
@@ -31,12 +32,15 @@ class SSHPexpect(object):
         self.logger.info("ssh %s@%s" % (self.username, self.host))
 
     def send_expect_base(self, command, expected, timeout=15):
-        # clear buffer
-        self.__flush()
+        ignore_keyintr()
+        self.__flush() # clear buffer
         self.session.PROMPT = expected
         self.__sendline(command)
         self.__prompt(command, timeout)
-        return self.get_output_before()
+        aware_keyintr()
+
+        before = self.get_output_before()
+        return before
 
     def send_expect(self, command, expected, timeout=15, verify=False):
         ret = self.send_expect_base(command, expected, timeout)
