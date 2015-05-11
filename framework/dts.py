@@ -58,6 +58,7 @@ reload(sys)
 sys.setdefaultencoding('UTF8')
 
 
+debug_mode = False
 config = None
 table = None
 results_table_rows = []
@@ -385,7 +386,7 @@ def dts_run_suite(crbInst, test_suites, target, nic):
 
 def run_all(config_file, pkgName, git, patch, skip_setup,
             read_cache, project, suite_dir, test_cases,
-            base_dir, output_dir, verbose):
+            base_dir, output_dir, verbose, debug):
     """
     Main process of DTS, it will run all test suites in the config file.
     """
@@ -398,6 +399,7 @@ def run_all(config_file, pkgName, git, patch, skip_setup,
     global excel_report
     global stats
     global log_handler
+    global debug_mode
 
     # prepare the output folder
     if not os.path.exists(output_dir):
@@ -407,6 +409,10 @@ def run_all(config_file, pkgName, git, patch, skip_setup,
     for folder in FOLDERS.values():
         sys.path.append(folder)
     sys.path.append(suite_dir)
+
+    # enable debug mode
+    if debug is True:
+        debug_mode = True
 
     # init log_handler handler
     if verbose is True:

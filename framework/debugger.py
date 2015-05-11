@@ -131,6 +131,9 @@ def ignore_keyintr():
     """
     Temporary disable interrupt handler.
     """
+    if dts.debug_mode is False:
+        return
+
     global debug_cmd
     signal.siginterrupt(signal.SIGINT, True)
     # if there's waiting request, first handler it
@@ -144,4 +147,7 @@ def aware_keyintr():
     """
     Reenable interrupt handler.
     """
+    if dts.debug_mode is False:
+        return
+
     return signal.signal(signal.SIGINT, keyboard_handle)
