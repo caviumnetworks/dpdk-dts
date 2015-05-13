@@ -92,27 +92,10 @@ class TestPmd(TestCase):
             self.table_header.append("%s Mpps" % test_cycle['cores'])
             self.table_header.append("% linerate")
 
-        self.needed_ports = {"niantic": 2,
-                             "kawela_2": 2,
-                             "bartonhills": 4,
-                             "82545EM": 2,
-                             "82540EM": 2,
-                             "I217V": 1,
-                             "I217LM": 1,
-                             "I218V": 1,
-                             "I218LM": 1}
-
         self.blacklist = ""
 
-        self.verify(self.nic in ["kawela_2", "niantic", "bartonhills", "82545EM", "82540EM", "I217V", "I217LM", "I218V", "I218LM"],
-                    "NIC Unsupported: " + str(self.nic))
-
         # Based on h/w type, choose how many ports to use
-        self.dut_ports = self.dut.get_ports(self.nic)
-
-        # Verify that enough ports are available
-        self.verify(len(self.dut_ports) >= self.needed_ports[self.nic],
-                    "Insufficient ports for speed testing")
+        self.dut_ports = self.dut.get_ports()
 
         self.headers_size = HEADER_SIZE['eth'] + HEADER_SIZE[
             'ip'] + HEADER_SIZE['udp']
@@ -166,7 +149,7 @@ class TestPmd(TestCase):
                 queues = 1
 
             core_mask = dts.create_mask(core_list)
-            port_mask = dts.create_mask(self.dut.get_ports(self.nic))
+            port_mask = dts.create_mask(self.dut.get_ports())
 
             self.pmdout.start_testpmd("all", "--coremask=%s --rxq=%d --txq=%d --portmask=%s" % (core_mask, queues, queues, port_mask))
 

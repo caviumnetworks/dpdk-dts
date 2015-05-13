@@ -33,17 +33,22 @@
 A base class for creating DTF test cases.
 """
 
+import dts
 from exception import VerifyFailure
-from settings import DRIVERS
+from settings import DRIVERS, NICS, nic_name_from_type
 
 
 class TestCase(object):
 
-    def __init__(self, dut, tester, target, nic):
+    def __init__(self, dut, tester, target):
         self.dut = dut
         self.tester = tester
         self.target = target
-        self.nic = nic
+        self.nics = []
+        for portid in range(len(self.dut.ports_info)):
+            nic_type = self.dut.ports_info[portid]['type']
+            self.nics.append(nic_name_from_type(nic_type))
+        self.nic = self.nics[0]
 
     def set_up_all(self):
         pass
@@ -67,14 +72,32 @@ class TestCase(object):
 
         raise ValueError(nic_name)
 
+    def get_nic_name(self, pci_id):
+        for nic_name, pci in NICS.items():
+            if pci_id == pci:
+                return nic_name
+
+        raise ValueError(nic_name)
+
     def wirespeed(self, nic, frame_size, num_ports):
         """
         Calculate bit rate. It is depended for NICs
         """
         bitrate = 1000.0  # 1Gb ('.0' forces to operate as float)
-        if self.get_nic_driver(self.nic) == "ixgbe":
+        if self.nic == "any" or self.nic == "cfg":
+            driver = dts.get_nic_driver(self.dut.ports_info[0]['type'])
+            nic = self.get_nic_name(self.dut.ports_info[0]['type'])
+        else:
+            driver = self.get_nic_driver(self.nic)
+            nic = self.nic
+
+        if driver == "ixgbe":
             bitrate *= 10  # 10 Gb NICs
-        elif self.nic == "avoton2c5":
+        elif nic == "avoton2c5":
             bitrate *= 2.5  # 2.5 Gb NICs
+        elif nic in ["fortville_spirit", "fortville_spirit_single"]:
+            bitrate *= 40
+        elif nic == 'fortville_eagle':
+            bitrate *= 10
 
         return bitrate * num_ports / 8 / (frame_size + 20)

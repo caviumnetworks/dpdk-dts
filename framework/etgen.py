@@ -112,7 +112,7 @@ class SoftwarePacketGenerator():
 
         self.tester.send_expect("stop all", "Pktgen>")
         self.tester.send_expect("quit", "# ")
-        self.tester.kill_all()
+        self.tester.kill_all(killall=True)
         self.tester.restore_interfaces()
 
         return rx_bps, tx_bps, rx_pps
@@ -385,13 +385,13 @@ class IxiaPacketGenerator(SSHConnection):
                          string.join(['[list %d %d %d]' %
                                       (self.chasId, item['card'], item['port']) for item in pList], ' '))
 
-    def send_ping6(self, intf, mac, ipv6):
+    def send_ping6(self, pci, mac, ipv6):
         """
         Send ping6 packet from IXIA ports.
         """
         self.send_expect("source ./ixTcl1.0/ixiaPing6.tcl", "% ")
         out = self.send_expect('ping6 "%s" "%s" %d %d %d' %
-                               (self.ipv6_to_tcl_format(ipv6), self.macToTclFormat(mac), self.chasId, self.interface_to_port(intf)['card'], self.interface_to_port(intf)['port']), "% ", 90)
+                               (self.ipv6_to_tcl_format(ipv6), self.macToTclFormat(mac), self.chasId, self.pci_to_port(pci)['card'], self.pci_to_port(pci)['port']), "% ", 90)
         return out
 
     def ipv6_to_tcl_format(self, ipv6):
@@ -424,14 +424,19 @@ class IxiaPacketGenerator(SSHConnection):
             return plist
 
         for p in self.ports:
-            plist.append({'type': 'ixia', 'intf': '%d.%d' % (p['card'], p['port'])})
+            plist.append({'type': 'ixia', 'pci': 'IXIA:%d.%d' % (p['card'], p['port'])})
         return plist
 
-    def interface_to_port(self, intf):
+    def pci_to_port(self, pci):
         """
-        Convert IXIA interface to IXIA port.
+        Convert IXIA fake pci to IXIA port.
         """
-        return {'card': int(intf.split('.')[0]), 'port': int(intf.split('.')[1])}
+        ixia_pci_regex = "IXIA:(\d*).(\d*)"
+        m = re.match(ixia_pci_regex, pci)
+        if m is None:
+            return {'card': -1, 'port': -1}
+
+        return {'card': int(m.group(1)), 'port': int(m.group(2))}
 
     def loss(self, portList, ratePercent):
         """
@@ -539,19 +544,19 @@ class IxiaPacketGenerator(SSHConnection):
             rxPortlist.add(rxPort)
 
         # port init
-        self.config_port([self.interface_to_port(
-            self.tester.get_interface(port)) for port in txPortlist.union(rxPortlist)])
+        self.config_port([self.pci_to_port(
+            self.tester.get_pci(port)) for port in txPortlist.union(rxPortlist)])
 
         # stream/flow setting
         for (txPort, rxPort, pcapFile) in portList:
-            self.config_stream(pcapFile, self.interface_to_port(self.tester.get_interface(txPort)), rate_percent, 1, latency)
+            self.config_stream(pcapFile, self.pci_to_port(self.tester.get_pci(txPort)), rate_percent, 1, latency)
 
         # config stream before packetGroup
         if latency is not False:
             for (txPort, rxPort, pcapFile) in portList:
                 flow_num = len(self.parse_pcap(pcapFile))
-                self.config_pktGroup_rx(self.interface_to_port(self.tester.get_interface(rxPort)))
-                self.config_pktGroup_tx(self.interface_to_port(self.tester.get_interface(txPort)))
+                self.config_pktGroup_rx(self.pci_to_port(self.tester.get_pci(rxPort)))
+                self.config_pktGroup_tx(self.pci_to_port(self.tester.get_pci(txPort)))
         return rxPortlist, txPortlist
 
     def prepare_ixia_for_transmission(self, txPortlist, rxPortlist):
@@ -559,12 +564,12 @@ class IxiaPacketGenerator(SSHConnection):
         Clear all statistics and implement configuration to IXIA hareware.
         """
         self.add_tcl_cmd("ixClearStats portList")
-        self.set_ixia_port_list([self.interface_to_port(self.tester.get_interface(port)) for port in txPortlist])
+        self.set_ixia_port_list([self.pci_to_port(self.tester.get_pci(port)) for port in txPortlist])
         self.add_tcl_cmd("ixWriteConfigToHardware portList")
         for port in txPortlist:
-            self.start_pktGroup(self.interface_to_port(self.tester.get_interface(port)))
+            self.start_pktGroup(self.pci_to_port(self.tester.get_pci(port)))
         for port in rxPortlist:
-            self.start_pktGroup(self.interface_to_port(self.tester.get_interface(port)))
+            self.start_pktGroup(self.pci_to_port(self.tester.get_pci(port)))
 
     def get_transmission_results(self, rx_port_list, tx_port_list, delay=5):
         """
@@ -574,6 +579,7 @@ class IxiaPacketGenerator(SSHConnection):
         time.sleep(delay)
         bpsRate = 0
         rate = 0
+        oversize = 0
         for port in rx_port_list:
             self.stat_get_rate_stat_all_stats(port)
             out = self.send_expect("stat cget -framesReceived", '%', 10)
@@ -619,7 +625,7 @@ class IxiaPacketGenerator(SSHConnection):
         Get the connect relations between DUT and Ixia.
         """
         for port in dutPorts:
-            info = self.tester.get_interface(self.tester.get_local_port(port)).split('.')
+            info = self.tester.get_pci(self.tester.get_local_port(port)).split('.')
             self.conRelation[port] = [int(info[0]), int(info[1]), repr(self.tester.dut.get_mac_address(port).replace(':', ' ').upper())]
         return self.conRelation
 
@@ -656,7 +662,7 @@ class IxiaPacketGenerator(SSHConnection):
         Stop Packet Group operation on port and get current Packet Group
         statistics on port.
         """
-        port = self.interface_to_port(self.tester.get_interface(port_number))
+        port = self.pci_to_port(self.tester.get_pci(port_number))
         self.send_expect("ixStopPortPacketGroups %d %d %d" % (self.chasId, port['card'], port['port']), "%", 100)
         self.send_expect("packetGroupStats get %d %d %d 0 16384" % (self.chasId, port['card'], port['port']), "%", 100)
         self.send_expect("packetGroupStats getGroup 0", "%", 100)
@@ -674,7 +680,7 @@ class IxiaPacketGenerator(SSHConnection):
         """
         Sends a IXIA TCL command to obtain all the stat values on a given port.
         """
-        port = self.interface_to_port(self.tester.get_interface(port_number))
+        port = self.pci_to_port(self.tester.get_pci(port_number))
         command = 'stat get statAllStats {0} {1} {2}'
         command = command.format(self.chasId, port['card'], port['port'])
         self.send_expect(command, '% ', 10)
@@ -683,7 +689,7 @@ class IxiaPacketGenerator(SSHConnection):
         """
         Tells IXIA to prepare the internal buffers were the frames were captured.
         """
-        port = self.interface_to_port(self.tester.get_interface(port_number))
+        port = self.pci_to_port(self.tester.get_pci(port_number))
         command = 'capture get {0} {1} {2}'
         command = command.format(self.chasId, port['card'], port['port'])
         self.send_expect(command, '% ', 30)
@@ -692,7 +698,7 @@ class IxiaPacketGenerator(SSHConnection):
         """
         All statistics of specified IXIA port.
         """
-        port = self.interface_to_port(self.tester.get_interface(port_number))
+        port = self.pci_to_port(self.tester.get_pci(port_number))
         command = 'stat getRate statAllStats {0} {1} {2}'
         command = command.format(self.chasId, port['card'], port['port'])
         self.send_expect(command, '% ', 30)
@@ -702,7 +708,7 @@ class IxiaPacketGenerator(SSHConnection):
         """
         Tells IXIA to load the captured frames into the internal buffers.
         """
-        port = self.interface_to_port(self.tester.get_interface(port_number))
+        port = self.pci_to_port(self.tester.get_pci(port_number))
         command = 'captureBuffer get {0} {1} {2} {3} {4}'
         command = command.format(self.chasId, port['card'], port['port'],
                                  first_frame, last_frame)

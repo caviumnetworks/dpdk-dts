@@ -191,7 +191,7 @@ class TestMultiprocess(TestCase, IxiaPacketGenerator):
         """
         self.dut.kill_all()
         self.dut.send_expect("fg", "# ")
-        dutPorts = self.dut.get_ports(self.nic)
+        dutPorts = self.dut.get_ports()
         txPort = self.tester.get_local_port(dutPorts[0])
         rxPort = self.tester.get_local_port(dutPorts[1])
         mac = self.tester.get_mac(txPort)

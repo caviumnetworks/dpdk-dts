@@ -32,6 +32,10 @@
 from ssh_pexpect import SSHPexpect
 from settings import USERNAME
 
+"""
+Global structure for saving connections
+"""
+CONNECTIONS = []
 
 class SSHConnection(object):
 
@@ -40,18 +44,21 @@ class SSHConnection(object):
     Implement send_expect/copy function upper SSHPexpet module.
     """
 
-    def __init__(self, host, session_name, password = ''):
+    def __init__(self, host, session_name, password=''):
         self.session = SSHPexpect(host, USERNAME, password)
         self.name = session_name
+        connection = {}
+        connection[self.name] = self.session
+        CONNECTIONS.append(connection)
 
     def init_log(self, logger):
         self.logger = logger
         self.logger.config_execution(self.name)
         self.session.init_log(logger, self.name)
 
-    def send_expect(self, cmds, expected, timeout=15):
+    def send_expect(self, cmds, expected, timeout=15, verify=False):
         self.logger.info(cmds)
-        out = self.session.send_expect(cmds, expected, timeout)
+        out = self.session.send_expect(cmds, expected, timeout, verify)
         self.logger.debug(out)
         return out
 
@@ -61,8 +68,8 @@ class SSHConnection(object):
     def isalive(self):
         return self.session.isalive()
 
-    def copy_file_from(self, src, dst = ".", password=''):
+    def copy_file_from(self, src, dst=".", password=''):
         self.session.copy_file_from(src, dst, password)
 
-    def copy_file_to(self, src, dst = "~/", password=''):
+    def copy_file_to(self, src, dst="~/", password=''):
         self.session.copy_file_to(src, dst, password)

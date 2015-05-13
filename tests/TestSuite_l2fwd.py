@@ -83,7 +83,7 @@ class TestL2fwd(TestCase):
         self.headers_size = HEADER_SIZE['eth'] + HEADER_SIZE['ip'] + \
             HEADER_SIZE['udp']
 
-        self.dut_ports = self.dut.get_ports_performance(self.nic)
+        self.dut_ports = self.dut.get_ports_performance()
 
         self.verify(len(self.dut_ports) >= self.number_of_ports,
                     "Not enough ports for " + self.nic)

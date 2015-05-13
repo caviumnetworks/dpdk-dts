@@ -54,7 +54,7 @@ class TestChecksumOffload(TestCase):
         Checksum offload prerequisites.
         """
         # Based on h/w type, choose how many ports to use
-        self.dut_ports = self.dut.get_ports_performance(self.nic)
+        self.dut_ports = self.dut.get_ports()
 
         # Verify that enough ports are available
         self.verify(len(self.dut_ports) >= 2, "Insufficient ports for testing")
@@ -74,21 +74,21 @@ class TestChecksumOffload(TestCase):
         Run before each test case.
         """
         if self.dut.want_func_tests:
-            self.pmdout.start_testpmd("1S/2C/2T", "--portmask=%s " % (self.portMask) + "--disable-hw-vlan --enable-rx-cksum --crc-strip")
+            self.pmdout.start_testpmd("1S/2C/2T", "--portmask=%s " % (self.portMask) + "--disable-hw-vlan --enable-rx-cksum --crc-strip --txqflags=0")
             self.dut.send_expect("set verbose 1", "testpmd>")
             self.dut.send_expect("set fwd csum", "testpmd>")
 
     def checksum_enablehw(self, port):
-            self.dut.send_expect("tx_checksum set ip hw %d" % port, "testpmd>")
-            self.dut.send_expect("tx_checksum set udp hw %d" % port, "testpmd>")
-            self.dut.send_expect("tx_checksum set tcp hw %d" % port, "testpmd>")
-            self.dut.send_expect("tx_checksum set sctp hw %d" % port, "testpmd>")
+            self.dut.send_expect("csum set ip hw %d" % port, "testpmd>")
+            self.dut.send_expect("csum set udp hw %d" % port, "testpmd>")
+            self.dut.send_expect("csum set tcp hw %d" % port, "testpmd>")
+            self.dut.send_expect("csum set sctp hw %d" % port, "testpmd>")
 
     def checksum_enablesw(self, port):
-            self.dut.send_expect("tx_checksum set ip sw %d" % port, "testpmd>")
-            self.dut.send_expect("tx_checksum set udp sw %d" % port, "testpmd>")
-            self.dut.send_expect("tx_checksum set tcp sw %d" % port, "testpmd>")
-            self.dut.send_expect("tx_checksum set sctp sw %d" % port, "testpmd>")
+            self.dut.send_expect("csum set ip sw %d" % port, "testpmd>")
+            self.dut.send_expect("csum set udp sw %d" % port, "testpmd>")
+            self.dut.send_expect("csum set tcp sw %d" % port, "testpmd>")
+            self.dut.send_expect("csum set sctp sw %d" % port, "testpmd>")
 
     def checksum_validate(self, packets_sent, packets_expected):
         """
@@ -297,6 +297,10 @@ class TestChecksumOffload(TestCase):
         """
         Test checksum offload performance.
         """
+        self.dut_ports = self.dut.get_ports_performance()
+        # Verify that enough ports are available
+        self.verify(len(self.dut_ports) >= 2, "Insufficient ports for testing")
+
         # sizes = [64, 128, 256, 512, 1024]
         sizes = [64, 128]
         pkts = {

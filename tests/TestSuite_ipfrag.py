@@ -81,7 +81,7 @@ class TestIpfrag(TestCase):
         """
 
         # Based on h/w type, choose how many ports to use
-        ports = self.dut.get_ports(self.nic)
+        ports = self.dut.get_ports()
         print ports
 
         # Verify that enough ports are available

@@ -198,10 +198,22 @@ class DPDKdut(Dut):
         if not self.skip_setup:
             assert (os.path.isfile(pkgName) is True), "Invalid package"
 
-            self.session.copy_file_to(pkgName)
+            p_dir, _ = os.path.split(self.base_dir)
+            # ToDo: make this configurable
+            dst_dir = "/tmp/"
+
+            out = self.send_expect("ls %s && cd %s" % (dst_dir, p_dir),
+                                   "#", verify=True)
+            if out == -1:
+                raise ValueError("Directiry %s or %s does not exist,"
+                                 "please check params -d"
+                                 % (p_dir, dst_dir))
+            self.session.copy_file_to(pkgName, dst_dir)
+
+            # put patches to p_dir/patches/
             if (patch is not None):
                 for p in patch:
-                    self.session.copy_file_to('../' + p)
+                    self.session.copy_file_to('dep/' + p, dst_dir)
 
             self.kill_all()
 
@@ -216,13 +228,25 @@ class DPDKdut(Dut):
             self.send_expect("rm -rf %s" % self.base_dir, "#")
 
             # unpack dpdk
-            out = self.send_expect("tar zxf " + pkgName.split('/')[-1], "# ", 20)
-            assert "Error" not in out
+            out = self.send_expect("tar zxf %s%s -C %s" %
+                                   (dst_dir, pkgName.split('/')[-1], p_dir),
+                                   "# ", 20, verify=True)
+            if out == -1:
+                raise ValueError("Extract dpdk package to %s failure,"
+                                 "please check params -d"
+                                 % (p_dir))
+
+            # check dpdk dir name is expect
+            out = self.send_expect("ls %s" % self.base_dir,
+                                   "# ", 20, verify=True)
+            if out == -1:
+                raise ValueError("dpdk dir %s mismatch, please check params -d"
+                                 % self.base_dir)
 
             if (patch is not None):
                 for p in patch:
-                    out = self.send_expect("patch -d %s -p1 < ../%s" %
-                                           (self.base_dir, p), "# ")
+                    out = self.send_expect("patch -d %s -p1 < %s" %
+                                           (self.base_dir, dst_dir + p), "# ")
                     assert "****" not in out
 
         self.dut_prerequisites()
@@ -236,13 +260,10 @@ class DPDKdut(Dut):
         binding_list = '--bind=%s ' % driver
 
         current_nic = 0
-        for (pci_bus, pci_id) in self.pci_devices_info:
-            if dts.accepted_nic(pci_id):
-
-                if nics_to_bind is None or current_nic in nics_to_bind:
-                    binding_list += '%s ' % (pci_bus)
-
-                current_nic += 1
+        for port_info in self.ports_info:
+            if nics_to_bind is None or current_nic in nics_to_bind:
+                binding_list += '%s ' % (port_info['pci'])
+            current_nic += 1
 
         self.send_expect('tools/dpdk_nic_bind.py %s' % binding_list, '# ')
 
@@ -254,13 +275,10 @@ class DPDKdut(Dut):
         binding_list = '-u '
 
         current_nic = 0
-        for (pci_bus, pci_id) in self.pci_devices_info:
-            if dts.accepted_nic(pci_id):
-
-                if nics_to_bind is None or current_nic in nics_to_bind:
-                    binding_list += '%s ' % (pci_bus)
-
-                current_nic += 1
+        for port_info in self.ports_info:
+            if nics_to_bind is None or current_nic in nics_to_bind:
+                binding_list += '%s ' % (port_info['pci'])
+            current_nic += 1
 
         self.send_expect('tools/dpdk_nic_bind.py %s' % binding_list, '# ', 30)
 
@@ -336,10 +354,10 @@ class DPDKtester(Tester):
             total_huge_pages = self.get_total_huge_pages()
             if total_huge_pages == 0:
                 self.mount_huge_pages()
-                self.set_huge_pages(1024)
+                self.set_huge_pages(4096)
 
-            self.session.copy_file_to("tgen.tgz")
-            self.session.copy_file_to("tclclient.tgz")
+            self.session.copy_file_to("dep/tgen.tgz")
+            self.session.copy_file_to("dep/tclclient.tgz")
             # unpack tgen
             out = self.send_expect("tar zxf tgen.tgz", "# ")
             assert "Error" not in out
@@ -369,7 +387,7 @@ class DPDKtester(Tester):
         hugepages_size = self.send_expect("awk '/Hugepagesize/ {print $2}' /proc/meminfo", "# ")
 
         if int(hugepages_size) < (1024 * 1024):
-            arch_huge_pages = hugepages if hugepages > 0 else 1024
+            arch_huge_pages = hugepages if hugepages > 0 else 4096
             total_huge_pages = self.get_total_huge_pages()
 
             self.mount_huge_pages()

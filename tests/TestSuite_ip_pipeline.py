@@ -297,7 +297,7 @@ class TestIPPipeline(TestCase):
                              "I217LM": 1,
                              "I218V": 1,
                              "I218LM": 1}
-        self.dut_ports = self.dut.get_ports(self.nic)
+        self.dut_ports = self.dut.get_ports()
         self.verify(len(self.dut_ports) >= self.needed_ports[self.nic],
                     "Insufficient ports for speed testing")
 

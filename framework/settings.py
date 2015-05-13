@@ -28,6 +28,14 @@
 # THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+"""
+Folders for framework running enviornment.
+"""
+FOLDERS = {
+    'Framework': 'framework',
+    'Testscripts': 'tests',
+    'Configuration': 'conf',
+}
 
 """
 Nics and its identifiers supported by the framework.
@@ -55,6 +63,9 @@ NICS = {
     'I217LM': '8086:153a',
     'I218V': '8086:1559',
     'I218LM': '8086:155a',
+    'fortville_eagle': '8086:1572',
+    'fortville_spirit': '8086:1583',
+    'fortville_spirit_single': '8086:1584',
     'redrockcanyou': '8086:15a4',
 }
 
@@ -81,6 +92,9 @@ DRIVERS = {
     'I217LM': 'igb',
     'I218V': 'igb',
     'I218LM': 'igb',
+    'fortville_eagle': 'i40e',
+    'fortville_spirit': 'i40e',
+    'fortville_spirit_single': 'i40e',
     'redrockcanyou': 'fm10k',
 }
 
@@ -122,3 +136,12 @@ TIMEOUT = 15
 Global macro for dts.
 """
 IXIA = "ixia"
+
+def nic_name_from_type(type):
+    """
+    strip nic code name by nic type
+    """
+    for name, nic_type in NICS.items():
+        if nic_type == type:
+            return name
+    return 'Unknown'

@@ -1,6 +1,7 @@
 import time
 import pexpect
 import pxssh
+from debugger import ignore_keyintr, aware_keyintr
 from exception import TimeoutException, SSHConnectionException
 
 """
@@ -13,6 +14,7 @@ Aslo support transfer files to tester or DUT.
 class SSHPexpect(object):
 
     def __init__(self, host, username, password):
+        self.magic_prompt = "[MAGIC PROMPT]"
         try:
             self.session = pxssh.pxssh()
             self.username = username
@@ -29,11 +31,32 @@ class SSHPexpect(object):
         self.logger.config_execution(name)
         self.logger.info("ssh %s@%s" % (self.username, self.host))
 
-    def send_expect(self, command, expected, timeout=15):
+    def send_expect_base(self, command, expected, timeout=15):
+        ignore_keyintr()
+        self.__flush() # clear buffer
         self.session.PROMPT = expected
         self.__sendline(command)
         self.__prompt(command, timeout)
-        return self.get_output_before()
+        aware_keyintr()
+
+        before = self.get_output_before()
+        return before
+
+    def send_expect(self, command, expected, timeout=15, verify=False):
+        ret = self.send_expect_base(command, expected, timeout)
+        if verify:
+            ret_status = self.send_expect_base("echo $?", expected)
+            if not int(ret_status):
+                return ret
+            else:
+                self.logger.error("Command: %s failure!" % command)
+                return -1
+        else:
+            return ret
+
+    def __flush(self):
+        self.session.PROMPT = self.magic_prompt
+        self.session.prompt(0.1)
 
     def __prompt(self, command, timeout):
         if not self.session.prompt(timeout):
@@ -66,7 +89,7 @@ class SSHPexpect(object):
     def isalive(self):
         return self.session.isalive()
 
-    def copy_file_from(self, src, dst = ".", password=''):
+    def copy_file_from(self, src, dst=".", password=''):
         """
         Copies a file from a remote place into local.
         """
@@ -76,7 +99,7 @@ class SSHPexpect(object):
         else:
             self._spawn_scp(command, password)
 
-    def copy_file_to(self, src, dst = "~/", password=''):
+    def copy_file_to(self, src, dst="~/", password=''):
         """
         Sends a local file to a remote place.
         """

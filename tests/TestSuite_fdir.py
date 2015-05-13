@@ -48,7 +48,7 @@ class TestFdir(TestCase):
         """
         Run at the start of each test suite.
         """
-        ports = self.dut.get_ports(self.nic)
+        ports = self.dut.get_ports()
         self.verify(len(ports) >= 2, "Not enough ports available")
 
         self.pmdout = PmdOutput(self.dut)
@@ -81,7 +81,7 @@ class TestFdir(TestCase):
         Setting memory reserved for FDir filters.
         """
 
-        dutPorts = self.dut.get_ports(self.nic)
+        dutPorts = self.dut.get_ports()
 
         self.pmdout.start_testpmd("all", "--rxq=2 --txq=2 --disable-rss --pkt-filter-mode=perfect --pkt-filter-size=64K")
         out = self.dut.send_expect("show port fdir %s" % dutPorts[0], "testpmd>")
@@ -111,7 +111,7 @@ class TestFdir(TestCase):
           - Send the ``p_udp`` packet with Scapy on the traffic generator and check that FDir information is printed
         """
 
-        dutPorts = self.dut.get_ports(self.nic)
+        dutPorts = self.dut.get_ports()
         localPort = self.tester.get_local_port(dutPorts[0])
         itf = self.tester.get_interface(localPort)
 
@@ -173,7 +173,7 @@ class TestFdir(TestCase):
           - Send the packet and validate the filter function.
         """
 
-        dutPorts = self.dut.get_ports(self.nic)
+        dutPorts = self.dut.get_ports()
         localPort = self.tester.get_local_port(dutPorts[0])
         itf = self.tester.get_interface(localPort)
 
@@ -230,7 +230,7 @@ class TestFdir(TestCase):
           - Send the packet and validate the perfect filter function.
         """
 
-        dutPorts = self.dut.get_ports(self.nic)
+        dutPorts = self.dut.get_ports()
         localPort = self.tester.get_local_port(dutPorts[0])
         itf = self.tester.get_interface(localPort)
 
@@ -261,7 +261,7 @@ class TestFdir(TestCase):
         fields, or parts of fields are used in the matching process.
         """
 
-        dutPorts = self.dut.get_ports(self.nic)
+        dutPorts = self.dut.get_ports()
         localPort = self.tester.get_local_port(dutPorts[0])
         itf = self.tester.get_interface(localPort)
 
@@ -306,7 +306,7 @@ class TestFdir(TestCase):
         to the bytes at offset 36 and 37, as the offset is in 2-byte units
         """
 
-        dutPorts = self.dut.get_ports(self.nic)
+        dutPorts = self.dut.get_ports()
         localPort = self.tester.get_local_port(dutPorts[0])
         itf = self.tester.get_interface(localPort)
 
@@ -335,7 +335,7 @@ class TestFdir(TestCase):
         FDir VLAN field filtering
         """
 
-        dutPorts = self.dut.get_ports(self.nic)
+        dutPorts = self.dut.get_ports()
         localPort = self.tester.get_local_port(dutPorts[0])
         itf = self.tester.get_interface(localPort)
 

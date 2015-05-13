@@ -50,7 +50,6 @@ class Tester(Crb):
     A config file and pcap file must have previously been copied
     to this machine.
     """
-    PORT_MAP_CACHE_KEY = 'tester_port_map'
     PORT_INFO_CACHE_KEY = 'tester_port_info'
     CORE_LIST_CACHE_KEY = 'tester_core_list'
     NUMBER_CORES_CACHE_KEY = 'tester_number_cores'
@@ -65,10 +64,9 @@ class Tester(Crb):
                                      self.NAME, self.get_password())
         self.session.init_log(self.logger)
         self.alt_session = SSHConnection(self.get_ip_address(),
-                                         self.NAME, self.get_password())
+                                         self.NAME + '_alt', self.get_password())
         self.alt_session.init_log(self.logger)
 
-        self.ports_map = []
         self.bgProcIsRunning = False
         self.dut = None
         self.inBg = 0
@@ -132,21 +130,34 @@ class Tester(Crb):
         self.pci_devices_information()
         self.restore_interfaces()
         self.scan_ports()
-        self.map_available_ports()
-        if self.ports_map == None or len(self.ports_map) == 0:
-            raise ValueError("ports_map should not be empty, please check all links")
 
     def get_local_port(self, remotePort):
         """
         Return tester local port connect to specified dut port.
         """
-        return self.ports_map[remotePort]
+        return self.dut.ports_map[remotePort]
 
     def get_local_port_type(self, remotePort):
         """
         Return tester local port type connect to specified dut port.
         """
         return self.ports_info[self.get_local_port(remotePort)]['type']
+
+    def get_local_index(self, pci):
+        """
+        Return tester local port index by pci id
+        """
+        index = -1
+        for port in self.ports_info:
+            index += 1
+            if pci == port['pci']:
+                return index
+
+    def get_pci(self, localPort):
+        """
+        Return tester local port pci id.
+        """
+        return self.ports_info[localPort]['pci']
 
     def get_interface(self, localPort):
         """
@@ -178,6 +189,24 @@ class Tester(Crb):
             return 'up'
         else:
             return 'down'
+
+    def restore_interfaces(self):
+        """
+        Restore Linux interfaces.
+        """
+        self.send_expect("modprobe igb", "# ", 20)
+        self.send_expect("modprobe ixgbe", "# ", 20)
+        self.send_expect("modprobe e1000e", "# ", 20)
+        self.send_expect("modprobe e1000", "# ", 20)
+
+        try:
+            for (pci_bus, pci_id) in self.pci_devices_info:
+                addr_array = pci_bus.split(':')
+                itf = self.get_interface_name(addr_array[0], addr_array[1])
+                self.send_expect("ifconfig %s up" % itf, "# ")
+
+        except Exception as e:
+            self.logger.error("   !!! Restore ITF: " + e.message)
 
     def scan_ports(self):
         """
@@ -232,51 +261,9 @@ class Tester(Crb):
         Send ping6 packet from local port with destination ipv6 address.
         """
         if self.ports_info[localPort]['type'] == 'ixia':
-            return self.ixia_packet_gen.send_ping6(self.ports_info[localPort]['intf'], mac, ipv6)
+            return self.ixia_packet_gen.send_ping6(self.ports_info[localPort]['pci'], mac, ipv6)
         else:
             return self.send_expect("ping6 -w 5 -c 5 -A -I %s %s" % (self.ports_info[localPort]['intf'], ipv6), "# ", 10)
-
-    def map_available_ports(self):
-        """
-        Load or generate network connection mapping list.
-        """
-        if self.read_cache:
-            self.ports_map = self.serializer.load(self.PORT_MAP_CACHE_KEY)
-
-        if not self.read_cache or self.ports_map is None:
-            self.map_available_ports_uncached()
-            self.serializer.save(self.PORT_MAP_CACHE_KEY, self.ports_map)
-            self.logger.warning("DUT PORT MAP: " + str(self.ports_map))
-
-    def map_available_ports_uncached(self):
-        """
-        Generate network connection mapping list.
-        """
-
-        nrPorts = len(self.dut.ports_info)
-        if nrPorts == 0:
-            return
-
-        self.ports_map = [-1] * nrPorts
-
-        hits = [False] * len(self.ports_info)
-
-        for dutPort in range(nrPorts):
-            for localPort in range(len(self.ports_info)):
-                if hits[localPort]:
-                    continue
-
-                ipv6 = self.dut.get_ipv6_address(dutPort)
-                if ipv6 == "Not connected":
-                    continue
-
-                out = self.send_ping6(localPort, ipv6, self.dut.get_mac_address(dutPort))
-
-                if ('64 bytes from' in out):
-                    self.logger.info("PORT MAP: [local %d: dut %d]" % (localPort, dutPort))
-                    hits[localPort] = True
-                    self.ports_map[dutPort] = localPort
-                    break
 
     def get_port_numa(self, port):
         """
@@ -413,12 +400,13 @@ class Tester(Crb):
             instance.__dict__ = self.ixia_packet_gen.__dict__
             instance.__dict__.update(current_attrs)
 
-    def kill_all(self):
+    def kill_all(self, killall=False):
         """
-        Kill all scapy process and DPDK applications on tester.
+        Kill all scapy process or DPDK application on tester.
         """
         if not self.has_external_traffic_generator():
             self.alt_session.send_expect('killall scapy 2>/dev/null; echo tester', '# ', 5)
+        if killall:
             super(Tester, self).kill_all()
 
     def close(self):

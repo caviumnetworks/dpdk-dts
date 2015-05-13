@@ -35,32 +35,39 @@ A test framework for testing DPDK.
 """
 
 import os
+import sys
 import argparse
 import dts
 
+# change operation directory
+os.chdir("../")
 
-def git_build_package(gitLabel, gitPkg, output):
+
+def git_build_package(gitLabel, pkgName, depot="dep"):
     """
-    generate package from git
-    run bash shell
+    generate package from git, if dpdk existed will pull latest code
     """
     gitURL = r"http://dpdk.org/git/dpdk"
     gitPrefix = r"dpdk/"
-    print "git clone %s %s/%s" % (gitURL, output, gitPrefix)
-    os.system("git clone %s ../output/%s" % (gitURL, gitPrefix))
-    print "git archive --format=tar.gz --prefix=%s %s -o ../%s" % (gitPrefix, gitLabel, gitPkg)
-    os.system("cd ../output/%s && git archive --format=tar.gz --prefix=%s %s -o ../%s" % (gitPrefix, gitPrefix, gitLabel, gitPkg))
+    if os.path.exists("%s/%s" % (depot, gitPrefix)) is True:
+        ret = os.system("cd %s/%s && git pull --force" % (depot, gitPrefix))
+    else:
+        print "git clone %s %s/%s" % (gitURL, depot, gitPrefix)
+        ret = os.system("git clone %s %s/%s" % (gitURL, depot, gitPrefix))
+    if ret is not 0:
+        raise EnvironmentError
 
-#
-# Main program begins here
-#
-
+    print "git archive --format=tar.gz --prefix=%s %s -o %s" % (gitPrefix, gitLabel, pkgName)
+    ret = os.system("cd %s/%s && git archive --format=tar.gz --prefix=%s/ %s -o ../%s"
+                    % (depot, gitPrefix, gitPrefix, gitLabel, pkgName))
+    if ret is not 0:
+        raise EnvironmentError
 
 # Read cmd-line args
 parser = argparse.ArgumentParser(description='DPDK test framework.')
 
 parser.add_argument('--config-file',
-                    default='../execution.cfg',
+                    default='execution.cfg',
                     help='configuration file that describes the test ' +
                     'cases, DUTs and targets')
 
@@ -72,11 +79,11 @@ parser.add_argument('--patch',
                     help='apply a patch to the package under test')
 
 parser.add_argument('--snapshot',
-                    default='../dpdk.tar.gz',
+                    default='dep/dpdk.tar.gz',
                     help='snapshot .tgz file to use as input')
 
 parser.add_argument('--output',
-                    default='../output',
+                    default='output',
                     help='Output directory where dts log and result saved')
 
 parser.add_argument('-s', '--skip-setup',
@@ -95,7 +102,7 @@ parser.add_argument('-p', '--project',
                     help='specify that which project will be tested')
 
 parser.add_argument('--suite-dir',
-                    default='../tests',
+                    default='tests',
                     help='Test suite directory where test suites will be imported')
 
 parser.add_argument('-t', '--test-cases',
@@ -103,21 +110,30 @@ parser.add_argument('-t', '--test-cases',
                     help='executes only the followings test cases')
 
 parser.add_argument('-d', '--dir',
-                    default='dpdk',
+                    default='~/dpdk',
                     help='Output directory where dpdk package is extracted')
 
 parser.add_argument('-v', '--verbose',
                     action='store_true',
                     help='enable verbose output, all message output on screen')
 
+parser.add_argument('--debug',
+                    action='store_true',
+                    help='enable debug mode, user can enter debug mode in process')
+
 args = parser.parse_args()
 
 
-# prepare DPDK source test package
+# prepare DPDK source test package, DTS will exited when failed.
 if args.git is not None:
-    git_build_package(args.git, args.snapshot, args.output)
+    try:
+        git_build_package(args.git, os.path.split(args.snapshot)[1])
+    except Exception:
+        print "FAILED TO PREPARE DPDK PACKAGE!!!"
+        sys.exit()
 
+# Main program begins here
 dts.run_all(args.config_file, args.snapshot, args.git,
             args.patch, args.skip_setup, args.read_cache,
             args.project, args.suite_dir, args.test_cases,
-            args.dir, args.output, args.verbose)
+            args.dir, args.output, args.verbose, args.debug)
