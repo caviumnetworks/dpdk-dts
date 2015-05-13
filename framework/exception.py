@@ -46,3 +46,17 @@ class SSHConnectionException(Exception):
 
     def __str__(self):
         return 'Error trying to connect with %s' % self.host
+
+
+class SSHSessionDeadException(Exception):
+
+    """
+    SSH session is not alive.
+    It can no longer be used.
+    """
+
+    def __init__(self, host):
+        self.host = host
+
+    def __str__(self):
+        return 'SSH session with %s has been dead' % self.host
