@@ -69,6 +69,12 @@ class Crb(object):
 
         return self.session.send_expect(cmds, expected, timeout, verify)
 
+    def get_session_output(self, timeout=TIMEOUT):
+        """
+        Get session output message before timeout
+        """
+        return self.session.get_session_before(timeout)
+
     def set_test_types(self, func_tests, perf_tests):
         """
         Enable or disable function/performance test.

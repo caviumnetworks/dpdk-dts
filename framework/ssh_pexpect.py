@@ -2,7 +2,7 @@ import time
 import pexpect
 import pxssh
 from debugger import ignore_keyintr, aware_keyintr
-from exception import TimeoutException, SSHConnectionException
+from exception import TimeoutException, SSHConnectionException, SSHSessionDeadException
 
 """
 Module handle ssh sessions between tester and DUT.
@@ -14,7 +14,7 @@ Aslo support transfer files to tester or DUT.
 class SSHPexpect(object):
 
     def __init__(self, host, username, password):
-        self.magic_prompt = "[MAGIC PROMPT]"
+        self.magic_prompt = "MAGIC PROMPT"
         try:
             self.session = pxssh.pxssh()
             self.username = username
@@ -31,7 +31,7 @@ class SSHPexpect(object):
         self.logger.config_execution(name)
         self.logger.info("ssh %s@%s" % (self.username, self.host))
 
-    def send_expect_base(self, command, expected, timeout=15):
+    def send_expect_base(self, command, expected, timeout):
         ignore_keyintr()
         self.__flush() # clear buffer
         self.session.PROMPT = expected
@@ -54,21 +54,44 @@ class SSHPexpect(object):
         else:
             return ret
 
-    def __flush(self):
+    def get_session_before(self, timeout):
+        """
+        Get all output before timeout
+        """
+        ignore_keyintr()
         self.session.PROMPT = self.magic_prompt
-        self.session.prompt(0.1)
+        try:
+            self.session.prompt(timeout)
+        except Exception as e:
+            pass
+
+        aware_keyintr()
+        before = self.get_output_before()
+        self.__flush()
+        return before
+
+    def __flush(self):
+        """
+        Clear all session buffer
+        """
+        self.session.buffer = ""
+        self.session.before = ""
 
     def __prompt(self, command, timeout):
         if not self.session.prompt(timeout):
             raise TimeoutException(command, self.get_output_all())
 
     def __sendline(self, command):
+        if not self.isalive():
+            raise SSHSessionDeadException(self.host)
         if len(command) == 2 and command.startswith('^'):
             self.session.sendcontrol(command[1])
         else:
             self.session.sendline(command)
 
     def get_output_before(self):
+        if not self.isalive():
+            raise SSHSessionDeadException(self.host)
         self.session.flush()
         before = self.session.before.rsplit('\r\n', 1)
         if before[0] == "[PEXPECT]":
