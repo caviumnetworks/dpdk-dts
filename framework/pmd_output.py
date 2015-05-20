@@ -101,7 +101,7 @@ class PmdOutput():
     def start_testpmd(self, cores, param='', eal_param='', socket=0):
         # in dpdk2.0 need used --txqflags param to open hardware features
         if "--txqflags" not in param:
-            param += " --txqflags"
+            param += " --txqflags=0"
 
         if cores == "Default":
             core_list = self.dut.get_core_list(self.default_cores)
