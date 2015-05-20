@@ -54,6 +54,7 @@ class PmdOutput():
         self.tx_bytes_prefix = "TX-bytes:"
         self.bad_ipcsum_prefix = "Bad-ipcsum:"
         self.bad_l4csum_prefix = "Bad-l4csum:"
+        self.set_default_corelist()
 
     def get_pmd_value(self, prefix, out):
         pattern = re.compile(prefix + "(\s+)([0-9]+)")
@@ -62,6 +63,17 @@ class PmdOutput():
             return None
         else:
             return int(m.group(2))
+    
+    def set_default_corelist(self):
+        """
+        set default cores for start testpmd
+        """        
+        core_number = len(self.dut.cores)
+        if core_number < 2:
+            raise
+        else:
+            self.default_cores = "1S/2C/1T"
+             
 
     def get_pmd_stats(self, portid):
         stats = {}
@@ -87,7 +99,14 @@ class PmdOutput():
         return self.command
 
     def start_testpmd(self, cores, param='', eal_param='', socket=0):
-        core_list = self.dut.get_core_list(cores, socket)
+        # in dpdk2.0 need used --txqflags param to open hardware features
+        if "--txqflags" not in param:
+            param += " --txqflags"
+
+        if cores == "Default":
+            core_list = self.dut.get_core_list(self.default_cores)
+        else:
+            core_list = self.dut.get_core_list(cores, socket)
         self.coremask = dts.create_mask(core_list)
         command = "./%s/app/testpmd -c %s -n %d %s -- -i %s" \
             % (self.dut.target, self.coremask, self.dut.get_memory_channels(), eal_param, param)
