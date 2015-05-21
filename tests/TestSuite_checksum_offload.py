@@ -44,28 +44,18 @@ import rst
 from test_case import TestCase
 from pmd_output import PmdOutput
 
-
 class TestChecksumOffload(TestCase):
 
     def set_up_all(self):
         """
         Run at the start of each test suite.
-
         Checksum offload prerequisites.
         """
         # Based on h/w type, choose how many ports to use
-        self.dut_ports = self.dut.get_ports()
-
+        self.dut_ports = self.dut.get_ports(self.nic)
         # Verify that enough ports are available
         self.verify(len(self.dut_ports) >= 2, "Insufficient ports for testing")
-
-        # Verify that enough threads are available
-        cores = self.dut.get_core_list("1S/2C/2T")
-        self.verify(cores is not None, "Insufficient cores for speed testing")
-
         self.pmdout = PmdOutput(self.dut)
-
-        self.coreMask = dts.create_mask(cores)
         self.portMask = dts.create_mask([self.dut_ports[0], self.dut_ports[1]])
         self.ports_socket = self.dut.get_numa_id(self.dut_ports[0])
 
@@ -74,7 +64,8 @@ class TestChecksumOffload(TestCase):
         Run before each test case.
         """
         if self.dut.want_func_tests:
-            self.pmdout.start_testpmd("1S/2C/2T", "--portmask=%s " % (self.portMask) + "--disable-hw-vlan --enable-rx-cksum --crc-strip --txqflags=0")
+            self.pmdout.start_testpmd("Default", "--portmask=%s " %
+                                      (self.portMask) + "--disable-hw-vlan --enable-rx-cksum --crc-strip", socket=self.ports_socket)
             self.dut.send_expect("set verbose 1", "testpmd>")
             self.dut.send_expect("set fwd csum", "testpmd>")
 
@@ -169,32 +160,25 @@ class TestChecksumOffload(TestCase):
         Do not insert IPv4/IPv6 UDP/TCP checksum on the transmit packet.
         Verify that the same number of packet are correctly received on the
         traffic generator side.
-        Use VLAN label.
         """
         dmac = self.dut.get_mac_address(self.dut_ports[1])
-        pktsChkErr = {'IP/UDP': 'Ether(dst="%s", src="52:00:00:00:00:00")/Dot1Q(vlan=1)/IP(chksum=0x0)/UDP(chksum=0x1)/("X"*46)' % dmac,
-                      'IP/TCP': 'Ether(dst="%s", src="52:00:00:00:00:00")/Dot1Q(vlan=2)/IP(chksum=0x0)/TCP(chksum=0x0)/("X"*46)' % dmac,
-                      'IP/SCTP': 'Ether(dst="%s", src="52:00:00:00:00:00")/Dot1Q(vlan=3)/IP(chksum=0x0)/SCTP(chksum=0x0)/("X"*48)' % dmac,
-                      'IPv6/UDP': 'Ether(dst="%s", src="52:00:00:00:00:00")/Dot1Q(vlan=4)/IPv6(src="::1")/UDP(chksum=0x1)/("X"*46)' % dmac,
-                      'IPv6/TCP': 'Ether(dst="%s", src="52:00:00:00:00:00")/Dot1Q(vlan=5)/IPv6(src="::1")/TCP(chksum=0x0)/("X"*46)' % dmac}
-
+        pktsChkErr = {'IP/UDP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IP(chksum=0x0)/UDP(chksum=0xf)/("X"*46)' % dmac,
+                      'IP/TCP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IP(chksum=0x0)/TCP(chksum=0xf)/("X"*46)' % dmac,
+                      'IP/SCTP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IP(chksum=0x0)/SCTP(chksum=0xf)/("X"*48)' % dmac,
+                      'IPv6/UDP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IPv6(src="::1")/UDP(chksum=0xf)/("X"*46)' % dmac,
+                      'IPv6/TCP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IPv6(src="::1")/TCP(chksum=0xf)/("X"*46)' % dmac}
         pkts = {'IP/UDP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IP(src="127.0.0.2")/UDP()/("X"*46)' % dmac,
                 'IP/TCP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IP(src="127.0.0.2")/TCP()/("X"*46)' % dmac,
                 'IP/SCTP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IP(src="127.0.0.2")/SCTP()/("X"*48)' % dmac,
                 'IPv6/UDP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IPv6(src="::2")/UDP()/("X"*46)' % dmac,
                 'IPv6/TCP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IPv6(src="::2")/TCP()/("X"*46)' % dmac}
-
         self.checksum_enablehw(self.dut_ports[0])
         self.checksum_enablehw(self.dut_ports[1])
-
         self.dut.send_expect("start", "testpmd>")
-
         result = self.checksum_validate(pktsChkErr, pkts)
-
         self.dut.send_expect("stop", "testpmd>")
-
         self.verify(len(result) == 0, string.join(result.values(), ","))
-
+        
     def test_checksum_offload_enable(self):
         """
         Insert IPv4/IPv6 UDP/TCP/SCTP checksum on the transmit packet.
@@ -202,22 +186,19 @@ class TestChecksumOffload(TestCase):
         Verify that the same number of packet are correctly received on the
         traffic generator side.
         """
-
         dmac = self.dut.get_mac_address(self.dut_ports[1])
 
-        pkts = {'IP/UDP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IP(chksum=0x0)/UDP(chksum=0x1)/("X"*46)' % dmac,
-                'IP/TCP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IP(chksum=0x0)/TCP(chksum=0x0)/("X"*46)' % dmac,
-                'IP/SCTP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IP(chksum=0x0)/SCTP(chksum=0x0)/("X"*48)' % dmac,
-                'IPv6/UDP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IPv6(src="::1")/UDP(chksum=0x1)/("X"*46)' % dmac,
-                'IPv6/TCP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IPv6(src="::1")/TCP(chksum=0x0)/("X"*46)' % dmac
-                }
+        pkts = {'IP/UDP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IP(chksum=0x0)/UDP(chksum=0xf)/("X"*46)' % dmac,
+                'IP/TCP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IP(chksum=0x0)/TCP(chksum=0xf)/("X"*46)' % dmac,
+                'IP/SCTP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IP(chksum=0x0)/SCTP(chksum=0xf)/("X"*48)' % dmac,
+                'IPv6/UDP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IPv6(src="::1")/UDP(chksum=0xf)/("X"*46)' % dmac,
+                'IPv6/TCP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IPv6(src="::1")/TCP(chksum=0xf)/("X"*46)' % dmac}
 
         pkts_ref = {'IP/UDP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IP(src="127.0.0.2")/UDP()/("X"*46)' % dmac,
                     'IP/TCP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IP(src="127.0.0.2")/TCP()/("X"*46)' % dmac,
                     'IP/SCTP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IP(src="127.0.0.2")/SCTP()/("X"*48)' % dmac,
                     'IPv6/UDP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IPv6(src="::2")/UDP()/("X"*46)' % dmac,
-                    'IPv6/TCP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IPv6(src="::2")/TCP()/("X"*46)' % dmac
-                    }
+                    'IPv6/TCP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IPv6(src="::2")/TCP()/("X"*46)' % dmac}
 
         self.checksum_enablehw(self.dut_ports[0])
         self.checksum_enablehw(self.dut_ports[1])
@@ -237,15 +218,13 @@ class TestChecksumOffload(TestCase):
         Verify that the same number of packet are correctly received on
         the traffic generator side.
         """
-
         dmac = self.dut.get_mac_address(self.dut_ports[1])
-
         sndIP = '10.0.0.1'
         sndIPv6 = '::1'
-        sndPkts = {'IP/UDP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IP(src="%s",chksum=0x0)/UDP(chksum=0x1)/("X"*46)' % (dmac, sndIP),
-                   'IP/TCP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IP(src="%s",chksum=0x0)/TCP(chksum=0x0)/("X"*46)' % (dmac, sndIP),
-                   'IPv6/UDP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IPv6(src="%s")/UDP(chksum=0x1)/("X"*46)' % (dmac, sndIPv6),
-                   'IPv6/TCP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IPv6(src="%s")/TCP(chksum=0x0)/("X"*46)' % (dmac, sndIPv6)}
+        sndPkts = {'IP/UDP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IP(src="%s",chksum=0x0)/UDP(chksum=0xf)/("X"*46)' % (dmac, sndIP),
+                   'IP/TCP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IP(src="%s",chksum=0x0)/TCP(chksum=0xf)/("X"*46)' % (dmac, sndIP),
+                   'IPv6/UDP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IPv6(src="%s")/UDP(chksum=0xf)/("X"*46)' % (dmac, sndIPv6),
+                   'IPv6/TCP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IPv6(src="%s")/TCP(chksum=0xf)/("X"*46)' % (dmac, sndIPv6)}
 
         expIP = "10.0.0.2"
         expIPv6 = '::2'
@@ -265,7 +244,6 @@ class TestChecksumOffload(TestCase):
         """
         Test ans report checksum offload performance for given parameters.
         """
-
         Bps = dict()
         Pps = dict()
         Pct = dict()
@@ -273,20 +251,20 @@ class TestChecksumOffload(TestCase):
 
         result = [2, lcore, ptype, mode]
         for size in size_list:
-
             flow = flow_format % (dmac, size)
             self.tester.scapy_append('wrpcap("test.pcap", [%s])' % flow)
-
             self.tester.scapy_execute()
-
             tgenInput = []
-            tgenInput.append((self.tester.get_local_port(self.dut_ports[0]), self.tester.get_local_port(self.dut_ports[1]), "test.pcap"))
-            tgenInput.append((self.tester.get_local_port(self.dut_ports[1]), self.tester.get_local_port(self.dut_ports[0]), "test.pcap"))
-
-            Bps[str(size)], Pps[str(size)] = self.tester.traffic_generator_throughput(tgenInput)
+            tgenInput.append(
+                (self.tester.get_local_port(self.dut_ports[0]), self.tester.get_local_port(self.dut_ports[1]), "test.pcap"))
+            tgenInput.append(
+                (self.tester.get_local_port(self.dut_ports[1]), self.tester.get_local_port(self.dut_ports[0]), "test.pcap"))
+            Bps[str(size)], Pps[
+                str(size)] = self.tester.traffic_generator_throughput(tgenInput)
             self.verify(Pps[str(size)] > 0, "No traffic detected")
             Pps[str(size)] /= 1E6
-            Pct[str(size)] = (Pps[str(size)] * 100) / self.wirespeed(self.nic, size, 2)
+            Pct[str(size)] = (Pps[str(size)] * 100) / \
+                self.wirespeed(self.nic, size, 2)
 
             result.append(Pps[str(size)])
             result.append(Pct[str(size)])
@@ -297,23 +275,16 @@ class TestChecksumOffload(TestCase):
         """
         Test checksum offload performance.
         """
-        self.dut_ports = self.dut.get_ports_performance()
-        # Verify that enough ports are available
-        self.verify(len(self.dut_ports) >= 2, "Insufficient ports for testing")
-
         # sizes = [64, 128, 256, 512, 1024]
         sizes = [64, 128]
-        pkts = {
-            'IP/UDP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IP()/UDP()/("X"*(%d-46))',
-            'IP/TCP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IP()/TCP()/("X"*(%d-58))',
-            'IP/SCTP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IP()/SCTP()/("X"*(%d-50+2))',
-            'IPv6/UDP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IPv6()/UDP()/("X"* (lambda x: x - 66 if x > 66 else 0)(%d))',
-            'IPv6/TCP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IPv6()/TCP()/("X"* (lambda x: x - 78 if x > 78 else 0)(%d))'
-        }
+        pkts = {'IP/UDP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IP()/UDP()/("X"*(%d-46))',
+                'IP/TCP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IP()/TCP()/("X"*(%d-58))',
+                'IP/SCTP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IP()/SCTP()/("X"*(%d-50+2))',
+                'IPv6/UDP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IPv6()/UDP()/("X"* (lambda x: x - 66 if x > 66 else 0)(%d))',
+                'IPv6/TCP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IPv6()/TCP()/("X"* (lambda x: x - 78 if x > 78 else 0)(%d))'}
 
         lcore = "1S/2C/1T"
         portMask = dts.create_mask([self.dut_ports[0], self.dut_ports[1]])
-
         for mode in ["sw", "hw"]:
             self.logger.info("%s performance" % mode)
             rst.write_text(mode + " Performance" + '\r\n')
@@ -321,14 +292,12 @@ class TestChecksumOffload(TestCase):
             for size in sizes:
                 tblheader.append("%sB mpps" % str(size))
                 tblheader.append("%sB %%   " % str(size))
-
             dts.results_table_add_header(tblheader)
-
-            self.pmdout.start_testpmd(lcore, "--portmask=%s" % self.portMask, socket=self.ports_socket)
+            self.pmdout.start_testpmd(
+                lcore, "--portmask=%s" % self.portMask, socket=self.ports_socket)
 
             self.dut.send_expect("set verbose 1", "testpmd> ")
             self.dut.send_expect("set fwd csum", "testpmd> ")
-
             if mode == "hw":
                 self.checksum_enablehw(self.dut_ports[0])
                 self.checksum_enablehw(self.dut_ports[1])
@@ -337,9 +306,9 @@ class TestChecksumOffload(TestCase):
                 self.checksum_enablesw(self.dut_ports[1])
 
             self.dut.send_expect("start", "testpmd> ", 3)
-
             for ptype in pkts.keys():
-                self.benchmark(lcore, ptype, mode, pkts[ptype], sizes, self.nic)
+                self.benchmark(
+                    lcore, ptype, mode, pkts[ptype], sizes, self.nic)
 
             self.dut.send_expect("stop", "testpmd> ")
             self.dut.send_expect("quit", "#", 10)
