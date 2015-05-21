@@ -31,29 +31,20 @@
 
 """
 DPDK Test suite.
-
 Test device blacklisting.
-
 """
-
 import dts
-
-
 from test_case import TestCase
 from pmd_output import PmdOutput
 
-
-class TestBlacklist(TestCase):
-
+class TestBlackList(TestCase):
     def set_up_all(self):
         """
         Run at the start of each test suite.
-
         Blacklist Prerequisites.
         Requirements:
             Two Ports
         """
-
         self.ports = self.dut.get_ports()
         self.verify(len(self.ports) >= 2, "Insufficient ports for testing")
         [arch, machine, self.env, toolchain] = self.target.split('-')
@@ -87,9 +78,7 @@ class TestBlacklist(TestCase):
                 regexp_blacklisted_port = self.regexp_blacklisted_port % (int(pci.split(':')[0], 16), pci.split(':')[1])
             else:
                 regexp_blacklisted_port = self.regexp_blacklisted_port % self.dut.ports_info[port]['pci']
-
             matching_ports = dts.regexp(output, regexp_blacklisted_port, True)
-
             if blacklisted:
                 self.verify(len(matching_ports) == 1,
                             "Blacklisted port is being initialized")
@@ -101,7 +90,7 @@ class TestBlacklist(TestCase):
         """
         Run testpmd with no blacklisted device.
         """
-        out = self.pmdout.start_testpmd("all")
+        out = self.pmdout.start_testpmd("Default")
         rexp = r"Link"
         match_status = dts.regexp(out, rexp, True)
 
@@ -112,9 +101,7 @@ class TestBlacklist(TestCase):
         Run testpmd with one port blacklisted.
         """
         self.dut.kill_all()
-
-        out = self.pmdout.start_testpmd("all", eal_param="-b 0000:%s -- -i" % self.dut.ports_info[0]['pci'])
-
+        out = self.pmdout.start_testpmd("Default", eal_param="-b 0000:%s -- -i" % self.dut.ports_info[0]['pci'])
         self.check_blacklisted_ports(out, self.ports[1:])
 
     def test_bl_allbutoneportblacklisted(self):
@@ -122,18 +109,13 @@ class TestBlacklist(TestCase):
         Run testpmd with all but one port blacklisted.
         """
         self.dut.kill_all()
-
         ports_to_blacklist = self.ports[:-1]
-
         cmdline = ""
         for port in ports_to_blacklist:
             cmdline += " -b 0000:%s" % self.dut.ports_info[port]['pci']
-
-        out = self.pmdout.start_testpmd("all", eal_param=cmdline)
-
+        out = self.pmdout.start_testpmd("Default", eal_param=cmdline)
         blacklisted_ports = self.check_blacklisted_ports(out,
-                                                         ports_to_blacklist,
-                                                         True)
+                                              ports_to_blacklist, True)
 
     def tear_down(self):
         """
@@ -141,7 +123,6 @@ class TestBlacklist(TestCase):
         Quit testpmd.
         """
         self.dut.send_expect("quit", "# ", 10)
-
     def tear_down_all(self):
         """
         Run after each test suite.
