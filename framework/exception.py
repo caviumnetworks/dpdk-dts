@@ -60,3 +60,74 @@ class SSHSessionDeadException(Exception):
 
     def __str__(self):
         return 'SSH session with %s has been dead' % self.host
+
+
+class StartVMFailedException(Exception):
+
+    """
+    Start VM failed.
+    """
+
+    def __init__(self, error):
+        self.error = error
+
+    def __str__(self):
+        return repr(self.error)
+
+
+class ConfigParseException(Exception):
+
+    """
+    Configuration file parse failure exception.
+    """
+
+    def __init__(self, conf_file):
+        self.config = conf_file
+
+    def __str__(self):
+        return "Faile to parse config file [%s]" % (self.config)
+
+
+class VirtConfigParseException(Exception):
+    pass
+
+
+class PortConfigParseException(Exception):
+    pass
+
+
+class VirtConfigParamException(Exception):
+
+    """
+    Virtualizatoin param execution exception.
+    """
+    def __init__(self, param):
+        self.param = param
+
+    def __str__(self):
+        return "Faile to execute param [%s]" % (self.param)
+
+
+class VirtDutConnectException(Exception):
+    pass
+
+
+class VirtConfigParamException(Exception):
+
+    """
+    Virtualizatoin param execution exception.
+    """
+    def __init__(self, param):
+        self.param = param
+
+    def __str__(self):
+        return "Faile to execute param [%s]" % (self.param)
+
+
+class VirtDutConnectException(Exception):
+    pass
+
+
+class VirtDutInitException(Exception):
+    def __init__(self, vm_dut):
+        self.vm_dut = vm_dut
