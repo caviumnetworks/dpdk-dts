@@ -49,6 +49,7 @@ from test_case import TestCase
 from test_result import Result
 from stats_reporter import StatsReporter
 from excel_reporter import ExcelReporter
+from utils import *
 from exception import TimeoutException
 from logger import getLogger
 import logger
@@ -57,6 +58,7 @@ import sys
 reload(sys)
 sys.setdefaultencoding('UTF8')
 
+PROJECT_MODULE_PREFIX = 'project_'
 
 debug_mode = False
 config = None
@@ -73,42 +75,10 @@ result = None
 excel_report = None
 stats = None
 log_handler = None
+Package = ''
+Patches = []
 drivername = ""
 interrupttypr = ""
-
-
-def RED(text):
-    return "\x1B[" + "31;1m" + text + "\x1B[" + "0m"
-
-
-def BLUE(text):
-    return "\x1B[" + "36;1m" + text + "\x1B[" + "0m"
-
-
-def GREEN(text):
-    return "\x1B[" + "32;1m" + text + "\x1B[" + "0m"
-
-
-def regexp(s, to_match, allString=False):
-    """
-    Ensure that the re `to_match' only has one group in it.
-    """
-
-    scanner = re.compile(to_match, re.DOTALL)
-    if allString:
-        return scanner.findall(s)
-    m = scanner.search(s)
-    if m is None:
-        log_handler.warning("Failed to match " + to_match + " in the string " + s)
-        return None
-    return m.group(1)
-
-
-def pprint(some_dict):
-    """
-    Print JSON format dictionary object.
-    """
-    return json.dumps(some_dict, sort_keys=True, indent=4)
 
 
 def report(text, frame=False, annex=False):
@@ -130,37 +100,7 @@ def close_crb_sessions():
     if tester is not None:
         tester.close()
     log_handler.info("DTS ended")
-
-
-def get_nic_driver(pci_id):
-    """
-    Return linux driver for specified pci device
-    """
-    driverlist = dict(zip(NICS.values(), DRIVERS.keys()))
-    try:
-        driver = DRIVERS[driverlist[pci_id]]
-    except Exception as e:
-        driver = None
-    return driver
-
-
-def accepted_nic(pci_id):
-    """
-    Return True if the pci_id is a known NIC card in the settings file and if
-    it is selected in the execution file, otherwise it returns False.
-    """
-    if pci_id not in NICS.values():
-        return False
-
-    if nic is 'any':
-        return True
-
-    else:
-        if pci_id == NICS[nic]:
-            return True
-
-    return False
-
+	
 
 def get_crb_os(crb):
     if 'OS' in crb:
@@ -220,9 +160,10 @@ def get_project_obj(project_name, super_class, crbInst, serializer):
     """
     Load project module and return crb instance.
     """
+    global PROJECT_MODULE_PREFIX
     project_obj = None
     try:
-        project_module = __import__("project_" + project_name)
+        project_module = __import__(PROJECT_MODULE_PREFIX + project_name)
 
         for project_subclassname, project_subclass in get_subclasses(project_module, super_class):
             project_obj = project_subclass(crbInst, serializer)
@@ -273,7 +214,7 @@ def dts_crbs_init(crbInst, skip_setup, read_cache, project, base_dir, nic):
     """
     global dut
     global tester
-    serializer.set_serialized_filename('../.%s.cache' % crbInst['IP'])
+    serializer.set_serialized_filename('.%s.cache' % crbInst['IP'])
     serializer.load_from_file()
 
     dut = get_project_obj(project, Dut, crbInst, serializer)
@@ -337,7 +278,6 @@ def dts_run_target(crbInst, targets, test_suites, nic):
         if 'nic_type' not in paramDict:
             paramDict['nic_type'] = 'any'
             nic = 'any'
-        result.nic = nic
 
         dts_run_suite(crbInst, test_suites, target, nic)
 
@@ -359,7 +299,9 @@ def dts_run_suite(crbInst, test_suites, target, nic):
             test_module = __import__('TestSuite_' + test_suite)
             for test_classname, test_class in get_subclasses(test_module, TestCase):
 
-                test_suite = test_class(dut, tester, target)
+                test_suite = test_class(dut, tester, target, test_suite)
+                result.nic = test_suite.nic
+
                 dts_log_testsuite(test_suite, log_handler, test_classname)
 
                 log_handler.info("\nTEST SUITE : " + test_classname)
@@ -400,6 +342,12 @@ def run_all(config_file, pkgName, git, patch, skip_setup,
     global stats
     global log_handler
     global debug_mode
+    global Package
+    global Patches
+
+    # save global variable
+    Package = pkgName
+    Patches = patch
 
     # prepare the output folder
     if not os.path.exists(output_dir):
