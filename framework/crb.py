@@ -86,7 +86,9 @@ class Crb(object):
         """
         Get the huge page number of CRB.
         """
-        huge_pages = self.send_expect("awk '/HugePages_Total/ { print $2 }' /proc/meminfo", "# ")
+        huge_pages = self.send_expect(
+            "awk '/HugePages_Total/ { print $2 }' /proc/meminfo",
+            "# ", alt_session=True)
         if huge_pages != "":
             return int(huge_pages)
         return 0
@@ -133,13 +135,15 @@ class Crb(object):
         Force set remote interface link status in FreeBSD.
         """
         eth = self.ports_info[port]['intf']
-        self.send_expect("ifconfig %s %s" % (eth, status), "# ")
+        self.send_expect("ifconfig %s %s" %
+                         (eth, status), "# ", alt_session=True)
 
     def admin_ports_linux(self, eth, status):
         """
         Force set remote interface link status in Linux.
         """
-        self.send_expect("ip link set  %s %s" % (eth, status), "# ")
+        self.send_expect("ip link set  %s %s" %
+                         (eth, status), "# ", alt_session=True)
 
     def pci_devices_information(self):
         """
@@ -163,8 +167,9 @@ class Crb(object):
         """
         Look for the NIC's information (PCI Id and card type).
         """
-        out = self.send_expect("lspci -nn | grep -i eth", "# ")
-        rexp = r"([\da-f]{2}:[\da-f]{2}.\d{1}) Ethernet .*?([\da-f]{4}:[\da-f]{4})"
+        out = self.send_expect(
+            "lspci -nn | grep -i eth", "# ", alt_session=True)
+        rexp = r"([\da-f]{2}:[\da-f]{2}.\d{1}) .*Eth.*?ernet .*?([\da-f]{4}:[\da-f]{4})"
         pattern = re.compile(rexp)
         match = pattern.findall(out)
         self.pci_devices_info = []
@@ -175,7 +180,7 @@ class Crb(object):
         """
         Look for the NIC's information (PCI Id and card type).
         """
-        out = self.send_expect("pciconf -l", "# ")
+        out = self.send_expect("pciconf -l", "# ", alt_session=True)
         rexp = r"pci0:([\da-f]{1,3}:[\da-f]{1,2}:\d{1}):\s*class=0x020000.*chip=0x([\da-f]{4})8086"
         pattern = re.compile(rexp)
         match = pattern.findall(out)
@@ -185,66 +190,69 @@ class Crb(object):
             card_type = "8086:%s" % match[i][1]
             self.pci_devices_info.append((match[i][0], card_type))
 
-    def get_interface_name(self, bus_id, devfun_id=''):
+    def get_pci_dev_driver(self, bus_id, devfun_id):
         """
-        Get interface name of specified pci device.
+        Get the driver of specified pci device.
         """
-        get_interface_name = getattr(self, 'get_interface_name_%s' % self.get_os_type())
-        return get_interface_name(bus_id, devfun_id)
+        get_pci_dev_driver = getattr(
+            self, 'get_pci_dev_driver_%s' % self.get_os_type())
+        return get_pci_dev_driver(bus_id, devfun_id)
 
-    def get_interface_name_linux(self, bus_id, devfun_id):
+    def get_pci_dev_driver_linux(self, bus_id, devfun_id):
         """
-        Get interface name of specified pci device on linux.
+        Get the driver of specified pci device on linux.
         """
-        command = 'ls --color=never /sys/bus/pci/devices/0000:%s:%s/net' % (bus_id, devfun_id)
-        out = self.send_expect(command, '# ', verify=True)
-        if out == -1:
-            name = ""
-        else:
-            name = out.split()[0]
-        return name
-
-    def get_interface_name_freebsd(self, bus_id, devfun_id):
-        """
-        Get interface name of specified pci device on Freebsd.
-        """
-        out = self.send_expect("pciconf -l", "# ")
-        rexp = r"(\w*)@pci0:%s" % bus_id
+        out = self.send_expect("cat /sys/bus/pci/devices/0000\:%s\:%s/uevent" %
+                               (bus_id, devfun_id), "# ", alt_session=True)
+        rexp = r"DRIVER=(.+?)\r"
         pattern = re.compile(rexp)
-        match = pattern.findall(out)
-        return match[0]
+        match = pattern.search(out)
+        if not match:
+            return None
+        return match.group(1)
 
-    def get_mac_addr(self, intf, bus_id='', devfun_id=''):
+    def get_pci_dev_driver_freebsd(self, bus_id, devfun_id):
         """
-        Get mac address of specified pci device.
+        Get the driver of specified pci device.
         """
-        get_mac_addr = getattr(self, 'get_mac_addr_%s' % self.get_os_type())
-        return get_mac_addr(intf, bus_id, devfun_id)
+        return True
 
-    def get_mac_addr_linux(self, intf, bus_id, devfun_id):
+    def get_pci_dev_id(self, bus_id, devfun_id):
         """
-        Get mac address of specified pci device on linux.
+        Get the pci id of specified pci device.
         """
-        command = ('cat /sys/bus/pci/devices/0000:%s:%s/net/%s/address' %
-                   (bus_id, devfun_id, intf))
-        return self.send_expect(command, '# ')
+        get_pci_dev_id = getattr(
+            self, 'get_pci_dev_id_%s' % self.get_os_type())
+        return get_pci_dev_id(bus_id, devfun_id)
 
-    def get_mac_addr_freebsd(self, intf, bus_id, devfun_id):
+    def get_pci_dev_id_linux(self, bus_id, devfun_id):
         """
-        Get mac address of specified pci device on Freebsd.
+        Get the pci id of specified pci device on linux.
         """
-        out = self.send_expect('ifconfig %s' % intf, '# ')
-        rexp = r"ether ([\da-f:]*)"
+        out = self.send_expect("cat /sys/bus/pci/devices/0000\:%s\:%s/uevent" %
+                               (bus_id, devfun_id), "# ", alt_session=True)
+        rexp = r"PCI_ID=(.+)"
         pattern = re.compile(rexp)
-        match = pattern.findall(out)
-        return match[0]
+        match = re.search(out)
+        if not match:
+            return None
+        return match.group(1)
 
     def get_device_numa(self, bus_id, devfun_id):
         """
-        Get numa id of specified pci device
+        Get numa number of specified pci device.
         """
-        numa = self.send_expect("cat /sys/bus/pci/devices/0000\:%s\:%s/numa_node" %
-                                (bus_id, devfun_id), "# ")
+        get_device_numa = getattr(
+            self, "get_device_numa_%s" % self.get_os_type())
+        return get_device_numa(bus_id, devfun_id)
+
+    def get_device_numa_linux(self, bus_id, devfun_id):
+        """
+        Get numa number of specified pci device on Linux.
+        """
+        numa = self.send_expect(
+            "cat /sys/bus/pci/devices/0000\:%s\:%s/numa_node" %
+            (bus_id, devfun_id), "# ", alt_session=True)
 
         try:
             numa = int(numa)
@@ -265,14 +273,14 @@ class Crb(object):
         Get ipv6 address of specified pci device on linux.
         """
         out = self.send_expect("ip -family inet6 address show dev %s | awk '/inet6/ { print $2 }'"
-                               % intf, "# ")
+                               % intf, "# ", alt_session=True)
         return out.split('/')[0]
 
     def get_ipv6_addr_freebsd(self, intf):
         """
         Get ipv6 address of specified pci device on Freebsd.
         """
-        out = self.send_expect('ifconfig %s' % intf, '# ')
+        out = self.send_expect('ifconfig %s' % intf, '# ', alt_session=True)
         rexp = r"inet6 ([\da-f:]*)%"
         pattern = re.compile(rexp)
         match = pattern.findall(out)
@@ -280,6 +288,22 @@ class Crb(object):
             return None
 
         return match[0]
+
+    def disable_ipv6(self, intf):
+        """
+        Disable ipv6 of of specified interface
+        """
+        if intf != 'N/A':
+            self.send_expect("sysctl net.ipv6.conf.%s.disable_ipv6=1" %
+                             intf, "# ", alt_session=True)
+
+    def enable_ipv6(self, intf):
+        """
+        Enable ipv6 of of specified interface
+        """
+        if intf != 'N/A':
+            self.send_expect("sysctl net.ipv6.conf.%s.disable_ipv6=0" %
+                             intf, "# ", alt_session=True)
 
     def create_file(self, contents, fileName):
         """
@@ -324,7 +348,7 @@ class Crb(object):
         if isinstance(self, Dut) and self.get_os_type() == 'freebsd':
             expected = 'FreeBSD.*#'
 
-        self.send_expect('uname', expected, 2)
+        self.send_expect('uname', expected, 2, alt_session=True)
 
     def init_core_list(self):
         """
@@ -384,7 +408,9 @@ class Crb(object):
         self.cores = []
 
         cpuinfo = \
-            self.send_expect("grep \"processor\\|physical id\\|core id\\|^$\" /proc/cpuinfo", "#")
+            self.send_expect(
+                "grep --color=never \"processor\\|physical id\\|core id\\|^$\" /proc/cpuinfo",
+                "#", alt_session=True)
         cpuinfo = cpuinfo.split('\r\n\r\n')
         for line in cpuinfo:
             m = re.search("processor\t: (\d+)\r\n" +
