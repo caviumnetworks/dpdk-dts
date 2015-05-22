@@ -35,6 +35,9 @@ import sys
 import inspect
 import re
 
+from settings import LOG_NAME_SEP
+from utils import RED
+
 """
 DTS logger module with several log level. DTS framwork and TestSuite log
 will saved into different log files.
@@ -58,6 +61,9 @@ logging.SUITE_TESTER_OUTPUT = logging.DEBUG + 4
 logging.DTS_IXIA_CMD = logging.INFO + 5
 logging.DTS_IXIA_OUTPUT = logging.DEBUG + 5
 
+logging.DTS_VIRTDUT_CMD = logging.INFO + 6
+logging.DTS_VIRTDUT_OUTPUT = logging.DEBUG + 6
+
 logging.addLevelName(logging.DTS_DUT_CMD, 'DTS_DUT_CMD')
 logging.addLevelName(logging.DTS_DUT_OUTPUT, 'DTS_DUT_OUTPUT')
 logging.addLevelName(logging.DTS_DUT_RESULT, 'DTS_DUT_RESUTL')
@@ -65,6 +71,12 @@ logging.addLevelName(logging.DTS_DUT_RESULT, 'DTS_DUT_RESUTL')
 logging.addLevelName(logging.DTS_TESTER_CMD, 'DTS_TESTER_CMD')
 logging.addLevelName(logging.DTS_TESTER_OUTPUT, 'DTS_TESTER_OUTPUT')
 logging.addLevelName(logging.DTS_TESTER_RESULT, 'DTS_TESTER_RESULT')
+
+logging.addLevelName(logging.DTS_IXIA_CMD, 'DTS_IXIA_CMD')
+logging.addLevelName(logging.DTS_IXIA_OUTPUT, 'DTS_IXIA_OUTPUT')
+
+logging.addLevelName(logging.DTS_VIRTDUT_CMD, 'VIRTDUT_CMD')
+logging.addLevelName(logging.DTS_VIRTDUT_OUTPUT, 'VIRTDUT_OUTPUT')
 
 logging.addLevelName(logging.SUITE_DUT_CMD, 'SUITE_DUT_CMD')
 logging.addLevelName(logging.SUITE_DUT_OUTPUT, 'SUITE_DUT_OUTPUT')
@@ -82,13 +94,16 @@ stream_fmt = '%(color)s%(levelname)20s: %(message)s' + RESET_COLOR
 log_dir = None
 
 
-def RED(text):
-    return "\x1B[" + "31;1m" + text + "\x1B[" + "0m"
-
-
 def set_verbose():
     global verbose
     verbose = True
+
+
+def add_salt(salt, msg):
+    if not salt:
+        return msg
+    else:
+        return '[%s] ' % salt + str(msg)
 
 
 class BaseLoggerAdapter(logging.LoggerAdapter):
@@ -132,6 +147,12 @@ class BaseLoggerAdapter(logging.LoggerAdapter):
     def dts_ixia_output(self, msg, *args, **kwargs):
         self.log(logging.DTS_IXIA_OUTPUT, msg, *args, **kwargs)
 
+    def dts_virtdut_cmd(self, msg, *args, **kwargs):
+        self.log(logging.DTS_VIRTDUT_CMD, msg, *args, **kwargs)
+
+    def dts_virtdut_output(self, msg, *args, **kwargs):
+        self.log(logging.DTS_VIRTDUT_OUTPUT, msg, *args, **kwargs)
+
 
 class ColorHandler(logging.StreamHandler):
     """
@@ -150,6 +171,8 @@ class ColorHandler(logging.StreamHandler):
         logging.SUITE_TESTER_CMD: '',  # SYSTEM
         logging.DTS_IXIA_CMD: '',  # SYSTEM
         logging.DTS_IXIA_OUTPUT: '',  # SYSTEM
+        logging.DTS_VIRTDUT_CMD: '',  # SYSTEM
+        logging.DTS_VIRTDUT_OUTPUT: '',  # SYSTEM
         logging.WARN: '\033[01;33m',  # BOLD YELLOW
         logging.DTS_DUT_RESULT: '\033[01;34m',  # BOLD BLUE
         logging.DTS_TESTER_RESULT: '\033[01;34m',  # BOLD BLUE
@@ -189,6 +212,8 @@ class DTSLOG(BaseLoggerAdapter):
         self.crb = crb
         super(DTSLOG, self).__init__(self.logger, dict(crb=self.crb))
 
+        self.salt = ''
+
         self.fh = None
         self.ch = None
 
@@ -221,24 +246,28 @@ class DTSLOG(BaseLoggerAdapter):
         """
         DTS warnning level log function.
         """
+        message = add_salt(self.salt, message)
         self.logger.log(self.warn_lvl, message)
 
     def info(self, message):
         """
         DTS information level log function.
         """
+        message = add_salt(self.salt, message)
         self.logger.log(self.info_lvl, message)
 
     def error(self, message):
         """
         DTS error level log function.
         """
+        message = add_salt(self.salt, message)
         self.logger.log(self.error_lvl, message)
 
     def debug(self, message):
         """
         DTS debug level log function.
         """
+        message = add_salt(self.salt, message)
         self.logger.log(self.debug_lvl, message)
 
     def set_logfile_path(self, path):
@@ -270,17 +299,34 @@ class DTSLOG(BaseLoggerAdapter):
         ch = ColorHandler()
         self.__log_hander(fh, ch)
 
-        if crb == "dut":
+        def set_salt(crb, start_flag):
+            if LOG_NAME_SEP in crb:
+                old = '%s%s' % (start_flag, LOG_NAME_SEP)
+                if not self.salt:
+                    self.salt = crb.replace(old, '', 1)
+
+        if crb.startswith('dut'):
             self.info_lvl = logging.DTS_DUT_CMD
             self.debug_lvl = logging.DTS_DUT_OUTPUT
             self.warn_lvl = logging.DTS_DUT_RESULT
-        elif crb == "tester":
+
+            set_salt(crb, 'dut')
+        elif crb.startswith('tester'):
             self.info_lvl = logging.DTS_TESTER_CMD
             self.debug_lvl = logging.DTS_TESTER_OUTPUT
             self.warn_lvl = logging.DTS_TESTER_RESULT
-        elif crb == "ixia":
+
+            set_salt(crb, 'tester')
+        elif crb.startswith('ixia'):
             self.info_lvl = logging.DTS_IXIA_CMD
             self.debug_lvl = logging.DTS_IXIA_OUTPUT
+
+            set_salt(crb, 'ixia')
+        elif crb.startswith('virtdut'):
+            self.info_lvl = logging.DTS_VIRTDUT_CMD
+            self.debug_lvl = logging.DTS_VIRTDUT_OUTPUT
+
+            set_salt(crb, 'virtdut')
         else:
             self.error_lvl = logging.ERROR
             self.warn_lvl = logging.WARNING
@@ -296,15 +342,18 @@ class DTSLOG(BaseLoggerAdapter):
         ch = ColorHandler()
         self.__log_hander(fh, ch)
 
-        if crb == "dut":
+        if crb == 'dut':
             self.info_lvl = logging.SUITE_DUT_CMD
             self.debug_lvl = logging.SUITE_DUT_OUTPUT
-        elif crb == "tester":
+        elif crb == 'tester':
             self.info_lvl = logging.SUITE_TESTER_CMD
             self.debug_lvl = logging.SUITE_TESTER_OUTPUT
-        elif crb == "ixia":
+        elif crb == 'ixia':
             self.info_lvl = logging.DTS_IXIA_CMD
             self.debug_lvl = logging.DTS_IXIA_OUTPUT
+        elif crb == 'virtdut':
+            self.info_lvl = logging.DTS_VIRTDUT_CMD
+            self.debug_lvl = logging.DTS_VIRTDUT_OUTPUT
 
     def logger_exit(self):
         """
