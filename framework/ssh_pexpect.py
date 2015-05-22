@@ -3,6 +3,7 @@ import pexpect
 import pxssh
 from debugger import ignore_keyintr, aware_keyintr
 from exception import TimeoutException, SSHConnectionException, SSHSessionDeadException
+from utils import RED, GREEN
 
 """
 Module handle ssh sessions between tester and DUT.
@@ -20,10 +21,23 @@ class SSHPexpect(object):
             self.username = username
             self.host = host
             self.password = password
-            self.session.login(self.host, self.username,
-                               self.password, original_prompt='[$#>]')
-            self.send_expect('stty -echo', '# ', timeout=2)
-        except Exception:
+            if ':' in host:
+                self.ip = host.split(':')[0]
+                self.port = int(host.split(':')[1])
+                self.session.login(self.ip, self.username,
+                                   self.password, original_prompt='[$#>]',
+                                   port=self.port, login_timeout=20)
+            else:
+                self.session.login(self.host, self.username,
+                                   self.password, original_prompt='[$#>]')
+             self.send_expect('stty -echo', '# ', timeout=2)
+        except Exception, e:
+            print RED(e)
+            if getattr(self, 'port', None):
+                suggestion = "\nSuggession: Check if the fireware on [ %s ] " % \
+                    self.ip + "is stoped\n"
+                print GREEN(suggestion)
+
             raise SSHConnectionException(host)
 
     def init_log(self, logger, name):
@@ -49,8 +63,8 @@ class SSHPexpect(object):
             if not int(ret_status):
                 return ret
             else:
-                self.logger.error("Command: %s failure!" % command)
-                return -1
+                self.logger.error(ret)
+                return ret_status
         else:
             return ret
 
@@ -127,6 +141,12 @@ class SSHPexpect(object):
         Sends a local file to a remote place.
         """
         command = 'scp {0} {1}@{2}:{3}'.format(src, self.username, self.host, dst)
+        if ':' in self.host:
+            command = 'scp -P {0} -o NoHostAuthenticationForLocalhost=yes {1} {2}@{3}:{4}'.format(
+                str(self.port), src, self.username, self.ip, dst)
+        else:
+            command = 'scp {0} {1}@{2}:{3}'.format(
+                src, self.username, self.host, dst)
         if password == '':
             self._spawn_scp(command, self.password)
         else:
