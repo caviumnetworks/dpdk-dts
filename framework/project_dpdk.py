@@ -39,7 +39,7 @@ from crb import Crb
 from dut import Dut
 from tester import Tester
 from logger import getLogger
-from settings import IXIA
+from settings import IXIA, accepted_nic
 
 
 class DPDKdut(Dut):
@@ -50,8 +50,8 @@ class DPDKdut(Dut):
     """
 
     def __init__(self, crb, serializer):
-        self.NAME = 'dut'
         super(DPDKdut, self).__init__(crb, serializer)
+        self.testpmd = None
 
     def set_target(self, target):
         """
@@ -60,6 +60,7 @@ class DPDKdut(Dut):
         Set hugepage on DUT and install modules required by DPDK.
         Configure default ixgbe PMD function.
         """
+        self.target = target
         self.set_toolchain(target)
 
         # set env variable
@@ -110,7 +111,7 @@ class DPDKdut(Dut):
         binding_list = ''
 
         for (pci_bus, pci_id) in self.pci_devices_info:
-            if dts.accepted_nic(pci_id):
+            if accepted_nic(pci_id):
                 binding_list += '%s,' % (pci_bus)
 
         self.send_expect("kldunload if_ixgbe.ko", "#")
@@ -191,10 +192,7 @@ class DPDKdut(Dut):
         assert ("Error" not in out), "Compilation error..."
         assert ("No rule to make" not in out), "No rule to make error..."
 
-    def prerequisites(self, pkgName, patch):
-        """
-        Copy DPDK package to DUT and apply patch files.
-        """
+    def prepare_package(self, pkgName, patch):
         if not self.skip_setup:
             assert (os.path.isfile(pkgName) is True), "Invalid package"
 
@@ -249,6 +247,11 @@ class DPDKdut(Dut):
                                            (self.base_dir, dst_dir + p), "# ")
                     assert "****" not in out
 
+    def prerequisites(self, pkgName, patch):
+        """
+        Copy DPDK package to DUT and apply patch files.
+        """
+        self.prepare_package(pkgName, patch)
         self.dut_prerequisites()
 
     def bind_interfaces_linux(self, driver='igb_uio', nics_to_bind=None):
@@ -354,7 +357,7 @@ class DPDKtester(Tester):
             total_huge_pages = self.get_total_huge_pages()
             if total_huge_pages == 0:
                 self.mount_huge_pages()
-                self.set_huge_pages(4096)
+                self.set_huge_pages(1024)
 
             self.session.copy_file_to("dep/tgen.tgz")
             self.session.copy_file_to("dep/tclclient.tgz")
@@ -386,10 +389,10 @@ class DPDKtester(Tester):
         """
         hugepages_size = self.send_expect("awk '/Hugepagesize/ {print $2}' /proc/meminfo", "# ")
 
-        if int(hugepages_size) < (1024 * 1024):
-            arch_huge_pages = hugepages if hugepages > 0 else 4096
+        if int(hugepages_size) < (2048 * 2048):
+            arch_huge_pages = hugepages if hugepages > 0 else 2048
             total_huge_pages = self.get_total_huge_pages()
 
-            self.mount_huge_pages()
-            if total_huge_pages != arch_huge_pages:
-                self.set_huge_pages(arch_huge_pages)
+        self.mount_huge_pages()
+        if total_huge_pages != arch_huge_pages:
+            self.set_huge_pages(arch_huge_pages)
