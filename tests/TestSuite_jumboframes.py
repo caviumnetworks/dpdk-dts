@@ -96,11 +96,9 @@ class TestJumboframes(TestCase):
         if received:
             self.verify(p0tx_pkts == p1rx_pkts and p0tx_bytes == pktsize and p1rx_bytes == pktsize,
                         "packet pass assert error")
-
         else:
             self.verify(p0tx_pkts == p1rx_pkts and (p1rx_err == 1 or p1rx_pkts == 0),
                         "packet drop assert error")
-
         return out
 
     #
@@ -112,13 +110,12 @@ class TestJumboframes(TestCase):
         """
         Prerequisite steps for each test suit.
         """
-
         self.dut_ports = self.dut.get_ports()
         self.verify(len(self.dut_ports) >= 2, "Insufficient ports")
         self.rx_port = self.dut_ports[0]
         self.tx_port = self.dut_ports[1]
 
-        cores = self.dut.get_core_list('1S/2C/2T')
+        cores = self.dut.get_core_list("1S/2C/1T")
         self.coremask = dts.create_mask(cores)
 
         self.port_mask = dts.create_mask([self.rx_port, self.tx_port])
@@ -139,10 +136,7 @@ class TestJumboframes(TestCase):
         This case aims to test transmitting normal size packet without jumbo
         frame on testpmd app.
         """
-
-        self.dut.kill_all()
-
-        self.pmdout.start_testpmd("all", "--max-pkt-len=%d" % (ETHER_STANDARD_MTU))
+        self.pmdout.start_testpmd("Default", "--max-pkt-len=%d" % (ETHER_STANDARD_MTU))
         self.dut.send_expect("start", "testpmd> ")
 
         self.jumboframes_send_packet(ETHER_STANDARD_MTU - 1)
@@ -156,10 +150,7 @@ class TestJumboframes(TestCase):
         This case aims to test transmitting jumbo frame packet on testpmd without
         jumbo frame support.
         """
-
-        self.dut.kill_all()
-
-        self.pmdout.start_testpmd("all", "--max-pkt-len=%d" % (ETHER_STANDARD_MTU))
+        self.pmdout.start_testpmd("Default", "--max-pkt-len=%d" % (ETHER_STANDARD_MTU))
         self.dut.send_expect("start", "testpmd> ")
 
         self.jumboframes_send_packet(ETHER_STANDARD_MTU + 1, False)
@@ -172,10 +163,7 @@ class TestJumboframes(TestCase):
         When jumbo frame supported, this case is to verify that the normal size
         packet forwrding should be support correct.
         """
-
-        self.dut.kill_all()
-
-        self.pmdout.start_testpmd("all", "--max-pkt-len=%s" % (ETHER_JUMBO_FRAME_MTU))
+        self.pmdout.start_testpmd("Default", "--max-pkt-len=%s" % (ETHER_JUMBO_FRAME_MTU))
         self.dut.send_expect("start", "testpmd> ")
 
         self.jumboframes_send_packet(1517)
@@ -189,10 +177,7 @@ class TestJumboframes(TestCase):
         When jumbo frame supported, this case is to verify that jumbo frame
         packet can be forwarded correct.
         """
-
-        self.dut.kill_all()
-
-        self.pmdout.start_testpmd("all", "--max-pkt-len=%s" % (ETHER_JUMBO_FRAME_MTU))
+        self.pmdout.start_testpmd("Default", "--max-pkt-len=%s" % (ETHER_JUMBO_FRAME_MTU))
         self.dut.send_expect("start", "testpmd> ")
 
         self.jumboframes_send_packet(ETHER_STANDARD_MTU + 1)
@@ -207,10 +192,7 @@ class TestJumboframes(TestCase):
         When the jubmo frame MTU set as 9000, this case is to verify that the
         packet which the length bigger than MTU can not be forwarded.
         """
-
-        self.dut.kill_all()
-
-        self.pmdout.start_testpmd("1S/2C/1T", "--max-pkt-len=%s" % (ETHER_JUMBO_FRAME_MTU))
+        self.pmdout.start_testpmd("Default", "--max-pkt-len=%s" % (ETHER_JUMBO_FRAME_MTU))
         self.dut.send_expect("start", "testpmd> ")
 
         self.jumboframes_send_packet(ETHER_JUMBO_FRAME_MTU + 1, False)
