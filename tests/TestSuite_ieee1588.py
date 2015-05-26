@@ -36,22 +36,16 @@ Test support of IEEE1588 Precise Time Protocol.
 
 import dts
 import time
-
-
 from test_case import TestCase
 from pmd_output import PmdOutput
-
 
 class TestIeee1588(TestCase):
 
     def set_up_all(self):
         """
         Run at the start of each test suite.
-
-
         IEEE1588 Prerequisites
         """
-
         dutPorts = self.dut.get_ports()
         self.verify(len(dutPorts) > 0, "No ports found for " + self.nic)
 
@@ -64,7 +58,7 @@ class TestIeee1588(TestCase):
         self.dut.build_install_dpdk(self.target)
 
         self.pmdout = PmdOutput(self.dut)
-        self.pmdout.start_testpmd("all")
+        self.pmdout.start_testpmd("Default")
 
     def set_up(self):
         """
@@ -76,10 +70,11 @@ class TestIeee1588(TestCase):
         """
         IEEE1588 Enable test case.
         """
-
         self.dut.send_expect("set fwd ieee1588", "testpmd> ")
-        self.dut.send_expect("start", ">", 5)  # Waiting for 'testpmd> ' Fails due to log messages, "Received non PTP packet", in the output
-        time.sleep(1)  # Allow the output from the "start" command to finish before looking for a regexp in expect
+        # Waiting for 'testpmd> ' Fails due to log messages, "Received non PTP packet", in the output
+        self.dut.send_expect("start", ">", 5)  
+        # Allow the output from the "start" command to finish before looking for a regexp in expect
+        time.sleep(1)
 
         # use the first port on that self.nic
         dutPorts = self.dut.get_ports()
@@ -92,7 +87,6 @@ class TestIeee1588(TestCase):
 
         # this is the output of sniff
         # [<Ether  dst=01:1b:19:00:00:00 src=00:00:00:00:00:00 type=0x88f7 |<Raw  load='\x00\x02' |>>]
-
         self.tester.scapy_foreground()
         self.tester.scapy_append('nutmac="01:1b:19:00:00:00"')
         self.tester.scapy_append('sendp([Ether(dst=nutmac,type=0x88f7)/"\\x00\\x02"], iface="%s")' % itf)
@@ -120,7 +114,6 @@ class TestIeee1588(TestCase):
         """
         IEEE1588 Disable test case.
         """
-
         self.dut.send_expect("stop", "testpmd> ")
         time.sleep(3)
 
