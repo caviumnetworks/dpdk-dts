@@ -45,7 +45,7 @@ class SSHPexpect(object):
     def send_expect(self, command, expected, timeout=15, verify=False):
         ret = self.send_expect_base(command, expected, timeout)
         if verify:
-            ret_status = self.send_expect_base("echo $?", expected)
+            ret_status = self.send_expect_base("echo $?", expected, timeout)
             if not int(ret_status):
                 return ret
             else:
