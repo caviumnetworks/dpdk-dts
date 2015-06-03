@@ -30,7 +30,7 @@ class SSHPexpect(object):
             else:
                 self.session.login(self.host, self.username,
                                    self.password, original_prompt='[$#>]')
-             self.send_expect('stty -echo', '# ', timeout=2)
+            self.send_expect('stty -echo', '# ', timeout=2)
         except Exception, e:
             print RED(e)
             if getattr(self, 'port', None):
