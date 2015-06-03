@@ -37,7 +37,6 @@ Test the support of Jumbo Frames by Poll Mode Drivers
 import dts
 import re
 from time import sleep
-
 from test_case import TestCase
 from pmd_output import PmdOutput
 
@@ -97,8 +96,8 @@ class TestJumboframes(TestCase):
             self.verify(p0tx_pkts == p1rx_pkts and p0tx_bytes == pktsize and p1rx_bytes == pktsize,
                         "packet pass assert error")
         else:
-            self.verify(p0tx_pkts == p1rx_pkts and (p1rx_err == 1 or p1rx_pkts == 0),
-                        "packet drop assert error")
+            #self.verify(p0tx_pkts == p1rx_pkts and (p1rx_err == 1 or p1rx_pkts == 0),
+            self.verify(p1rx_err == 1 or p0tx_pkts == 0, "packet drop assert error")
         return out
 
     #

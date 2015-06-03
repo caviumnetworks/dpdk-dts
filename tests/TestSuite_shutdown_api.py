@@ -13,7 +13,7 @@ import re
 import os
 from test_case import TestCase
 from pmd_output import PmdOutput
-from setting import HEADER_SIZE
+from settings import HEADER_SIZE
 
 #
 #
