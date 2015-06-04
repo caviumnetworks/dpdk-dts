@@ -241,13 +241,13 @@ class VirtBase(object):
             return True
         elif type(vm_except) is exception.VirtDutConnectException:
             # need stop vm
-            self.virt_obj.stop()
+            self.stop()
             return True
         elif type(vm_except) is exception.VirtDutInitException:
             # need close session
             vm_except.vm_dut.close_sessions()
             # need stop vm
-            self.virt_obj.stop()
+            self.stop()
             return True
         else:
             return False
@@ -276,6 +276,7 @@ class VirtBase(object):
             vm_dut = VirtDut(
                 crb,
                 serializer,
+                self.virt_type,
                 self.vm_name,
                 self.suite)
         except:

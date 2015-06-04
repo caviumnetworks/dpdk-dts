@@ -54,7 +54,7 @@ class VirtDut(DPDKdut):
     or CRBBareMetal.
     """
 
-    def __init__(self, crb, serializer, vm_name, suite):
+    def __init__(self, crb, serializer, virttype, vm_name, suite):
         super(Dut, self).__init__(crb, serializer)
         self.vm_ip = self.get_ip_address()
         self.NAME = 'virtdut' + LOG_NAME_SEP + '%s' % self.vm_ip
@@ -77,6 +77,7 @@ class VirtDut(DPDKdut):
         self.architecture = None
         self.ports_info = None
         self.ports_map = []
+        self.virttype = virttype
 
     def set_nic_type(self, nic_type):
         """
@@ -133,7 +134,10 @@ class VirtDut(DPDKdut):
         # scan ports before restore interface
         self.scan_ports()
         # restore dut ports to kernel
-        self.restore_interfaces()
+        if self.virttype != 'XEN':
+            self.restore_interfaces()
+        else:
+            self.restore_interfaces_domu()
         # rescan ports after interface up
         self.rescan_ports()
 
@@ -153,6 +157,27 @@ class VirtDut(DPDKdut):
         for port_info in self.ports_info:
             self.logger.info(port_info)
 
+    def restore_interfaces_domu(self):
+        """
+        Restore Linux interfaces.
+        """
+        for port in self.ports_info:
+            pci_bus = port['pci']
+            pci_id = port['type']
+            driver = settings.get_nic_driver(pci_id)
+            if driver is not None:
+                addr_array = pci_bus.split(':')
+                bus_id = addr_array[0]
+                devfun_id = addr_array[1]
+                port = NetDevice(self, bus_id, devfun_id)
+                itf = port.get_interface_name()
+                self.send_expect("ifconfig %s up" % itf, "# ")
+                time.sleep(30)
+                print self.send_expect("ip link ls %s" % itf, "# ")
+            else:
+                self.logger.info(
+                    "NOT FOUND DRIVER FOR PORT (%s|%s)!!!" % (pci_bus, pci_id))
+
     def pci_devices_information(self):
         self.pci_devices_information_uncached()
 
@@ -170,6 +195,8 @@ class VirtDut(DPDKdut):
         if pci_id == "8086:100e":
             return False
         return True
+        # load vm port conf need another function
+        # need add vitrual function device into NICS
 
     def scan_ports(self):
         """
