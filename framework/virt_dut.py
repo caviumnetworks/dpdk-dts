@@ -79,6 +79,12 @@ class VirtDut(DPDKdut):
         self.ports_map = []
         self.virttype = virttype
 
+    def close_sessions(self):
+        if self.session:
+            self.session.close()
+        if self.alt_session:
+            self.alt_session.close()
+
     def set_nic_type(self, nic_type):
         """
         Set CRB NICS ready to validated.
@@ -122,11 +128,15 @@ class VirtDut(DPDKdut):
         Then call pci scan function to collect nic device information.
         At last setup DUT' environment for validation.
         """
-        self.prepare_package(pkgName, patch)
+        if not self.skip_setup:
+            self.prepare_package(pkgName, patch)
 
         self.send_expect("cd %s" % self.base_dir, "# ")
-        self.host_session.send_expect("cd %s" % self.base_dir, "# ")
         self.send_expect("alias ls='ls --color=none'", "#")
+
+        if self.get_os_type() == 'freebsd':
+            self.send_expect('alias make=gmake', '# ')
+            self.send_expect('alias sed=gsed', '# ')
 
         self.init_core_list()
         self.pci_devices_information()
