@@ -69,6 +69,8 @@ class VirtBase(object):
         # replace dut session
         self.host_session = self.host_dut.host_session
         self.host_logger = self.host_dut.logger
+        # base_dir existed for host dut has prepared it
+        self.host_session.send_expect("cd %s" % self.host_dut.base_dir, "# ")
 
         # init the host resouce pool for VM
         self.virt_pool = self.host_dut.virt_pool
@@ -81,6 +83,7 @@ class VirtBase(object):
         self.virt_type = self.get_virt_type()
 
         self.params = []
+
         # default call back function is None
         self.callback = None
 
@@ -141,6 +144,7 @@ class VirtBase(object):
             if key in param.keys():
                 param[key] = value
                 return
+
         self.params.append({key: value})
 
     def compose_boot_param(self):
@@ -192,6 +196,18 @@ class VirtBase(object):
         Get the VM IP.
         """
         NotImplemented
+
+    def isalive(self):
+        """
+        Check whether VM existed.
+        """
+        vm_status = self.host_session.send_expect(
+            "ps aux | grep qemu | grep 'name %s '| grep -v grep" % self.vm_name, "# ")
+
+        if self.vm_name in vm_status:
+            return True
+        else:
+            return False
 
     def start(self):
         """
