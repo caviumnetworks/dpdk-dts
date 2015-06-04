@@ -131,6 +131,9 @@ class Crb(object):
         """
         self.base_dir = base_dir
 
+    def set_virttype(self, virttype):
+        self.virttype = virttype
+
     def admin_ports(self, port, status):
         """
         Force set port's interface status.
