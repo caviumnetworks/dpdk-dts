@@ -37,6 +37,7 @@ import traceback    # exception traceback
 import inspect      # load attribute
 import atexit       # register callback when exit
 import json         # json format
+import signal       # signal module for debug mode
 
 import rst          # rst file support
 from crbs import crbs
@@ -53,6 +54,7 @@ from utils import *
 from exception import TimeoutException
 from logger import getLogger
 import logger
+import debugger
 
 import sys
 reload(sys)
@@ -61,6 +63,7 @@ sys.setdefaultencoding('UTF8')
 PROJECT_MODULE_PREFIX = 'project_'
 
 debug_mode = False
+debug_case = False
 config = None
 table = None
 results_table_rows = []
@@ -75,6 +78,7 @@ result = None
 excel_report = None
 stats = None
 log_handler = None
+module = None
 Package = ''
 Patches = []
 drivername = ""
@@ -100,7 +104,7 @@ def close_crb_sessions():
     if tester is not None:
         tester.close()
     log_handler.info("DTS ended")
-	
+
 
 def get_crb_os(crb):
     if 'OS' in crb:
@@ -208,7 +212,7 @@ def dts_log_execution(log_handler):
         pass
 
 
-def dts_crbs_init(crbInst, skip_setup, read_cache, project, base_dir, nic):
+def dts_crbs_init(crbInst, skip_setup, read_cache, project, base_dir, nic, virttype):
     """
     Create dts dut/tester instance and initialize them.
     """
@@ -221,6 +225,7 @@ def dts_crbs_init(crbInst, skip_setup, read_cache, project, base_dir, nic):
     tester = get_project_obj(project, Tester, crbInst, serializer)
     dut.tester = tester
     tester.dut = dut
+    dut.set_virttype(virttype)
     dut.set_speedup_options(read_cache, skip_setup)
     dut.set_directory(base_dir)
     dut.set_nic_type(nic)
@@ -297,6 +302,8 @@ def dts_run_suite(crbInst, test_suites, target, nic):
             result.test_suite = test_suite
             rst.generate_results_rst(crbInst['name'], target, nic, test_suite, performance_only)
             test_module = __import__('TestSuite_' + test_suite)
+            global module
+            module = test_module
             for test_classname, test_class in get_subclasses(test_module, TestCase):
 
                 test_suite = test_class(dut, tester, target, test_suite)
@@ -328,7 +335,7 @@ def dts_run_suite(crbInst, test_suites, target, nic):
 
 def run_all(config_file, pkgName, git, patch, skip_setup,
             read_cache, project, suite_dir, test_cases,
-            base_dir, output_dir, verbose, debug):
+            base_dir, output_dir, verbose, virttype, debug, debugcase):
     """
     Main process of DTS, it will run all test suites in the config file.
     """
@@ -342,6 +349,7 @@ def run_all(config_file, pkgName, git, patch, skip_setup,
     global stats
     global log_handler
     global debug_mode
+    global debug_case
     global Package
     global Patches
 
@@ -361,6 +369,8 @@ def run_all(config_file, pkgName, git, patch, skip_setup,
     # enable debug mode
     if debug is True:
         debug_mode = True
+    if debugcase is True:
+        debug_case = True
 
     # init log_handler handler
     if verbose is True:
@@ -414,7 +424,7 @@ def run_all(config_file, pkgName, git, patch, skip_setup,
         result.dut = dutIP
 
         # init dut, tester crb
-        dts_crbs_init(crbInst, skip_setup, read_cache, project, base_dir, nics)
+        dts_crbs_init(crbInst, skip_setup, read_cache, project, base_dir, nics, virttype)
 
         # Run DUT prerequisites
         if dts_run_prerequisties(pkgName, patch) is False:
@@ -449,6 +459,11 @@ def get_subclasses(module, clazz):
     for subclazz_name, subclazz in inspect.getmembers(module):
         if hasattr(subclazz, '__bases__') and clazz in subclazz.__bases__:
             yield (subclazz_name, subclazz)
+
+
+def copy_instance_attr(from_inst, to_inst):
+    for key in from_inst.__dict__.keys():
+            to_inst.__dict__[key] = from_inst.__dict__[key]
 
 
 def get_functional_test_cases(test_suite):
@@ -516,6 +531,9 @@ def execute_test_case(test_suite, test_case):
     Execute specified test case in specified suite. If any exception occured in
     validation process, save the result and tear down this case.
     """
+    global debug_mode
+    global debug_case
+    global module
     result.test_case = test_case.__name__
 
     rst.write_title("Test Case: " + test_case.__name__)
@@ -523,8 +541,17 @@ def execute_test_case(test_suite, test_case):
         rst.write_annex_title("Annex: " + test_case.__name__)
     try:
         log_handler.info('Test Case %s Begin' % test_case.__name__)
+        test_suite.running_case = test_case.__name__
         test_suite.set_up()
-        test_case()
+        # prepare debugger re-run case environment
+        if debug_mode or debug_case:
+            debugger.AliveSuite = test_suite
+            debugger.AliveModule = module
+            debugger.AliveCase = test_case.__name__
+        if debug_case:
+            debugger.keyboard_handle(signal.SIGINT, None)
+        else:
+            test_case()
 
         result.test_case_passed()
 

@@ -63,6 +63,7 @@ def git_build_package(gitLabel, pkgName, depot="dep"):
     if ret is not 0:
         raise EnvironmentError
 
+
 # Read cmd-line args
 parser = argparse.ArgumentParser(description='DPDK test framework.')
 
@@ -117,9 +118,17 @@ parser.add_argument('-v', '--verbose',
                     action='store_true',
                     help='enable verbose output, all message output on screen')
 
+parser.add_argument('--virttype',
+                    default='kvm',
+                    help='set virt type,support libvirt,xen,kvm')
+
 parser.add_argument('--debug',
                     action='store_true',
                     help='enable debug mode, user can enter debug mode in process')
+
+parser.add_argument('--debugcase',
+                    action='store_true',
+                    help='enable debug mode in the first case, user can further debug')
 
 args = parser.parse_args()
 
@@ -136,4 +145,5 @@ if args.git is not None:
 dts.run_all(args.config_file, args.snapshot, args.git,
             args.patch, args.skip_setup, args.read_cache,
             args.project, args.suite_dir, args.test_cases,
-            args.dir, args.output, args.verbose, args.debug)
+            args.dir, args.output, args.verbose,args.virttype,
+            args.debug, args.debugcase)
