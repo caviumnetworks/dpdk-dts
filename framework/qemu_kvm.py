@@ -84,11 +84,21 @@ class QEMUKvm(VirtBase):
         QGA_CLI_PATH = '-r dep/QMP/'
         self.host_session.copy_file_to(QGA_CLI_PATH)
 
+        # charater and network device default index
+        self.char_idx = 0
+        self.netdev_idx = 0
+
     def set_vm_default(self):
         self.set_vm_name(self.vm_name)
         self.set_vm_enable_kvm()
         self.set_vm_qga()
         self.set_vm_daemon()
+
+        # add default control interface
+        def_nic = {'type': 'nic', 'opt_vlan': '0'}
+        self.set_vm_net(**def_nic)
+        def_net = {'type': 'user', 'opt_vlan': '0'}
+        self.set_vm_net(**def_net)
 
     def init_vm_request_resource(self):
         """
@@ -129,12 +139,12 @@ class QEMUKvm(VirtBase):
         out = self.host_session.send_expect(
             'ls %s' % qemu_emulator_path, '[.*')
         if 'No such file or directory' in out:
-            self.host_logger.error("No emulator [ %s ] on the DUT [ %s ]" % \
+            self.host_logger.error("No emulator [ %s ] on the DUT [ %s ]" %
                                    (qemu_emulator, self.host_dut.get_ip_address()))
             return None
         out = self.host_session.send_expect("[ -x %s ];echo $?" % qemu_emulator_path, '# ')
         if out == '1':
-            self.host_logger.error("Emulator [ %s ] not executable on the DUT [ %s ]" % \
+            self.host_logger.error("Emulator [ %s ] not executable on the DUT [ %s ]" %
                                    (qemu_emulator, self.host_dut.get_ip_address()))
             return None
         self.qemu_emulator = qemu_emulator
@@ -250,6 +260,15 @@ class QEMUKvm(VirtBase):
         if 'size' in options.keys():
             mem_boot_line = '-m %s' % options['size']
             self.__add_boot_line(mem_boot_line)
+        if 'hugepage' in options.keys():
+            if options['hugepage'] == 'yes':
+                mem_boot_huge = '-object memory-backend-file,' \
+                                + 'id=mem,size=%sM,mem-path=%s,share=on' \
+                                % (options['size'], self.host_dut.hugepage_path)
+
+                self.__add_boot_line(mem_boot_huge)
+                mem_boot_huge_opt = "-numa node,memdev=mem -mem-prealloc"
+                self.__add_boot_line(mem_boot_huge_opt)
 
     def add_vm_disk(self, **options):
         """
@@ -258,6 +277,13 @@ class QEMUKvm(VirtBase):
         if 'file' in options.keys():
             disk_boot_line = '-drive file=%s' % options['file']
             self.__add_boot_line(disk_boot_line)
+
+    def set_vm_net(self, **options):
+        index = self.find_option_index('net')
+        if index:
+            self.params[index]['net'].append(options)
+        else:
+            self.params.append({'net': [options]})
 
     def add_vm_net(self, **options):
         """
@@ -471,22 +497,22 @@ class QEMUKvm(VirtBase):
         self.host_session.send_expect(
             'chmod +x %s' % self.QEMU_IFUP_PATH, '# ')
 
-    def set_vm_device(self, driver='pci-assign', **props):
+    def set_vm_device(self, driver='pci-assign', **opts):
         """
         Set VM device with specified driver.
         """
-        props['driver'] = driver
+        opts['driver'] = driver
         index = self.find_option_index('device')
         if index:
-            self.params[index]['device'].append(props)
+            self.params[index]['device'].append(opts)
         else:
-            self.params.append({'device': [props]})
+            self.params.append({'device': [opts]})
 
     def add_vm_device(self, **options):
         """
         driver: [pci-assign | virtio-net-pci | ...]
-        prop_[host | addr | ...]: value
-            note:the sub-property will be decided according to the driver.
+        opt_[host | addr | ...]: value
+            note:the sub-opterty will be decided according to the driver.
         """
         if 'driver' in options.keys() and \
                 options['driver']:
@@ -494,54 +520,84 @@ class QEMUKvm(VirtBase):
                 self.__add_vm_pci_assign(**options)
             elif options['driver'] == 'virtio-net-pci':
                 self.__add_vm_virtio_net_pci(**options)
+            elif options['driver'] == 'vhost-user':
+                self.__add_vm_virtio_user_pci(**options)
 
     def __add_vm_pci_assign(self, **options):
         """
         driver: pci-assign
-        prop_host: 08:00.0
-        prop_addr: 00:00:00:00:01:02
+        opt_host: 08:00.0
+        opt_addr: 00:00:00:00:01:02
         """
         dev_boot_line = '-device pci-assign'
         separator = ','
-        if 'prop_host' in options.keys() and \
-                options['prop_host']:
-            dev_boot_line += separator + 'host=%s' % options['prop_host']
-        if 'prop_addr' in options.keys() and \
-                options['prop_addr']:
-            dev_boot_line += separator + 'addr=%s' % options['prop_addr']
-            self.assigned_pcis.append(options['prop_addr'])
+        if 'opt_host' in options.keys() and \
+                options['opt_host']:
+            dev_boot_line += separator + 'host=%s' % options['opt_host']
+        if 'opt_addr' in options.keys() and \
+                options['opt_addr']:
+            dev_boot_line += separator + 'addr=%s' % options['opt_addr']
+            self.assigned_pcis.append(options['opt_addr'])
 
         if self.__string_has_multi_fields(dev_boot_line, separator):
             self.__add_boot_line(dev_boot_line)
 
+    def __add_vm_virtio_user_pci(self, **options):
+        """
+        driver virtio-net-pci
+        opt_path: /tmp/vhost-net
+        opt_mac: 00:00:20:00:00:00
+        """
+        separator = ','
+        # chardev parameter
+        if 'opt_path' in options.keys() and \
+                options['opt_path']:
+            dev_boot_line = '-chardev socket'
+            char_id = 'char%d' % self.char_idx
+            dev_boot_line += separator + 'id=%s' % char_id + separator + 'path=%s' % options['opt_path']
+            self.char_idx += 1
+            self.__add_boot_line(dev_boot_line)
+            # netdev parameter
+            netdev_id = 'netdev%d' % self.netdev_idx
+            self.netdev_idx += 1
+            dev_boot_line = '-netdev type=vhost-user,id=%s,chardev=%s,vhostforce' % (netdev_id, char_id)
+            self.__add_boot_line(dev_boot_line)
+            # device parameter
+            opts = {'opt_netdev': '%s' % netdev_id}
+            if 'opt_mac' in options.keys() and \
+                    options['opt_mac']:
+                opts['opt_mac'] = options['opt_mac']
+
+            self.__add_vm_virtio_net_pci(**opts)
+
     def __add_vm_virtio_net_pci(self, **options):
         """
         driver: virtio-net-pci
-        prop_netdev: mynet1
-        prop_id: net1
-        prop_mac: 00:00:00:00:01:03
-        prop_bus: pci.0
-        prop_addr: 0x3
+        opt_netdev: mynet1
+        opt_id: net1
+        opt_mac: 00:00:00:00:01:03
+        opt_bus: pci.0
+        opt_addr: 0x3
         """
         dev_boot_line = '-device virtio-net-pci'
         separator = ','
-        if 'prop_netdev' in options.keys() and \
-                options['prop_netdev']:
-            dev_boot_line += separator + 'netdev=%s' % options['prop_netdev']
-        if 'prop_id' in options.keys() and \
-                options['prop_id']:
-            dev_boot_line += separator + 'id=%s' % options['prop_id']
-        if 'prop_mac' in options.keys() and \
-                options['prop_mac']:
-            dev_boot_line += separator + 'mac=%s' % options['prop_mac']
-        if 'prop_bus' in options.keys() and \
-                options['prop_bus']:
-            dev_boot_line += separator + 'bus=%s' % options['prop_bus']
-        if 'prop_addr' in options.keys() and \
-                options['prop_addr']:
-            dev_boot_line += separator + 'addr=%s' % options['prop_addr']
+        if 'opt_netdev' in options.keys() and \
+                options['opt_netdev']:
+            dev_boot_line += separator + 'netdev=%s' % options['opt_netdev']
+        if 'opt_id' in options.keys() and \
+                options['opt_id']:
+            dev_boot_line += separator + 'id=%s' % options['opt_id']
+        if 'opt_mac' in options.keys() and \
+                options['opt_mac']:
+            dev_boot_line += separator + 'mac=%s' % options['opt_mac']
+        if 'opt_bus' in options.keys() and \
+                options['opt_bus']:
+            dev_boot_line += separator + 'bus=%s' % options['opt_bus']
+        if 'opt_addr' in options.keys() and \
+                options['opt_addr']:
+            dev_boot_line += separator + 'addr=%s' % options['opt_addr']
 
-        if self.__string_has_multi_fields(self, string, separator):
+        if self.__string_has_multi_fields(dev_boot_line, separator):
             self.__add_boot_line(dev_boot_line)
 
     def __string_has_multi_fields(self, string, separator, field_num=2):
@@ -665,11 +721,15 @@ class QEMUKvm(VirtBase):
 
         qemu_boot_line = self.generate_qemu_boot_line()
 
-       # Start VM using the qemu command
+        # Start VM using the qemu command
         ret = self.host_session.send_expect(qemu_boot_line, '# ', verify=True)
-        time.sleep(30)
         if type(ret) is int and ret != 0:
             raise StartVMFailedException('Start VM failed!!!')
+        out = self.__control_session('ping', '120')
+        if "Not responded" in out:
+            raise StartVMFailedException('Not response in 60 seconds!!!')
+
+        self.__wait_vmnet_ready()
 
     def generate_qemu_boot_line(self):
         """
@@ -690,6 +750,21 @@ class QEMUKvm(VirtBase):
 
         return qemu_boot_line
 
+    def __wait_vmnet_ready(self):
+        """
+        wait for 120 seconds for vm net ready
+        10.0.2.* is the default ip address allocated by qemu
+        """
+        count = 20
+        while count:
+            out = self.__control_session('ifconfig')
+            if "10.0.2" in out:
+                return True
+            time.sleep(6)
+            count -= 1
+
+        raise StartVMFailedException('Virtual machine control net not ready in 120 seconds!!!')
+
     def __alloc_vcpus(self):
         """
         Allocate virtual CPUs for VM.
@@ -698,8 +773,8 @@ class QEMUKvm(VirtBase):
         cpus = self.virt_pool.alloc_cpu(vm=self.vm_name, corelist=req_cpus)
 
         if len(req_cpus) != len(cpus):
-            self.host_logger.warn("VCPUs not enough, required [ %s ], just [ %s ]" % \
-                                    (req_cpus, cpus))
+            self.host_logger.warn("VCPUs not enough, required [ %s ], just [ %s ]" %
+                                  (req_cpus, cpus))
             raise Exception("No enough required vcpus!!!")
 
         vcpus_pinned_to_vm = ''
@@ -853,7 +928,10 @@ class QEMUKvm(VirtBase):
         for arg in args:
             cmd = cmd_head + ' ' + str(arg)
 
-        out = self.host_session.send_expect(cmd, '# ')
+        if command is "ping":
+            out = self.host_session.send_expect(cmd, '# ', int(args[0]))
+        else:
+            out = self.host_session.send_expect(cmd, '# ')
 
         return out
 
@@ -864,109 +942,3 @@ class QEMUKvm(VirtBase):
         self.__control_session('powerdown')
         time.sleep(5)
         self.virt_pool.free_all_resource(self.vm_name)
-
-
-if __name__ == "__main__":
-    import subprocess
-    import sys
-    from serializer import Serializer
-    from crbs import crbs
-    from tester import Tester
-    from dut import Dut
-    import dts
-    from virt_proxy import VirtProxy
-
-    command = "ifconfig br0"
-    subp = subprocess.Popen(command.split(), stdout=subprocess.PIPE)
-    subp.wait()
-
-    intf_info = subp.stdout.readlines()
-    for line_info in intf_info:
-        regx = re.search(r'inet (\d+\.\d+\.\d+\.\d+)', line_info)
-        if regx:
-            dutIP = regx.group(1)
-            break
-
-    print "DEBUG: dutIp: ", dutIP
-
-    # look up in crbs - to find the matching IP
-    crbInst = None
-    for crb in crbs:
-        if crb['IP'] == dutIP:
-            crbInst = crb
-            break
-
-    # only run on the dut in known crbs
-    if crbInst is None:
-        raise Exception("No available crb instance!!!")
-
-    # initialize the dut and tester
-    serializer = Serializer()
-    serializer.set_serialized_filename('../.%s.cache' % crbInst['IP'])
-    serializer.load_from_file()
-
-    read_cache = None
-    skip_setup = None
-
-    project = "dpdk"
-    dts.Package = 'dep/dpdk.tar.gz'
-    dut = dts.get_project_obj(project, Dut, crbInst, serializer)
-    tester = dts.get_project_obj(project, Tester, crbInst, serializer)
-    dut.tester = tester
-    dut.base_dir = 'dpdk'
-    dut.set_nic_type('niantic')
-    tester.dut = dut
-
-    tester.set_test_types(True, False)
-    dut.set_test_types(True, False)
-
-    tester.set_speedup_options(read_cache, skip_setup)
-    tester.tester_prerequisites()
-    dut.set_speedup_options(read_cache, skip_setup)
-    dut.dut_prerequisites()
-
-    # test that generating and destroying VF
-    port0 = dut.ports_info[0]['port']
-    dut.generate_sriov_vfs_by_port(0, 4)
-    print "port 0 sriov vfs: ", dut.ports_info[0]
-
-    dut.destroy_sriov_vfs_by_port(0)
-
-    time.sleep(2)
-
-    # test that binding and unbing the NIC
-    port0_pci = dut.ports_info[0]['pci']
-    port0.unbind_driver()
-
-    dut.logger.info("JUST TESTING!!!")
-
-    # Start VM by the qemu kvm config file
-    vm1 = QEMUKvm(dut, 'vm1', 'pmd_sriov')
-    print "VM config params:"
-    print vm1.params
-    vm1_dut = vm1.start()
-
-    try:
-        host_ip = vm1.session.send_expect("ifconfig", '# ')
-        print "Host IP:"
-        print host_ip
-
-        vm1_ip = vm1.get_vm_ip()
-        print "VM1 IP:"
-        print vm1_ip
-
-        print "VM1 PCI device:"
-        print vm_dut.session.send_expect('lspci -nn | grep -i eth', '# ')
-    except Exception as e:
-        print e
-        vm1_dut.stop()
-        port0.bind_driver()
-    # Stop VM
-    vm1.stop()
-    port0.bind_driver()
-
-    dut.host_logger.logger_exit()
-    dut.logger.logger_exit()
-    tester.logger.logger_exit()
-
-    print "Start and stop VM over!"
