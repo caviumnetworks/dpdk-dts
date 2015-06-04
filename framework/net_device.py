@@ -60,6 +60,7 @@ class NetDevice(object):
         if self.nic_is_pf():
             self.default_vf_driver = ''
         self.intf_name = self.get_interface_name()
+        self.socket = self.get_nic_socket()
 
     def __send_expect(self, cmds, expected, timeout=TIMEOUT, alt_session=True):
         """
@@ -97,6 +98,29 @@ class NetDevice(object):
         Get the NIC driver.
         """
         return self.crb.get_pci_dev_driver(self.bus_id, self.devfun_id)
+
+    def get_nic_socket(self):
+        """
+        Get socket id of specified pci device.
+        """
+        get_nic_socket = getattr(
+            self, 'get_nic_socket_%s' %
+            self.__get_os_type())
+        return get_nic_socket(self.bus_id, self.devfun_id)
+
+    def get_nic_socket_linux(self, bus_id, devfun_id):
+        command = ('cat /sys/bus/pci/devices/0000\:%s\:%s/numa_node' %
+                   (bus_id, devfun_id))
+        try:
+            out = self.__send_expect(command, '# ')
+            socket = int(out)
+        except:
+            socket = -1
+        return socket
+
+
+    def get_nic_socket_freebsd(self, bus_id, devfun_id):
+        NotImplemented
 
     @nic_has_driver
     def get_interface_name(self):
@@ -234,7 +258,7 @@ class NetDevice(object):
         """
         Get ipv4 address of specified pci device.
         """
-        get_ipv4_addr = getaddr(
+        get_ipv4_addr = getattr(
             self, 'get_ipv4_addr_%s' % self.__get_os_type())
         return get_ipv4_addr(self.intf_name, self.currenct_driver)
 

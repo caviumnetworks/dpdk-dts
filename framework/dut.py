@@ -258,6 +258,8 @@ class Dut(Crb):
         """
         Setup Linux hugepages.
         """
+        if self.virttype == 'XEN':
+            return
         hugepages_size = self.send_expect("awk '/Hugepagesize/ {print $2}' /proc/meminfo", "# ")
 
         if int(hugepages_size) < (1024 * 1024):
@@ -274,6 +276,8 @@ class Dut(Crb):
             self.mount_huge_pages()
             if total_huge_pages != arch_huge_pages:
                 self.set_huge_pages(arch_huge_pages)
+
+            self.hugepage_path = self.strip_hugepage_path()
 
     def setup_memory_freebsd(self, hugepages=-1):
         """

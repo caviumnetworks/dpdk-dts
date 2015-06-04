@@ -101,6 +101,14 @@ class Crb(object):
         self.send_expect('mkdir -p /mnt/huge', '# ')
         self.send_expect('mount -t hugetlbfs nodev /mnt/huge', '# ')
 
+    def strip_hugepage_path(self):
+        mounts = self.send_expect("cat /proc/mounts |grep hugetlbfs", "# ")
+        infos = mounts.split()
+        if len(infos) >= 2:
+            return infos[1]
+        else:
+            return ''
+
     def set_huge_pages(self, huge_pages, numa=-1):
         """
         Set numbers of huge pages
