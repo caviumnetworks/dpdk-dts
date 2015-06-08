@@ -124,7 +124,8 @@ HEADER_SIZE = {
     'ip': 20,
     'ipv6': 40,
     'udp': 8,
-    'tcp': 20
+    'tcp': 20,
+    'vxlan': 8,
 }
 
 
