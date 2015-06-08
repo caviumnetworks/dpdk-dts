@@ -423,6 +423,10 @@ class Crb(object):
                 "grep --color=never \"processor\\|physical id\\|core id\\|^$\" /proc/cpuinfo",
                 "#", alt_session=True)
         cpuinfo = cpuinfo.split('\r\n\r\n')
+        # haswell cpu on cottonwood core id not correct
+        # need addtional coremap for haswell cpu
+        core_id = 0
+        coremap = {}
         for line in cpuinfo:
             m = re.search("processor\t: (\d+)\r\n" +
                           "physical id\t: (\d+)\r\n" +
@@ -432,11 +436,16 @@ class Crb(object):
                 thread = m.group(1)
                 socket = m.group(2)
                 core = m.group(3)
+
+                if core not in coremap.keys():
+                    coremap[core] = core_id
+                    core_id += 1
+
                 if self.crb['bypass core0'] and core == '0' and socket == '0':
                     self.logger.info("Core0 bypassed")
                     continue
                 self.cores.append(
-                    {'thread': thread, 'socket': socket, 'core': core})
+                    {'thread': thread, 'socket': socket, 'core': coremap[core]})
 
         self.number_of_cores = len(self.cores)
 
@@ -559,9 +568,9 @@ class Crb(object):
 
                 temp = []
                 for sock in sockList:
-                    core_list = set([int(n['core']) for n in partial_cores if int(
+                    core_list = list([int(n['core']) for n in partial_cores if int(
                         n['socket']) == sock])
-                    core_list = list(core_list)[:nr_cores]
+                    core_list = core_list[:nr_cores]
                     temp.extend(core_list)
 
                 core_list = temp
@@ -579,9 +588,9 @@ class Crb(object):
                 coreList_aux = [int(core_list[n])for n in range(
                     (nr_cores * i), (nr_cores * i + nr_cores))]
                 for core in coreList_aux:
-                    thread_list = set([int(n['thread']) for n in partial_cores if (
+                    thread_list = list([int(n['thread']) for n in partial_cores if (
                         (int(n['core']) == core) and (int(n['socket']) == sock))])
-                    thread_list = list(thread_list)[:nr_threads]
+                    thread_list = thread_list[:nr_threads]
                     temp.extend(thread_list)
                     thread_list = temp
                 i += 1
