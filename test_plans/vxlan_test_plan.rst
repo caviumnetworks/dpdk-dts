@@ -57,12 +57,13 @@ Test Case: Vxlan ipv4 packet detect
 ===================================
 Start testpmd with tunneling packet type to vxlan::
 
-	testpmd -c ffff -n 4 -- -i --tunnel-type=1 --rxq=4 --txq=4 --nb-cores=8 --nb-ports=2
+	testpmd -c ffff -n 4 -- -i --rxq=4 --txq=4 --nb-cores=8 --nb-ports=2 --txqflags=0x0
 	
 Set rxonly packet forwarding mode and enable verbose log::
 
 	set fwd rxonly
 	set verbose 1
+    rx_vxlan_port add 4789 0
 
 Send packet as table listed and check dumped packet type the same as column 
 "Rx packet type".
@@ -89,12 +90,13 @@ Test Case: Vxlan ipv6 packet detect
 ===================================
 Start testpmd with tunneling packet type to vxlan::
 
-	testpmd -c ffff -n 4 -- -i --tunnel-type=1 --rxq=4 --txq=4 --nb-cores=8 --nb-ports=2
+	testpmd -c ffff -n 4 -- -i --disable-rss --rxq=4 --txq=4 --nb-cores=8 --nb-ports=2 --txqflags=0x0
 	
 Set rxonly packet forwarding mode and enable verbose log::
 
 	set fwd rxonly
 	set verbose 1
+    rx_vxlan_port add 4789 0
 
 Send ipv6 packet as table listed and check dumped packet type the same as 
 column "Rx packet type".
@@ -121,25 +123,28 @@ Test Case: Vxlan ipv4 checksum offload
 
 Start testpmd with tunneling packet type to vxlan::
 
-	testpmd -c ffff -n 4 -- -i --tunnel-type=1 --rxq=4 --txq=4 --nb-cores=8 --nb-ports=2
+	testpmd -c ffff -n 4 -- -i --rxq=4 --txq=4 --nb-cores=8 --nb-ports=2 --txqflags=0x0
 	
 Set csum packet forwarding mode and enable verbose log::
 
 	set fwd csum
 	set verbose 1
+    rx_vxlan_port add 4789 0
 
 Enable VXLAN protocal on ports::
 
     rx_vxlan_port add 4789 0
     rx_vxlan_port add 4789 1
 
-Enable IP,UDP,TCP,SCTP,VXLAN checksum offload::
+Enable IP,UDP,TCP,SCTP,OUTER-IP checksum offload::
 	
-	tx_checksum set 0 ip hw
-	tx_checksum set 0 udp hw
-	tx_checksum set 0 tcp hw
-	tx_checksum set 0 sctp hw
-	tx_checksum set 0 vxlan hw
+    csum parse_tunnel on 0
+    csum parse_tunnel on 1
+    csum set ip hw 0
+    csum set udp hw 0
+    csum set tcp hw 0
+    csum set stcp hw 0
+    csum set outer-ip hw 0
 
 Send packet with valid checksum and check there's no chksum error counter 
 increased.
@@ -230,10 +235,13 @@ Enable VXLAN protocal on ports::
 
 Enable IP,UDP,TCP,SCTP,VXLAN checksum offload::
 	
-	tx_checksum set 0 ip hw
-	tx_checksum set 0 udp hw
-	tx_checksum set 0 tcp hw
-	tx_checksum set 0 sctp hw
+    csum parse_tunnel on 0
+    csum parse_tunnel on 1
+    csum set ip hw 0
+    csum set udp hw 0
+    csum set tcp hw 0
+    csum set stcp hw 0
+    csum set outer-ip hw 0
 
 Send ipv6 packet with valid checksum and check there's no chksum error counter 
 increased.
@@ -281,7 +289,7 @@ Test Case: Clould Filter
 Start testpmd with tunneling packet type to vxlan and disable receive side 
 scale for hardware limitation::
 
-	testpmd -c ffff -n 4 -- -i --tunnel-type=1 --disable-rss --rxq=4 --txq=4 --nb-cores=8 --nb-ports=2
+	testpmd -c ffff -n 4 -- -i --disable-rss --rxq=4 --txq=4 --nb-cores=8 --nb-ports=2 --txqflags=0x0
 	
 Set rxonly packet forwarding mode and enable verbose log::
 
@@ -330,32 +338,26 @@ Test Case: Vxlan Checksum Offload Performance Benchmarking
 ==========================================================
 
 The throughput is measured for each of these cases for vxlan tx checksum
-offload of "all by software", "inner l3 offload by hardware", "inner l4
-offload by hardware", "inner l3&l4 offload by hardware", "outer l3 offload 
-by hardware", "outer l4 offload by hardware", "outer l3&l4 offload by 
-hardware", "all by hardware".
+offload of "all by software", "L3 offload by hardware", "L4 offload by
+hardware", "l3&l4 offload by hardware".
 
 The results are printed in the following table:
 
-+----------------+---------------+------------+---------------+------------+---------------+------------+
-| Calculate Type | 1S/1C/1T Mpps | % linerate | 1S/1C/2T Mpps | % linerate | 1S/2C/1T Mpps | % linerate |
-+================+===============+============+===============+============+===============+============+
-| SOFTWARE ALL   |               |            |               |            |               |            |
-+----------------+---------------+------------+---------------+------------+---------------+------------+
-| HW OUTER L3    |               |            |               |            |               |            |
-+----------------+---------------+------------+---------------+------------+---------------+------------+
-| HW OUTER L4    |               |            |               |            |               |            |
-+----------------+---------------+------------+---------------+------------+---------------+------------+
-| HW OUTER L3&L4 |               |            |               |            |               |            |
-+----------------+---------------+------------+---------------+------------+---------------+------------+
-| HW INNER L3    |               |            |               |            |               |            |
-+----------------+---------------+------------+---------------+------------+---------------+------------+
-| HW INNER L4    |               |            |               |            |               |            |
-+----------------+---------------+------------+---------------+------------+---------------+------------+
-| HW INNER L3&L4 |               |            |               |            |               |            |
-+----------------+---------------+------------+---------------+------------+---------------+------------+
-| HARDWARE ALL   |               |            |               |            |               |            |
-+----------------+---------------+------------+---------------+------------+---------------+------------+
++----------------+--------+--------+------------+
+| Calculate Type | Queues | Mpps   | % linerate |
++================+========+========+============+
+| SOFTWARE ALL   | Single |        |            |
++----------------+--------+--------+------------+
+| HW L4          | Single |        |            |
++----------------+--------+--------+------------+
+| HW L3&L4       | Single |        |            |
++----------------+--------+--------+------------+
+| SOFTWARE ALL   | Multi  |        |            |
++----------------+--------+--------+------------+
+| HW L4          | Multi  |        |            |
++----------------+--------+--------+------------+
+| HW L3&L4       | Multi  |        |            |
++----------------+--------+--------+------------+
 
 Test Case: Vxlan Tunnel filter Performance Benchmarking
 =======================================================

@@ -182,8 +182,9 @@ class VxlanTestConfig(object):
         else:
             self.pkt = outer / ("X" * self.payload_size)
 
+        wrpcap(self.pcap_file, self.pkt)
+
         if scp is True:
-            wrpcap(self.pcap_file, self.pkt)
             self.test_case.tester.session.copy_file_to(self.pcap_file)
 
         return self.pkt
@@ -306,24 +307,25 @@ class TestVxlan(TestCase, IxiaPacketGenerator):
             HEADER_SIZE['vxlan'] - HEADER_SIZE['eth'] - \
             HEADER_SIZE['ip'] - HEADER_SIZE['udp'] + 4
 
-        # performance test cycle
-        self.test_cycles = [
-            {'cores': '1S/1C/1T', 'Mpps': {}, 'pct': {}},
-            {'cores': '1S/1C/2T', 'Mpps': {}, 'pct': {}},
-            {'cores': '1S/2C/1T', 'Mpps': {}, 'pct': {}}
-        ]
-
         self.cal_type = [
-            {'Type': 'SOFTWARE ALL', 'csum': []},
-            {'Type': 'HW L3', 'csum': ['ip']},
-            {'Type': 'HW L4', 'csum': ['udp']},
-            {'Type': 'HW L3&L4', 'csum': ['ip', 'udp']},
+            {'Type': 'SOFTWARE ALL', 'csum': [], 'recvqueue': 'Single',
+                'Mpps': {}, 'pct': {}},
+            {'Type': 'HW L4', 'csum': ['udp'], 'recvqueue': 'Single',
+                'Mpps': {}, 'pct': {}},
+            {'Type': 'HW L3&L4', 'csum': ['ip', 'udp', 'outer-ip'],
+                'recvqueue': 'Single', 'Mpps': {}, 'pct': {}},
+            {'Type': 'SOFTWARE ALL', 'csum': [], 'recvqueue': 'Multi',
+                'Mpps': {}, 'pct': {}},
+            {'Type': 'HW L4', 'csum': ['udp'], 'recvqueue': 'Multi',
+                'Mpps': {}, 'pct': {}},
+            {'Type': 'HW L3&L4', 'csum': ['ip', 'udp', 'outer-ip'],
+                'recvqueue': 'Multi', 'Mpps': {}, 'pct': {}},
         ]
 
-        self.table_header = ['Calculate Type']
-        for test_cycle in self.test_cycles:
-            self.table_header.append("%s Mpps" % test_cycle['cores'])
-            self.table_header.append("% linerate")
+        self.chksum_header = ['Calculate Type']
+        self.chksum_header.append("Queues")
+        self.chksum_header.append("Mpps")
+        self.chksum_header.append("% linerate")
 
         # tunnel filter performance test
         self.default_vlan = 1
@@ -873,6 +875,16 @@ class TestVxlan(TestCase, IxiaPacketGenerator):
         self.add_tcl_cmd("ip set %d %d %d" %
                          (self.chasId, port['card'], port['port']))
 
+    def combine_pcap(self, dest_pcap, src_pcap):
+        pkts = rdpcap(dest_pcap)
+        if len(pkts) != 1:
+            return
+
+        pkts_src = rdpcap(src_pcap)
+        pkts += pkts_src
+
+        wrpcap(dest_pcap, pkts)
+
     def test_perf_vxlan_tunnelfilter_performance_2ports(self):
         dts.results_table_add_header(self.tunnel_header)
         core_list = self.dut.get_core_list(
@@ -957,46 +969,55 @@ class TestVxlan(TestCase, IxiaPacketGenerator):
         dts.results_table_print()
 
     def test_perf_vxlan_checksum_performance_2ports(self):
-        config = VxlanTestConfig(self, payload_size=self.vxlan_payload)
-        config.outer_mac_dst = self.dut.get_mac_address(self.dut_port)
-        config.pcap_file = "vxlan1.pcap"
-        config.create_pcap()
-        if BIDIRECT:
-            config.outer_mac_dst = self.dut.get_mac_address(self.recv_port)
-            config.pcap_file = "vxlan2.pcap"
-            config.create_pcap()
+        dts.results_table_add_header(self.chksum_header)
+        vxlan = VxlanTestConfig(self, payload_size=self.vxlan_payload)
+        vxlan.outer_mac_dst = self.dut.get_mac_address(self.dut_port)
+        vxlan.pcap_file = "vxlan1.pcap"
+        vxlan.inner_mac_dst = "00:00:20:00:00:01"
+        vxlan.create_pcap(scp=False)
 
-        all_cores_mask = dts.create_mask(self.dut.get_core_list("all"))
-        # configure flows
-        tgen_input = []
-        tgen_input.append((self.tester.get_local_port(self.dut_port),
-                          self.tester.get_local_port(self.recv_port),
-                          "vxlan1.pcap"))
-        if BIDIRECT:
-            tgen_input.append((self.tester.get_local_port(self.recv_port),
-                              self.tester.get_local_port(self.dut_port),
-                              "vxlan2.pcap"))
+        vxlan_queue = VxlanTestConfig(self, payload_size=self.vxlan_payload)
+        vxlan_queue.outer_mac_dst = self.dut.get_mac_address(self.dut_port)
+        vxlan_queue.pcap_file = "vxlan1_1.pcap"
+        vxlan_queue.inner_mac_dst = "00:00:20:00:00:02"
+        vxlan_queue.create_pcap(scp=False)
 
         # socket/core/thread
-        for test_cycle in self.test_cycles:
-            core_config = test_cycle['cores']
+        core_list = self.dut.get_core_list(
+            '1S/%dC/1T' % (self.tunnel_multiqueue * 2 + 1),
+            socket=self.ports_socket)
+        core_mask = dts.create_mask(core_list)
 
-            # take care the corelist when enable numa
-            core_list = self.dut.get_core_list(core_config,
-                                               socket=self.ports_socket)
+        tgen_dut = self.tester.get_local_port(self.dut_port)
+        tgen_tester = self.tester.get_local_port(self.recv_port)
+        for cal in self.cal_type:
+            recv_queue = cal['recvqueue']
+            print dts.GREEN("Measure checksum performance of [%s %s %s]"
+                            % (cal['Type'], recv_queue, cal['csum']))
 
-            core_mask = dts.create_mask(core_list)
+            # configure flows
+            tgen_input = []
+            if recv_queue == 'Multi':
+                self.combine_pcap("vxlan1.pcap", "vxlan1_1.pcap")
+            self.tester.session.copy_file_to("vxlan1.pcap")
+            tgen_input.append((tgen_dut, tgen_tester, "vxlan1.pcap"))
 
-            cmd_temp = "./%(TARGET)s/app/testpmd -c %(CORE)s " + \
-                       "-n %(CHANNEL)d -- -i --disable-rss --coremask=" + \
-                       "%(COREMASK)s --portmask=%(PORTMASK)s"
-            cmd = cmd_temp % {'TARGET': self.target,
-                              'CORE': all_cores_mask,
-                              'COREMASK': core_mask,
-                              'CHANNEL': self.dut.get_memory_channels(),
-                              'PORTMASK': self.portMask}
+            # multi queue and signle queue commands
+            if recv_queue == 'Multi':
+                pmd_temp = "./%(TARGET)s/app/testpmd -c %(COREMASK)s -n " + \
+                    "%(CHANNEL)d -- -i --disable-rss --rxq=2 --txq=2" + \
+                    " --nb-cores=4 --portmask=%(PORT)s --txqflags=0x0"
+            else:
+                pmd_temp = "./%(TARGET)s/app/testpmd -c %(COREMASK)s -n " + \
+                    "%(CHANNEL)d -- -i --nb-cores=2 --portmask=%(PORT)s" + \
+                    " --txqflags=0x0"
 
-            self.dut.send_expect(cmd, "testpmd> ", 100)
+            pmd_cmd = pmd_temp % {'TARGET': self.target,
+                                  'COREMASK': core_mask,
+                                  'CHANNEL': self.dut.get_memory_channels(),
+                                  'PORT': self.portMask}
+
+            self.dut.send_expect(pmd_cmd, "testpmd> ", 100)
             self.dut.send_expect("set fwd csum", "testpmd>", 10)
             self.dut.send_expect("csum parse_tunnel on %d" %
                                  self.dut_port, "testpmd>", 10)
@@ -1005,42 +1026,44 @@ class TestVxlan(TestCase, IxiaPacketGenerator):
             self.enable_vxlan(self.dut_port)
             self.enable_vxlan(self.recv_port)
 
-            # different calculate type
-            for cal in self.cal_type:
-                print dts.GREEN("Measure checksum performance of [%s %s]"
-                                % (test_cycle['cores'],
-                                   cal['csum']))
-                for pro in cal['csum']:
-                    self.csum_set_type(pro, self.dut_port)
-                    self.csum_set_type(pro, self.recv_port)
+            # redirect flow to another queue by tunnel filter
+            args = [self.dut_port, vxlan.outer_mac_dst,
+                    vxlan.inner_mac_dst, vxlan.inner_ip_dst,
+                    0, 'imac', vxlan.vni, 0]
+            self.tunnel_filter_add(*args)
 
-                self.dut.send_expect("start", "testpmd>", 10)
+            if recv_queue == 'Multi':
+                args = [self.dut_port, vxlan_queue.outer_mac_dst,
+                        vxlan_queue.inner_mac_dst, vxlan_queue.inner_ip_dst,
+                        0, 'imac', vxlan_queue.vni, 1]
+                self.tunnel_filter_add(*args)
 
-                frame_size = config.pcap_len()
-                if BIDIRECT:
-                    wirespeed = self.wirespeed(self.nic, frame_size, 2)
-                else:
-                    wirespeed = self.wirespeed(self.nic, frame_size, 1)
-                # run traffic generator
-                _, pps = self.tester.traffic_generator_throughput(tgen_input)
+            for pro in cal['csum']:
+                self.csum_set_type(pro, self.dut_port)
+                self.csum_set_type(pro, self.recv_port)
 
-                pps /= 1000000.0
-                test_cycle['Mpps'][cal['Type']] = pps
-                test_cycle['pct'][cal['Type']] = pps * 100 / wirespeed
+            self.dut.send_expect("start", "testpmd>", 10)
 
-                self.dut.send_expect("stop", "testpmd>", 10)
+            wirespeed = self.wirespeed(self.nic, PACKET_LEN, 1)
 
+            # run traffic generator
+            _, pps = self.tester.traffic_generator_throughput(tgen_input)
+
+            pps /= 1000000.0
+            cal['Mpps'] = pps
+            cal['pct'] = pps * 100 / wirespeed
+
+            out = self.dut.send_expect("stop", "testpmd>", 10)
             self.dut.send_expect("quit", "# ", 10)
 
-        dts.results_table_add_header(self.table_header)
+            # verify every queue work fine
+            if recv_queue == 'Multi':
+                for queue in range(self.tunnel_multiqueue):
+                    self.verify("Queue= %d -> TX Port"
+                                % (queue) in out,
+                                "Queue %d no traffic" % queue)
 
-        # save the results
-        for cal in self.cal_type:
-            table_row = [cal['Type']]
-            for test_cycle in self.test_cycles:
-                table_row.append(test_cycle['Mpps'][cal['Type']])
-                table_row.append(test_cycle['pct'][cal['Type']])
-
+            table_row = [cal['Type'], recv_queue, cal['Mpps'], cal['pct']]
             dts.results_table_add_row(table_row)
 
         dts.results_table_print()
