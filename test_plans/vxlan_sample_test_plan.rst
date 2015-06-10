@@ -223,3 +223,33 @@ Verify that packet recevied by virtIO port0 and forwarded by virtIO port1::
 
 Verify that four separated vxlan packets received on PF devices.
 Make sure tcp packet payload is 256, 256, 256 and 124.
+
+Test Case: Vxlan Sample Performance Benchmarking
+================================================
+The throughput is measured for different operations taken by vxlan sample.
+Virtio single mean there's only one flow and forwarded by single port in vm.
+Virtio two mean there're two flows and forwarded by both two ports in vm.
+
++================+===========+=======+============+
+| Function       | VirtIO    | Mpps  | % linerate |
++================+===========+=======+============+
+| Decap          | Single    |       |            |
++----------------+-----------+-------+------------+
+| Encap          | Single    |       |            |
++----------------+-----------+-------+------------+
+| Decap&Encap    | Single    |       |            |
++----------------+-----------+-------+------------+
+| Checksum       | Single    |       |            |
++----------------+-----------+-------+------------+
+| Checksum&Decap | Single    |       |            |
++----------------+-----------+-------+------------+
+| Decap          | Two Ports |       |            |
++----------------+-----------+-------+------------+
+| Encap          | Two Ports |       |            |
++----------------+-----------+-------+------------+
+| Decap&Encap    | Two Ports |       |            |
++----------------+-----------+-------+------------+
+| Checksum       | Two Ports |       |            |
++----------------+-----------+-------+------------+
+| Checksum&Decap | Two Ports |       |            |
++----------------+-----------+-------+------------+
