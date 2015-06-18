@@ -150,6 +150,14 @@ class PortConf(UserConf):
         for config in confs:
             port_param = self.port_conf.load_param(config)
 
+            # port config for vm in virtualization scenario
+            if 'dev_idx' in port_param:
+                keys = port_param.keys()
+                keys.remove('dev_idx')
+                self.ports_cfg[port_param['dev_idx']] = {
+                    key: port_param[key] for key in keys}
+                continue
+
             # check pci BDF validity
             if 'pci' not in port_param:
                 print "NOT FOUND CONFIG FOR NO PCI ADDRESS!!!"
@@ -175,7 +183,6 @@ class PortConf(UserConf):
             return True
         else:
             return False
-
 
 
 if __name__ == '__main__':
