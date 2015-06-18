@@ -45,11 +45,10 @@ from utils import remove_old_rsa_key
 
 
 class VirtBase(object):
-
     """
-    Basic module for customer special virtual type. This module implement functions
-    configurated and composed the VM boot command. With these function, we can get
-    and set the VM boot command, and instantiate the VM.
+    Basic module for customer special virtual type. This module implement
+    functions configurated and composed the VM boot command. With these
+    function, we can get and set the VM boot command, and instantiate the VM.
     """
 
     def __init__(self, dut, vm_name, suite_name):
@@ -202,22 +201,29 @@ class VirtBase(object):
         Check whether VM existed.
         """
         vm_status = self.host_session.send_expect(
-            "ps aux | grep qemu | grep 'name %s '| grep -v grep" % self.vm_name, "# ")
+            "ps aux | grep qemu | grep 'name %s '| grep -v grep"
+            % self.vm_name, "# ")
 
         if self.vm_name in vm_status:
             return True
         else:
             return False
 
-    def start(self):
+    def load_config(self):
+        """
+        Load configurations for VM
+        """
+        # load global and suite configuration file
+        self.load_global_config()
+        self.load_local_config(self.suite)
+
+    def start(self, load_config=True, set_target=True, auto_portmap=True):
         """
         Start VM and instantiate the VM with VirtDut.
         """
         try:
-            # load global and suite configuration file
-            self.load_global_config()
-            self.load_local_config(self.suite)
-
+            if load_config is True:
+                self.load_config()
             # compose boot command for different hypervisors
             self.compose_boot_param()
 
@@ -225,12 +231,12 @@ class VirtBase(object):
             self._start_vm()
 
             # connect vm dut and init running environment
-            vm_dut = self.instantiate_vm_dut()
+            vm_dut = self.instantiate_vm_dut(set_target, auto_portmap)
         except Exception as vm_except:
             if self.handle_exception(vm_except):
                 print dts.RED("Handled expection " + str(type(vm_except)))
             else:
-                print dts.RED("Unhandled expection " + str(type(vm_except)) + " !!!")
+                print dts.RED("Unhandled expection " + str(type(vm_except)))
 
             if callable(self.callback):
                 self.callback()
@@ -268,13 +274,19 @@ class VirtBase(object):
         else:
             return False
 
-    def __start_vm(self):
+    def _start_vm(self):
         """
         Start VM.
         """
         NotImplemented
 
-    def instantiate_vm_dut(self):
+    def _stop_vm(self):
+        """
+        Stop VM.
+        """
+        NotImplemented
+
+    def instantiate_vm_dut(self, set_target=True, auto_portmap=True):
         """
         Instantiate the Dut class for VM.
         """
@@ -290,6 +302,7 @@ class VirtBase(object):
 
         try:
             vm_dut = VirtDut(
+                self,
                 crb,
                 serializer,
                 self.virt_type,
@@ -316,9 +329,10 @@ class VirtBase(object):
 
         try:
             # setting up dpdk in vm, must call at last
-            vm_dut.prerequisites(dts.Package, dts.Patches)
-            target = self.host_dut.target
-            vm_dut.set_target(target)
+            vm_dut.prerequisites(dts.Package, dts.Patches, auto_portmap)
+            if set_target:
+                target = self.host_dut.target
+                vm_dut.set_target(target)
         except:
             raise exception.VirtDutInitException(vm_dut)
             return None
@@ -329,7 +343,8 @@ class VirtBase(object):
         """
         Stop the VM.
         """
-        NotImplemented
+        self._stop_vm()
+        self.virt_pool.free_all_resource(self.vm_name)
 
     def register_exit_callback(self, callback):
         """
