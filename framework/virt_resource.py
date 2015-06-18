@@ -161,6 +161,10 @@ class VirtResource(object):
             print "Alloc cpu request vitual machine name!!!"
             return cores
 
+        # if vm has been alloacted cores, just return them
+        if self.__vm_has_resource(vm, 'cores'):
+            return self.allocated_info[vm]['cores']
+
         if number != -1:
             for core in self.unused_cores:
                 if core != -1 and number != 0:

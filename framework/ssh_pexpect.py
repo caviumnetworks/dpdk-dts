@@ -18,8 +18,8 @@ class SSHPexpect(object):
         self.magic_prompt = "MAGIC PROMPT"
         try:
             self.session = pxssh.pxssh()
-            self.username = username
             self.host = host
+            self.username = username
             self.password = password
             if ':' in host:
                 self.ip = host.split(':')[0]
@@ -63,12 +63,13 @@ class SSHPexpect(object):
             if not int(ret_status):
                 return ret
             else:
+                self.logger.error("Command: %s failure!" % command)
                 self.logger.error(ret)
-                return ret_status
+                return int(ret_status)
         else:
             return ret
 
-    def get_session_before(self, timeout):
+    def get_session_before(self, timeout=15):
         """
         Get all output before timeout
         """
