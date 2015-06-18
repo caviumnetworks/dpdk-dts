@@ -53,7 +53,7 @@ class DPDKdut(Dut):
         super(DPDKdut, self).__init__(crb, serializer)
         self.testpmd = None
 
-    def set_target(self, target):
+    def set_target(self, target, build_only=False):
         """
         Set env variable, these have to be setup all the time. Some tests
         need to compile example apps by themselves and will fail otherwise.
@@ -76,7 +76,7 @@ class DPDKdut(Dut):
         self.setup_memory()
         self.setup_modules(target)
 
-        if self.get_os_type() == 'linux':
+        if build_only is False and self.get_os_type() == 'linux':
             self.bind_interfaces_linux(dts.drivername)
 
     def setup_modules(self, target):
@@ -101,6 +101,7 @@ class DPDKdut(Dut):
             if "igb_uio" in out:
                 self.send_expect("rmmod -f igb_uio", "#", 70)
             self.send_expect("insmod ./" + target + "/kmod/igb_uio.ko", "#", 60)
+
             out = self.send_expect("lsmod | grep igb_uio", "#")
             assert ("igb_uio" in out), "Failed to insmod igb_uio"
 
