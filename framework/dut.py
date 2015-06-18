@@ -394,9 +394,8 @@ class Dut(Crb):
                     if (socket is None or
                         port_info['numa'] == -1 or
                             socket == port_info['numa']):
-                        # port has link
-                        if (port_info['ipv6'] != "Not connected" and
-                                self.tester.get_local_port(portid) != -1):
+                        # port has link,
+                        if self.tester.get_local_port(portid) != -1:
                             ports.append(portid)
             return ports
 
