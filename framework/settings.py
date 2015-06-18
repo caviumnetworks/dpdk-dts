@@ -189,3 +189,14 @@ def accepted_nic(pci_id):
             return True
 
     return False
+
+def get_netdev(crb, pci):
+    for port in crb.ports_info:
+        if pci == port['pci']:
+            return port['port']
+        if 'vfs_port' in port.keys():
+            for vf in port['vfs_port']:
+                if pci == vf.pci:
+                    return vf
+
+    return None

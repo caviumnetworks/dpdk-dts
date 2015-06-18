@@ -88,6 +88,9 @@ class QEMUKvm(VirtBase):
         self.char_idx = 0
         self.netdev_idx = 0
 
+        # devices pass-through into vm
+        self.pt_devices = []
+
     def set_vm_default(self):
         self.set_vm_name(self.vm_name)
         self.set_vm_enable_kvm()
@@ -534,6 +537,7 @@ class QEMUKvm(VirtBase):
         if 'opt_host' in options.keys() and \
                 options['opt_host']:
             dev_boot_line += separator + 'host=%s' % options['opt_host']
+            self.pt_devices.append(options['opt_host'])
         if 'opt_addr' in options.keys() and \
                 options['opt_addr']:
             dev_boot_line += separator + 'addr=%s' % options['opt_addr']
@@ -773,7 +777,7 @@ class QEMUKvm(VirtBase):
         cpus = self.virt_pool.alloc_cpu(vm=self.vm_name, corelist=req_cpus)
 
         if len(req_cpus) != len(cpus):
-            self.host_logger.warn("VCPUs not enough, required [ %s ], just [ %s ]" %
+            self.host_logger.warning("VCPUs not enough, required [ %s ], just [ %s ]" %
                                   (req_cpus, cpus))
             raise Exception("No enough required vcpus!!!")
 
@@ -904,6 +908,9 @@ class QEMUKvm(VirtBase):
                     return ip
         return ''
 
+    def get_vm_pt_devices(self):
+        return self.pt_devices
+
     def __control_session(self, command, *args):
         """
         Use the qemu guest agent service to control VM.
@@ -935,10 +942,9 @@ class QEMUKvm(VirtBase):
 
         return out
 
-    def stop(self):
+    def _stop_vm(self):
         """
         Stop VM.
         """
         self.__control_session('powerdown')
         time.sleep(5)
-        self.virt_pool.free_all_resource(self.vm_name)

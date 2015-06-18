@@ -49,7 +49,10 @@ class TestCase(object):
         for portid in range(len(self.dut.ports_info)):
             nic_type = self.dut.ports_info[portid]['type']
             self.nics.append(nic_name_from_type(nic_type))
-        self.nic = self.nics[0]
+        if len(self.nics):
+            self.nic = self.nics[0]
+        else:
+            self.nic = ''
 
     def set_up_all(self):
         pass
