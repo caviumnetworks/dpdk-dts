@@ -55,6 +55,7 @@ from exception import TimeoutException
 from logger import getLogger
 import logger
 import debugger
+from virt_scene import VirtScene
 
 import sys
 reload(sys)
@@ -144,6 +145,11 @@ def dts_parse_config(section):
     """
     Parse execution file configuration.
     """
+    try:
+        scenario = config.get(section, 'scenario')
+    except:
+        scenario = ''
+
     duts = [dut_.strip() for dut_ in config.get(section,
                                                 'crbs').split(',')]
     targets = [target.strip()
@@ -157,7 +163,7 @@ def dts_parse_config(section):
 
     nic = [_.strip() for _ in paramDict['nic_type'].split(',')][0]
 
-    return duts[0], targets, test_suites, nic
+    return duts[0], targets, test_suites, nic, scenario
 
 
 def get_project_obj(project_name, super_class, crbInst, serializer):
@@ -261,16 +267,29 @@ def dts_run_prerequisties(pkgName, patch):
         return False
 
 
-def dts_run_target(crbInst, targets, test_suites, nic):
+def dts_run_target(crbInst, targets, test_suites, nic, scenario):
     """
     Run each target in execution targets.
     """
+    if scenario != '':
+        scene = VirtScene(dut, tester, scenario)
+    else:
+        scene = None
+
+    if scene:
+       scene.load_config()
+       scene.create_scene()
+
     for target in targets:
         log_handler.info("\nTARGET " + target)
         result.target = target
 
         try:
-            dut.set_target(target)
+            if scene:
+                scene.set_target(target)
+                dut.set_target(target, build_only=True)
+            else:
+                dut.set_target(target)
         except AssertionError as ex:
             log_handler.error(" TARGET ERROR: " + str(ex))
             result.add_failed_target(result.dut, target, str(ex))
@@ -284,7 +303,11 @@ def dts_run_target(crbInst, targets, test_suites, nic):
             paramDict['nic_type'] = 'any'
             nic = 'any'
 
-        dts_run_suite(crbInst, test_suites, target, nic)
+        dts_run_suite(crbInst, test_suites, target, nic, scene)
+
+    if scene:
+        scene.destroy_scene()
+        scene = None
 
     dut.restore_interfaces()
     dut.close()
@@ -292,7 +315,7 @@ def dts_run_target(crbInst, targets, test_suites, nic):
     tester.close()
 
 
-def dts_run_suite(crbInst, test_suites, target, nic):
+def dts_run_suite(crbInst, test_suites, target, nic, scene):
     """
     Run each suite in test suite list.
     """
@@ -306,7 +329,12 @@ def dts_run_suite(crbInst, test_suites, target, nic):
             module = test_module
             for test_classname, test_class in get_subclasses(test_module, TestCase):
 
-                test_suite = test_class(dut, tester, target, test_suite)
+                if scene.vm_dut_enable:
+                    duts = scene.get_vm_duts()
+                    tester.dut = duts[0]
+                    test_suite = test_class(duts[0], tester, target, test_suite)
+                else:
+                    test_suite = test_class(dut, tester, target, test_suite)
                 result.nic = test_suite.nic
 
                 dts_log_testsuite(test_suite, log_handler, test_classname)
@@ -352,6 +380,7 @@ def run_all(config_file, pkgName, git, patch, skip_setup,
     global debug_case
     global Package
     global Patches
+    global scenario
 
     # save global variable
     Package = pkgName
@@ -405,7 +434,7 @@ def run_all(config_file, pkgName, git, patch, skip_setup,
         dts_parse_param(section)
 
         # verify if the delimiter is good if the lists are vertical
-        dutIP, targets, test_suites, nics = dts_parse_config(section)
+        dutIP, targets, test_suites, nics, scenario = dts_parse_config(section)
 
         log_handler.info("\nDUT " + dutIP)
 
@@ -431,7 +460,7 @@ def run_all(config_file, pkgName, git, patch, skip_setup,
             dts_crbs_exit()
             continue
 
-        dts_run_target(crbInst, targets, test_suites, nics)
+        dts_run_target(crbInst, targets, test_suites, nics, scenario)
 
         dts_crbs_exit()
 
