@@ -131,3 +131,9 @@ class VirtDutConnectException(Exception):
 class VirtDutInitException(Exception):
     def __init__(self, vm_dut):
         self.vm_dut = vm_dut
+
+class VirtDeviceCreateException(Exception):
+    pass
+
+class VirtVmOperationException(Exception):
+    pass

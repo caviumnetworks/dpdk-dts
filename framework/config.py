@@ -37,6 +37,8 @@ import re
 import ConfigParser  # config parse module
 import argparse      # prase arguments module
 
+from exception import ConfigParseException, VirtConfigParseException
+
 PORTCONF = "conf/ports.cfg"
 CRBCONF = "conf/crbs.cfg"
 VIRTCONF = "conf/virt_global.cfg"
@@ -50,7 +52,7 @@ class UserConf():
         if load_files == []:
             print "FAILED LOADING %s!!!" % config
             self.conf = None
-            raise
+            raise ConfigParseException(config)
 
     def get_sections(self):
         if self.conf is None:
@@ -91,9 +93,9 @@ class VirtConf(UserConf):
         self.virt_cfg = {}
         try:
             self.virt_conf = UserConf(self.config_file)
-        except Exception as e:
-            print "FAILED LOADING VIRT CONFIG!!!"
+        except ConfigParseException:
             self.virt_conf = None
+            raise VirtConfigParseException
 
     def load_virt_config(self, name):
         self.virt_cfgs = []
@@ -130,9 +132,9 @@ class PortConf(UserConf):
         self.pci_regex = "([\da-f]{2}:[\da-f]{2}.\d{1})$"
         try:
             self.port_conf = UserConf(self.config_file)
-        except Exception as e:
-            print "FAILED LOADING PORT CONFIG!!!"
+        except ConfigParseException:
             self.port_conf = None
+            raise PortConfigParseException
 
     def load_ports_config(self, crbIP):
         self.ports_cfg = {}
@@ -185,7 +187,10 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # not existed configuration file
-    VirtConf('/tmp/not-existed.cfg')
+    try:
+        VirtConf('/tmp/not-existed.cfg')
+    except VirtConfigParseException:
+        print "Capture config parse failure"
 
     # example for basic use configuration file
     conf = UserConf(PORTCONF)
