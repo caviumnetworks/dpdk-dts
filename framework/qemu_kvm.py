@@ -649,6 +649,7 @@ class QEMUKvm(VirtBase):
     def add_vm_qga(self, **options):
         """
         enable: 'yes'
+        Make sure qemu-guest-agent servie up in vm
         """
         QGA_DEV_ID = '%(vm_name)s_qga0' % {'vm_name': self.vm_name}
         QGA_SOCK_PATH = QGA_SOCK_PATH_TEMPLATE % {'vm_name': self.vm_name}
