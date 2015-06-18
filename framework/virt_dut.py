@@ -35,7 +35,7 @@ import time
 import dts
 import settings
 from config import PortConf
-from settings import NICS, LOG_NAME_SEP
+from settings import NICS, LOG_NAME_SEP, get_netdev
 from ssh_connection import SSHConnection
 from project_dpdk import DPDKdut
 from dut import Dut
@@ -54,7 +54,9 @@ class VirtDut(DPDKdut):
     or CRBBareMetal.
     """
 
-    def __init__(self, crb, serializer, virttype, vm_name, suite):
+    def __init__(self, hyper, crb, serializer, virttype, vm_name, suite):
+        self.vm_name = vm_name
+        self.hyper = hyper
         super(Dut, self).__init__(crb, serializer)
         self.vm_ip = self.get_ip_address()
         self.NAME = 'virtdut' + LOG_NAME_SEP + '%s' % self.vm_ip
@@ -96,7 +98,26 @@ class VirtDut(DPDKdut):
         """
         Load port config for this virtual machine
         """
+        self.conf = PortConf()
+        self.conf.load_ports_config(self.vm_name)
+        self.ports_cfg = self.conf.get_ports_config()
+
         return
+
+    def create_portmap(self):
+        port_num = len(self.ports_info)
+        self.ports_map = [-1] * port_num
+        for key in self.ports_cfg.keys():
+            index = int(key)
+            if index >= port_num:
+                print dts.RED("Can not found [%d ]port info" % index)
+                continue
+
+            if 'peer' in self.ports_cfg[key].keys():
+                tester_pci = self.ports_cfg[key]['peer']
+                # find tester_pci index
+                pci_idx = self.tester.get_local_index(tester_pci)
+                self.ports_map[index] = pci_idx
 
     def set_target(self, target):
         """
@@ -121,7 +142,7 @@ class VirtDut(DPDKdut):
 
         self.bind_interfaces_linux('igb_uio')
 
-    def prerequisites(self, pkgName, patch):
+    def prerequisites(self, pkgName, patch, auto_portmap):
         """
         Prerequest function should be called before execute any test case.
         Will call function to scan all lcore's information which on DUT.
@@ -153,19 +174,41 @@ class VirtDut(DPDKdut):
 
         # no need to rescan ports for guest os just bootup
         # load port infor from config file
-        self.load_portconf()
+        if auto_portmap is False:
+            self.load_portconf()
 
         # enable tester port ipv6
         self.host_dut.enable_tester_ipv6()
         self.mount_procfs()
-        # auto detect network topology
-        self.map_available_ports()
+
+        if auto_portmap:
+            # auto detect network topology
+            self.map_available_ports()
+        else:
+            self.create_portmap()
+
         # disable tester port ipv6
         self.host_dut.disable_tester_ipv6()
 
         # print latest ports_info
         for port_info in self.ports_info:
             self.logger.info(port_info)
+
+    def init_core_list(self):
+        self.cores = []
+        cpuinfo = self.send_expect("grep --color=never \"processor\""
+                                   " /proc/cpuinfo", "#", alt_session=False)
+        cpuinfo = cpuinfo.split('\r\n')
+        for line in cpuinfo:
+            m = re.search("processor\t: (\d+)", line)
+            if m:
+                thread = m.group(1)
+                socket = 0
+                core = thread
+            self.cores.append(
+                {'thread': thread, 'socket': socket, 'core': core})
+
+        self.number_of_cores = len(self.cores)
 
     def restore_interfaces_domu(self):
         """
@@ -227,13 +270,66 @@ class VirtDut(DPDKdut):
         Load or generate network connection mapping list.
         """
         self.map_available_ports_uncached()
-        self.logger.warning("DUT PORT MAP: " + str(self.ports_map))
+        self.logger.warning("VM DUT PORT MAP: " + str(self.ports_map))
 
-    def send_ping6(self, localPort, ipv6, mac=''):
+    def map_available_ports_uncached(self):
         """
-        Send ping6 packet from local port with destination ipv6 address.
+        Generate network connection mapping list.
         """
-        if self.ports_info[localPort]['type'] == 'ixia':
-            pass
-        else:
-            return self.send_expect("ping6 -w 1 -c 1 -A -I %s %s" % (self.ports_info[localPort]['intf'], ipv6), "# ", 10)
+        nrPorts = len(self.ports_info)
+        if nrPorts == 0:
+            return
+
+        remove = []
+        self.ports_map = [-1] * nrPorts
+
+        hits = [False] * len(self.tester.ports_info)
+
+        for dutPort in range(nrPorts):
+            peer = self.get_peer_pci(dutPort)
+            # if peer pci configured
+            if peer is not None:
+                for remotePort in range(len(self.tester.ports_info)):
+                    if self.tester.ports_info[remotePort]['pci'] == peer:
+                        hits[remotePort] = True
+                        self.ports_map[dutPort] = remotePort
+                        break
+                if self.ports_map[dutPort] == -1:
+                    self.logger.error("CONFIGURED TESTER PORT CANNOT FOUND!!!")
+                else:
+                    continue  # skip ping6 map
+
+            if hasattr(self.hyper, 'pt_devices'):
+                hostpci = self.hyper.pt_devices[dutPort]
+                netdev = get_netdev(self.host_dut, hostpci)
+
+            # auto ping port map
+            for remotePort in range(len(self.tester.ports_info)):
+                # for two vfs connected to same tester port
+                # can't skip those teste ports even have hits
+                # need skip ping self vf port
+                remotepci = self.tester.ports_info[remotePort]['pci']
+                remoteport =  self.tester.ports_info[remotePort]['port']
+                vfs = []
+                # vm_dut and tester in same dut
+                host_ip = self.crb['IP'].split(':')[0]
+                if self.crb['tester IP'] == host_ip:
+                    vfs = remoteport.get_sriov_vfs_pci()
+                # if hostpci is vf of tester port
+                if netdev.pci in vfs:
+                    print dts.RED("Skip ping from PF device")
+                    continue
+
+                ipv6 = self.get_ipv6_address(dutPort)
+                if ipv6 == "Not connected":
+                    continue
+
+                out = self.tester.send_ping6(
+                    remotePort, ipv6, self.get_mac_address(dutPort))
+
+                if ('64 bytes from' in out):
+                    self.logger.info(
+                        "PORT MAP: [dut %d: tester %d]" % (dutPort, remotePort))
+                    self.ports_map[dutPort] = remotePort
+                    hits[remotePort] = True
+                    continue

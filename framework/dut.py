@@ -781,10 +781,12 @@ class Dut(Crb):
                     continue
 
                 if getattr(self, 'send_ping6', None):
-                    self.send_ping6(
-                        dutPort, self.tester.ports_info[remotePort]['ipv6'])
-                out = self.tester.send_ping6(
-                    remotePort, ipv6, self.get_mac_address(dutPort))
+                    out = self.send_ping6(
+                        dutPort, self.tester.ports_info[remotePort]['ipv6'],
+                        self.get_mac_address(dutPort))
+                else:
+                    out = self.tester.send_ping6(
+                        remotePort, ipv6, self.get_mac_address(dutPort))
 
                 if ('64 bytes from' in out):
                     self.logger.info("PORT MAP: [dut %d: tester %d]" % (dutPort, remotePort))
