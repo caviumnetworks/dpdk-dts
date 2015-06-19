@@ -329,7 +329,7 @@ def dts_run_suite(crbInst, test_suites, target, nic, scene):
             module = test_module
             for test_classname, test_class in get_subclasses(test_module, TestCase):
 
-                if scene.vm_dut_enable:
+                if scene and scene.vm_dut_enable:
                     duts = scene.get_vm_duts()
                     tester.dut = duts[0]
                     test_suite = test_class(duts[0], tester, target, test_suite)
