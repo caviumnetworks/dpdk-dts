@@ -36,6 +36,7 @@ import os
 
 from virt_base import VirtBase
 from exception import StartVMFailedException
+from settings import get_host_ip
 
 # This name is derictly defined in the qemu guest serivce
 # So you can not change it except it is changed by the service
@@ -408,7 +409,8 @@ class QEMUKvm(VirtBase):
         # get the host addr
         host_addr = field(opt_hostfwd, 1)
         if not host_addr:
-            host_addr = str(self.host_dut.get_ip_address())
+            addr = str(self.host_dut.get_ip_address())
+            host_addr = get_host_ip(addr)
 
         # get the host port in the option
         host_port = field(opt_hostfwd, 2).split('-')[0]

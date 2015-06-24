@@ -31,6 +31,9 @@
 """
 Folders for framework running enviornment.
 """
+import re
+import socket
+
 FOLDERS = {
     'Framework': 'framework',
     'Testscripts': 'tests',
@@ -200,3 +203,16 @@ def get_netdev(crb, pci):
                     return vf
 
     return None
+
+def get_host_ip(address):
+    ip_reg = r'\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3}'
+    m = re.match(ip_reg, address)
+    if m:
+        return address
+    else:
+        try:
+            result=socket.gethostbyaddr(address)
+            return result[2][0]
+        except:
+            print "couldn't look up %s" % address
+            return ''
