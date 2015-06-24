@@ -92,6 +92,10 @@ class QEMUKvm(VirtBase):
         # devices pass-through into vm
         self.pt_devices = []
 
+        # default login user,password
+        self.username = dut.crb['user']
+        self.password = dut.crb['pass']
+
     def set_vm_default(self):
         self.set_vm_name(self.vm_name)
         self.set_vm_enable_kvm()
@@ -281,6 +285,22 @@ class QEMUKvm(VirtBase):
         if 'file' in options.keys():
             disk_boot_line = '-drive file=%s' % options['file']
             self.__add_boot_line(disk_boot_line)
+
+    def add_vm_login(self, **options):
+        """
+        user: login username of virtual machine
+        password: login password of virtual machine
+        """
+        if 'user' in options.keys():
+            user = options['user']
+            self.username = user
+
+        if 'password' in options.keys():
+            password = options['password']
+            self.password = password
+
+    def get_vm_login(self):
+        return (self.username, self.password)
 
     def set_vm_net(self, **options):
         index = self.find_option_index('net')

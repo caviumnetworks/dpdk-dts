@@ -294,6 +294,9 @@ class VirtBase(object):
         crb['bypass core0'] = False
         vm_ip = self.get_vm_ip()
         crb['IP'] = vm_ip
+        username, password = self.get_vm_login()
+        crb['user'] = username
+        crb['pass'] = password
 
         # remove default key
         remove_old_rsa_key(self.host_dut.tester, crb['IP'])
