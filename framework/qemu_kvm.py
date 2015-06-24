@@ -720,6 +720,15 @@ class QEMUKvm(VirtBase):
             daemon_boot_line = '-daemonize'
             self.__add_boot_line(daemon_boot_line)
 
+    def add_vm_usercmd(self, **options):
+        """
+        usercmd: user self defined command line.
+                 This command will be add into qemu boot command.
+        """
+        if 'cmd' in options.keys():
+            cmd = options['cmd']
+        self.__add_boot_line(cmd)
+
     def _start_vm(self):
         """
         Start VM.
