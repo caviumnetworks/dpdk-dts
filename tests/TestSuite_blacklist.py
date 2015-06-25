@@ -101,7 +101,7 @@ class TestBlackList(TestCase):
         Run testpmd with one port blacklisted.
         """
         self.dut.kill_all()
-        out = self.pmdout.start_testpmd("Default", eal_param="-b 0000:%s -- -i" % self.dut.ports_info[0]['pci'])
+        out = self.pmdout.start_testpmd("Default", eal_param="-b 0000:%s" % self.dut.ports_info[0]['pci'])
         self.check_blacklisted_ports(out, self.ports[1:])
 
     def test_bl_allbutoneportblacklisted(self):
