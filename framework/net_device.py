@@ -136,17 +136,26 @@ class NetDevice(object):
         """
         Get interface name of specified pci device on linux.
         """
+        driver_alias = driver.replace('-', '_')
         try:
             get_interface_name_linux = getattr(
                 self,
                 'get_interface_name_linux_%s' %
-                driver)
+                driver_alias)
         except Exception as e:
             generic_driver = 'generic'
             get_interface_name_linux = getattr(self,
                                                'get_interface_name_linux_%s' % generic_driver)
 
         return get_interface_name_linux(bus_id, devfun_id)
+
+    def get_interface_name_linux_virtio_pci(self, bus_id, devfun_id):
+        """
+        Get virtio device interface name by the default way on linux.
+        """
+        command = 'ls --color=never /sys/bus/pci/devices/0000\:%s\:%s/virtio*/net' % (
+            bus_id, devfun_id)
+        return self.__send_expect(command, '# ')
 
     def get_interface_name_linux_generic(self, bus_id, devfun_id):
         """
@@ -192,11 +201,12 @@ class NetDevice(object):
         """
         Get mac address of specified pci device on linux.
         """
+        driver_alias = driver.replace('-', '_')
         try:
             get_mac_addr_linux = getattr(
                 self,
                 'get_mac_addr_linux_%s' %
-                driver)
+                driver_alias)
         except Exception as e:
             generic_driver = 'generic'
             get_mac_addr_linux = getattr(
@@ -223,6 +233,18 @@ class NetDevice(object):
         """
         command = ('cat /sys/bus/pci/devices/0000\:%s\:%s/net/%s/address' %
                    (bus_id, devfun_id, intf))
+        return self.__send_expect(command, '# ')
+
+    def get_mac_addr_linux_virtio_pci(self, intf, bus_id, devfun_id, driver):
+        """
+        Get MAC by the default way on linux.
+        """
+        virtio_cmd = ('ls /sys/bus/pci/devices/0000\:%s\:%s/ | grep --color=never virtio' %
+                    (bus_id, devfun_id))
+        virtio = self.__send_expect(virtio_cmd, '# ')
+
+        command = ('cat /sys/bus/pci/devices/0000\:%s\:%s/%s/net/%s/address' %
+                   (bus_id, devfun_id, virtio, intf))
         return self.__send_expect(command, '# ')
 
     def get_mac_addr_freebsd(self, intf, bus_id, devfun_id, driver):

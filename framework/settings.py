@@ -90,7 +90,7 @@ DRIVERS = {
     '82540EM': 'igb',
     'springville': 'igb',
     'springfountain': 'ixgbe',
-    'virtio': 'igb',
+    'virtio': 'virtio-pci',
     'avoton': 'igb',
     'avoton2c5': 'igb',
     'I217V': 'igb',

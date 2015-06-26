@@ -519,12 +519,7 @@ class Dut(Crb):
         unknow_interface = RED('Skipped: unknow_interface')
 
         for port_info in self.ports_info:
-            pci_bus = port_info['pci']
-            addr_array = pci_bus.split(':')
-            bus_id = addr_array[0]
-            devfun_id = addr_array[1]
-
-            port = NetDevice(self, bus_id, devfun_id)
+            port = port_info['port']
             intf = port.get_interface_name()
             if "No such file" in intf:
                 self.logger.info("DUT: [0000:%s] %s" % (pci_bus, unknow_interface))
@@ -598,7 +593,7 @@ class Dut(Crb):
             devfun_id = addr_array[1]
 
             port = NetDevice(self, bus_id, devfun_id)
-            numa = self.get_device_numa(bus_id, devfun_id)
+            numa = port.socket
             # store the port info to port mapping
             self.ports_info.append(
                 {'port': port, 'pci': pci_bus, 'type': pci_id, 'numa': numa})
