@@ -387,6 +387,7 @@ class VirtScene(object):
                              'virt_global')
                 vm.load_config()
                 vm.vm_name = vm_name
+                vm.set_vm_default()
                 # merge default config and scene config
                 scene_params = self.vm_confs[vm_name]
                 # reload merged configurations
