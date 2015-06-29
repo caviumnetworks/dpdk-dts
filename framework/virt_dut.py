@@ -285,29 +285,32 @@ class VirtDut(DPDKdut):
 
         hits = [False] * len(self.tester.ports_info)
 
-        for dutPort in range(nrPorts):
-            peer = self.get_peer_pci(dutPort)
+        for vmPort in range(nrPorts):
+            vmpci = self.ports_info[vmPort]['pci']
+            peer = self.get_peer_pci(vmPort)
             # if peer pci configured
             if peer is not None:
                 for remotePort in range(len(self.tester.ports_info)):
                     if self.tester.ports_info[remotePort]['pci'] == peer:
                         hits[remotePort] = True
-                        self.ports_map[dutPort] = remotePort
+                        self.ports_map[vmPort] = remotePort
                         break
-                if self.ports_map[dutPort] == -1:
+                if self.ports_map[vmPort] == -1:
                     self.logger.error("CONFIGURED TESTER PORT CANNOT FOUND!!!")
                 else:
                     continue  # skip ping6 map
 
-            if hasattr(self.hyper, 'pt_devices'):
-                hostpci = self.hyper.pt_devices[dutPort]
-                netdev = get_netdev(self.host_dut, hostpci)
+            # strip pci address on host for pass-through device
+            hostpci = 'N/A'
+            for pci_map in self.hyper.pci_maps:
+                if vmpci == pci_map['guestpci']:
+                    hostpci = pci_map['hostpci']
+                    break
 
             # auto ping port map
             for remotePort in range(len(self.tester.ports_info)):
                 # for two vfs connected to same tester port
-                # can't skip those teste ports even have hits
-                # need skip ping self vf port
+                # need skip ping from devices on same pf device
                 remotepci = self.tester.ports_info[remotePort]['pci']
                 remoteport =  self.tester.ports_info[remotePort]['port']
                 vfs = []
@@ -315,21 +318,21 @@ class VirtDut(DPDKdut):
                 host_ip = self.crb['IP'].split(':')[0]
                 if self.crb['tester IP'] == host_ip:
                     vfs = remoteport.get_sriov_vfs_pci()
-                # if hostpci is vf of tester port
-                if netdev.pci in vfs:
-                    print dts.RED("Skip ping from PF device")
-                    continue
+                    # if hostpci is vf of tester port
+                    if hostpci == remotepci or hostpci in vfs:
+                        print dts.RED("Skip ping from same PF device")
+                        continue
 
-                ipv6 = self.get_ipv6_address(dutPort)
+                ipv6 = self.get_ipv6_address(vmPort)
                 if ipv6 == "Not connected":
                     continue
 
                 out = self.tester.send_ping6(
-                    remotePort, ipv6, self.get_mac_address(dutPort))
+                    remotePort, ipv6, self.get_mac_address(vmPort))
 
                 if ('64 bytes from' in out):
                     self.logger.info(
-                        "PORT MAP: [dut %d: tester %d]" % (dutPort, remotePort))
-                    self.ports_map[dutPort] = remotePort
+                        "PORT MAP: [dut %d: tester %d]" % (vmPort, remotePort))
+                    self.ports_map[vmPort] = remotePort
                     hits[remotePort] = True
                     continue
