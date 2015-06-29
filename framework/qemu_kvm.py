@@ -68,10 +68,6 @@ class QEMUKvm(VirtBase):
     def __init__(self, dut, vm_name, suite_name):
         super(QEMUKvm, self).__init__(dut, vm_name, suite_name)
 
-        # set some default values for vm,
-        # if there is not the values of the specified options
-        self.set_vm_default()
-
         # initialize qemu emulator, example: qemu-system-x86_64
         self.qemu_emulator = self.get_qemu_emulator()
 
@@ -88,25 +84,37 @@ class QEMUKvm(VirtBase):
         # charater and network device default index
         self.char_idx = 0
         self.netdev_idx = 0
+        self.pt_idx = 0
 
         # devices pass-through into vm
         self.pt_devices = []
+        self.pci_maps = []
 
         # default login user,password
         self.username = dut.crb['user']
         self.password = dut.crb['pass']
+
+        # internal variable to track whether default nic has been added
+        self.__default_nic = False
+
+        # set some default values for vm,
+        # if there is not the values of the specified options
+        self.set_vm_default()
 
     def set_vm_default(self):
         self.set_vm_name(self.vm_name)
         self.set_vm_enable_kvm()
         self.set_vm_qga()
         self.set_vm_daemon()
+        self.set_vm_monitor()
 
-        # add default control interface
-        def_nic = {'type': 'nic', 'opt_vlan': '0'}
-        self.set_vm_net(**def_nic)
-        def_net = {'type': 'user', 'opt_vlan': '0'}
-        self.set_vm_net(**def_net)
+        if not self.__default_nic:
+            # add default control interface
+            def_nic = {'type': 'nic', 'opt_vlan': '0'}
+            self.set_vm_net(**def_nic)
+            def_net = {'type': 'user', 'opt_vlan': '0'}
+            self.set_vm_net(**def_net)
+            self.__default_nic = True
 
     def init_vm_request_resource(self):
         """
@@ -214,7 +222,11 @@ class QEMUKvm(VirtBase):
         """
         Set VM boot option to enable the option 'enable-kvm'.
         """
-        self.params.append({'enable_kvm': [{'enable': '%s' % enable}]})
+        index = self.find_option_index('enable_kvm')
+        if index:
+            self.params[index] = {'enable_kvm': [{'enable': '%s' % enable}]}
+        else:
+            self.params.append({'enable_kvm': [{'enable': '%s' % enable}]})
 
     def add_vm_enable_kvm(self, **options):
         """
@@ -229,7 +241,11 @@ class QEMUKvm(VirtBase):
         """
         Set VM name.
         """
-        self.params.append({'name': [{'name': '%s' % vm_name}]})
+        index = self.find_option_index('name')
+        if index:
+            self.params[index] = {'name': [{'name': '%s' % vm_name}]}
+        else:
+            self.params.append({'name': [{'name': '%s' % vm_name}]})
 
     def add_vm_name(self, **options):
         """
@@ -559,6 +575,8 @@ class QEMUKvm(VirtBase):
         if 'opt_host' in options.keys() and \
                 options['opt_host']:
             dev_boot_line += separator + 'host=%s' % options['opt_host']
+            dev_boot_line += separator + 'id=pt_%d' % self.pt_idx
+            self.pt_idx += 1
             self.pt_devices.append(options['opt_host'])
         if 'opt_addr' in options.keys() and \
                 options['opt_addr']:
@@ -641,20 +659,28 @@ class QEMUKvm(VirtBase):
         else:
             return False
 
+    def set_vm_monitor(self):
+        """
+        Set VM boot option to enable qemu monitor.
+        """
+        index = self.find_option_index('monitor')
+        if index:
+            self.params[index] = {'monitor': [{'path': '/tmp/%s_monitor.sock' %
+                                                (self.vm_name)}]}
+        else:
+            self.params.append({'monitor': [{'path': '/tmp/%s_monitor.sock' %
+                                         (self.vm_name)}]})
+
     def add_vm_monitor(self, **options):
         """
-        port: 6061   # if adding monitor to vm, need to specicy
-                       this port, else it will get a free port
-                       on the host machine.
+        path: if adding monitor to vm, need to specify unix socket patch
         """
-        if 'port' in options.keys():
-            if options['port']:
-                port = options['port']
-            else:
-                port = self.virt_pool.alloc_port(self.vm_name)
-
-            monitor_boot_line = '-monitor tcp::%d,server,nowait' % int(port)
+        if 'path' in options.keys():
+            monitor_boot_line = '-monitor unix:%s,server,nowait' % options['path']
             self.__add_boot_line(monitor_boot_line)
+            self.monitor_sock_path = options['path']
+        else:
+            self.monitor_sock_path = None
 
     def set_vm_qga(self, enable='yes'):
         """
@@ -765,6 +791,7 @@ class QEMUKvm(VirtBase):
         if "Not responded" in out:
             raise StartVMFailedException('Not response in 60 seconds!!!')
 
+        self.__get_pci_mapping()
         self.__wait_vmnet_ready()
 
     def generate_qemu_boot_line(self):
@@ -940,8 +967,69 @@ class QEMUKvm(VirtBase):
                     return ip
         return ''
 
-    def get_vm_pt_devices(self):
-        return self.pt_devices
+    def __get_pci_mapping(self):
+        devices = self.__strip_guest_pci()
+        for hostpci in self.pt_devices:
+            index = self.pt_devices.index(hostpci)
+            pt_id = 'pt_%d' %index
+            pci_map = {}
+            for device in devices:
+                if device['id'] == pt_id:
+                    pci_map['hostpci'] = hostpci
+                    pci_map['guestpci'] = device['pci']
+                    self.pci_maps.append(pci_map)
+
+    def get_pci_mappings(self):
+        """
+        Return guest and host pci devices mapping structure
+        """
+        return self.pci_maps
+
+    def __monitor_session(self, command, *args):
+        """
+        Connect the qemu montior session, send command and return output message.
+        """
+        if not self.monitor_sock_path:
+            self.host_logger.info(
+                "No monitor between on host [ %s ] for guest [ %s ]" %
+                (self.host_dut.Name, self.vm_name))
+            return None
+
+        self.host_session.send_expect('nc -U %s' % self.monitor_sock_path, '(qemu)', 2)
+
+        cmd = command
+        for arg in args:
+            cmd += ' ' + str(arg)
+
+        out = self.host_session.send_expect('%s' % cmd, '(qemu)')
+        self.host_session.send_expect('^C', "# ")
+        return out
+
+    def __strip_guest_pci(self):
+        """
+        Strip all pci-passthrough device information, based on qemu monitor
+        """
+        pci_reg = r'^.*Bus(\s+)(\d+), device(\s+)(\d+), function (\d+)'
+        id_reg = r'^.*id \"(.*)\"'
+
+        out = self.__monitor_session('info', 'pci')
+        lines = out.split("\r\n")
+
+        pcis = []
+        for line in lines:
+            m = re.match(pci_reg, line)
+            n = re.match(id_reg, line)
+            if m:
+                pci = "%02d:%02d.%d" %(int(m.group(2)), int(m.group(4)), int(m.group(5)))
+            if n:
+                dev_id = n.group(1)
+                if dev_id != '':
+                    pt_dev = {}
+                    pt_dev['pci'] = pci
+                    pt_dev['id'] = dev_id
+                    pcis.append(pt_dev)
+
+        return pcis
 
     def __control_session(self, command, *args):
         """

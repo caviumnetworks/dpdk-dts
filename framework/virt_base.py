@@ -196,6 +196,12 @@ class VirtBase(object):
         """
         NotImplemented
 
+    def get_pci_mappings(self):
+        """
+        Get host and VM pass-through device mapping
+        """
+        NotImplemented
+
     def isalive(self):
         """
         Check whether VM existed.
