@@ -170,11 +170,11 @@ class NetDevice(object):
         Get interface name of specified pci device on Freebsd.
         """
         try:
-            get_interface_name_linux = getattr(self,
+            get_interface_name_freebsd = getattr(self,
                                                'get_interface_name_freebsd_%s' % driver)
         except Exception as e:
             generic_driver = 'generic'
-            get_interface_name_linux = getattr(self,
+            get_interface_name_freebsd = getattr(self,
                                                'get_interface_name_freebsd_%s' % generic_driver)
 
         return get_interface_name_freebsd(bus_id, devfun_id)

@@ -33,6 +33,7 @@ Folders for framework running enviornment.
 """
 import re
 import socket
+import dts
 
 FOLDERS = {
     'Framework': 'framework',
@@ -184,11 +185,11 @@ def accepted_nic(pci_id):
     if pci_id not in NICS.values():
         return False
 
-    if nic is 'any':
+    if dts.nic is 'any':
         return True
 
     else:
-        if pci_id == NICS[nic]:
+        if pci_id == NICS[dts.nic]:
             return True
 
     return False

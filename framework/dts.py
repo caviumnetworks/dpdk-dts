@@ -150,6 +150,8 @@ def dts_parse_config(section):
     except:
         scenario = ''
 
+    global nic
+
     duts = [dut_.strip() for dut_ in config.get(section,
                                                 'crbs').split(',')]
     targets = [target.strip()
