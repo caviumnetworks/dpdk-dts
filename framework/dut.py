@@ -523,6 +523,7 @@ class Dut(Crb):
             intf = port.get_interface_name()
             if "No such file" in intf:
                 self.logger.info("DUT: [0000:%s] %s" % (pci_bus, unknow_interface))
+                continue
             out = self.send_expect("ip link show %s" % intf, "# ")
             if "DOWN" in out:
                 self.send_expect("ip link set %s up" % intf, "# ")
@@ -608,16 +609,16 @@ class Dut(Crb):
 
         for (pci_bus, pci_id) in self.pci_devices_info:
 
-            if not setttings.accepted_nic(pci_id):
+            if not settings.accepted_nic(pci_id):
                 self.logger.info("DUT: [%s %s] %s" % (pci_bus, pci_id,
                                                       skipped))
                 continue
 
             port = NetDevice(self, pci_bus, '')
-            intf = port.get_interface_name(pci_bus)
+            intf = port.get_interface_name()
 
-            macaddr = self.get_mac_addr(intf)
-            ipv6 = self.get_ipv6_addr(intf)
+            macaddr = port.get_mac_addr()
+            ipv6 = port.get_ipv6_addr()
 
             if ipv6 is None:
                 ipv6 = "Not available"

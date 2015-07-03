@@ -187,6 +187,8 @@ class NetDevice(object):
         rexp = r"(\w*)@pci0:%s" % bus_id
         pattern = re.compile(rexp)
         match = pattern.findall(out)
+        if len(match) == 0:
+            return "No such file"
         return match[0]
 
     @nic_has_driver
@@ -263,7 +265,7 @@ class NetDevice(object):
                 'get_mac_addr_freebsd_%s' %
                 generic_driver)
 
-        return get_mac_addr_freebsd(intf, bus_id, devfun_id, driver)
+        return get_mac_addr_freebsd(intf, bus_id, devfun_id)
 
     def get_mac_addr_freebsd_generic(self, intf, bus_id, devfun_id):
         """
