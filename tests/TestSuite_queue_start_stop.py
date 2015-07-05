@@ -92,23 +92,18 @@ class TestQueueStartStop(TestCase):
 
         self.tester.scapy_foreground()
 
-        if self.nic in ["fortville_eagle", "fortville_spirit",
-                        "fortville_spirit_single", "bartonhills",
-                        "powerville", "springville", "hartwell"]:
-            pktlen = pktSize - 22
-        else:
-            pktlen = pktSize - 18
+        pktlen = pktSize - 14
         padding = pktlen - 20
-        self.tester.scapy_append('sendp([Ether(dst="%s")/IP()/Raw(load="\x50"*%s)], iface="%s")' % (mac, padding, txitf))
+        self.tester.scapy_append('sendp([Ether(dst="%s")/IP()/Raw(load="P"*%s)], iface="%s")' % (mac, padding, txitf))
 
         self.tester.scapy_execute()
         time.sleep(3)
 
         out = self.tester.scapy_get_result()
         if received:
-            self.verify('\x50\x50\x50' in out, "start queue failed")
+            self.verify('PPP' in out, "start queue failed")
         else:
-            self.verify('\x50\x50\x50' not in out, "stop queue failed")
+            self.verify('PPP' not in out, "stop queue failed")
 
     def add_code_to_dpdk(self, file_name, standard_row, add_rows, offset=0):
         """
@@ -148,14 +143,15 @@ class TestQueueStartStop(TestCase):
         """
         queue start/stop test for fortville nic
         """
-        fwdmac_file = os.getcwd() + r'/dep/dpdk/app/test-pmd/macfwd.c'
+        self.dut.session.copy_file_from(r'%s/app/test-pmd/macfwd.c' % self.dut.base_dir)
+        fwdmac_file = 'macfwd.c'
         printf_lines = ['printf("ports %u queue %u revice %u packages", fs->rx_port, fs->rx_queue, nb_rx);\n', r'printf("\n");',"\n"]
         sourcelines = self.add_code_to_dpdk(fwdmac_file, r'(unlikely(nb_rx == 0)', printf_lines, 2)
         self.dut.session.copy_file_to(fwdmac_file)
-        self.dut.send_expect('scp  /root/macfwd.c /root/dpdk/app/test-pmd/macfwd.c', "#")
+        self.dut.send_expect('scp  /root/macfwd.c %s/app/test-pmd/macfwd.c' % self.dut.base_dir, "#")
         self.dut.build_dpdk_apps('./app/test-pmd')
 
-        self.dut.send_expect("./app/test-pmd/testpmd -c 0xf -n 4 -- -i", "testpmd>", 120)
+        self.dut.send_expect("./app/test-pmd/testpmd -c 0xf -n 4 -- -i --portmask=0x3", "testpmd>", 120)
         self.dut.send_expect("set fwd mac", "testpmd>")
         self.dut.send_expect("start", "testpmd>")
         self.check_forwarding([0, 1], self.nic)
@@ -185,11 +181,14 @@ class TestQueueStartStop(TestCase):
         self.dut.send_expect("port 1 txq 0 start", "testpmd>")
         self.dut.send_expect("start", "testpmd>")
         self.check_forwarding([0, 1], self.nic)
+        self.dut.send_expect("quit", "testpmd>")
 
         # recover testpmd changed
         file_handel = open(fwdmac_file, "w")
         file_handel.writelines(sourcelines)
         file_handel.close()
+        self.dut.session.copy_file_to(fwdmac_file)
+        self.dut.send_expect('scp  /root/macfwd.c %s/app/test-pmd/macfwd.c' % self.dut.base_dir, "#")
 
     def tear_down(self):
         """
