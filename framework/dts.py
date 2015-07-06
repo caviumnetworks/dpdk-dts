@@ -38,6 +38,7 @@ import inspect      # load attribute
 import atexit       # register callback when exit
 import json         # json format
 import signal       # signal module for debug mode
+import time         # time module for unique output folder
 
 import rst          # rst file support
 from crbs import crbs
@@ -74,6 +75,7 @@ functional_only = False
 nic = None
 requested_tests = None
 dut = None
+duts = None
 tester = None
 result = None
 excel_report = None
@@ -192,11 +194,15 @@ def dts_log_testsuite(test_suite, log_handler, test_classname):
     """
     Change to SUITE self logger handler.
     """
+    global duts
     test_suite.logger = getLogger(test_classname)
     test_suite.logger.config_suite(test_classname)
     log_handler.config_suite(test_classname, 'dts')
     dut.logger.config_suite(test_classname, 'dut')
     tester.logger.config_suite(test_classname, 'tester')
+    if duts and len(duts):
+        for crb in duts:
+            crb.logger.config_suite(test_classname, 'virtdut')
     try:
         if tester.it_uses_external_generator():
             getattr(tester, 'ixia_packet_gen')
@@ -212,6 +218,9 @@ def dts_log_execution(log_handler):
     log_handler.config_execution('dts')
     dut.logger.config_execution('dut')
     tester.logger.config_execution('tester')
+    if duts and len(duts):
+        for crb in duts:
+            crb.logger.config_execution('virtdut')
     try:
         if tester.it_uses_external_generator():
             getattr(tester, 'ixia_packet_gen')
@@ -279,8 +288,8 @@ def dts_run_target(crbInst, targets, test_suites, nic, scenario):
         scene = None
 
     if scene:
-       scene.load_config()
-       scene.create_scene()
+        scene.load_config()
+        scene.create_scene()
 
     for target in targets:
         log_handler.info("\nTARGET " + target)
@@ -332,6 +341,7 @@ def dts_run_suite(crbInst, test_suites, target, nic, scene):
             for test_classname, test_class in get_subclasses(test_module, TestCase):
 
                 if scene and scene.vm_dut_enable:
+                    global duts
                     duts = scene.get_vm_duts()
                     tester.dut = duts[0]
                     test_suite = test_class(duts[0], tester, target, test_suite)
@@ -389,6 +399,9 @@ def run_all(config_file, pkgName, git, patch, skip_setup,
     Patches = patch
 
     # prepare the output folder
+    if output_dir == '':
+        output_dir = time.strftime("output/%Y_%m_%d_%H_%M_%S")
+
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
 

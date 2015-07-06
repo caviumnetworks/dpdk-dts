@@ -84,7 +84,7 @@ parser.add_argument('--snapshot',
                     help='snapshot .tgz file to use as input')
 
 parser.add_argument('--output',
-                    default='output',
+                    default='',
                     help='Output directory where dts log and result saved')
 
 parser.add_argument('-s', '--skip-setup',
