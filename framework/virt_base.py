@@ -223,7 +223,7 @@ class VirtBase(object):
         self.load_global_config()
         self.load_local_config(self.suite)
 
-    def start(self, load_config=True, set_target=True, auto_portmap=True):
+    def start(self, load_config=True, set_target=True, auto_portmap=True, bind_dev=True):
         """
         Start VM and instantiate the VM with VirtDut.
         """
@@ -292,7 +292,7 @@ class VirtBase(object):
         """
         NotImplemented
 
-    def instantiate_vm_dut(self, set_target=True, auto_portmap=True):
+    def instantiate_vm_dut(self, set_target=True, auto_portmap=True, bind_dev=True):
         """
         Instantiate the Dut class for VM.
         """
@@ -341,7 +341,7 @@ class VirtBase(object):
             vm_dut.prerequisites(dts.Package, dts.Patches, auto_portmap)
             if set_target:
                 target = self.host_dut.target
-                vm_dut.set_target(target)
+                vm_dut.set_target(target, bind_dev)
         except:
             raise exception.VirtDutInitException(vm_dut)
             return None

@@ -119,7 +119,7 @@ class VirtDut(DPDKdut):
                 pci_idx = self.tester.get_local_index(tester_pci)
                 self.ports_map[index] = pci_idx
 
-    def set_target(self, target):
+    def set_target(self, target, bind_dev=True):
         """
         Set env variable, these have to be setup all the time. Some tests
         need to compile example apps by themselves and will fail otherwise.
@@ -140,7 +140,8 @@ class VirtDut(DPDKdut):
         self.setup_memory(hugepages=512)
         self.setup_modules(target)
 
-        self.bind_interfaces_linux('igb_uio')
+        if bind_dev:
+            self.bind_interfaces_linux('igb_uio')
 
     def prerequisites(self, pkgName, patch, auto_portmap):
         """

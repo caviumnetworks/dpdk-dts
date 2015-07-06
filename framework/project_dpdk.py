@@ -53,7 +53,7 @@ class DPDKdut(Dut):
         super(DPDKdut, self).__init__(crb, serializer)
         self.testpmd = None
 
-    def set_target(self, target, build_only=False):
+    def set_target(self, target, bind_dev=True):
         """
         Set env variable, these have to be setup all the time. Some tests
         need to compile example apps by themselves and will fail otherwise.
@@ -76,7 +76,7 @@ class DPDKdut(Dut):
         self.setup_memory()
         self.setup_modules(target)
 
-        if build_only is False and self.get_os_type() == 'linux':
+        if bind_dev and self.get_os_type() == 'linux':
             self.bind_interfaces_linux(dts.drivername)
 
     def setup_modules(self, target):

@@ -298,7 +298,7 @@ def dts_run_target(crbInst, targets, test_suites, nic, scenario):
         try:
             if scene:
                 scene.set_target(target)
-                dut.set_target(target, build_only=True)
+                dut.set_target(target, bind_dev=False)
             else:
                 dut.set_target(target)
         except AssertionError as ex:
