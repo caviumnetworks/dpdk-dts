@@ -151,19 +151,25 @@ class QEMUKvm(VirtBase):
         """
         Set the qemu emulator in the specified path explicitly.
         """
-        qemu_emulator_path = str(qemu_emulator_path)
         out = self.host_session.send_expect(
-            'ls %s' % qemu_emulator_path, '[.*')
+            'ls %s' % qemu_emulator_path, '# ')
         if 'No such file or directory' in out:
             self.host_logger.error("No emulator [ %s ] on the DUT [ %s ]" %
-                                   (qemu_emulator, self.host_dut.get_ip_address()))
+                                   (qemu_emulator_path, self.host_dut.get_ip_address()))
             return None
         out = self.host_session.send_expect("[ -x %s ];echo $?" % qemu_emulator_path, '# ')
-        if out == '1':
+        if out != '0':
             self.host_logger.error("Emulator [ %s ] not executable on the DUT [ %s ]" %
-                                   (qemu_emulator, self.host_dut.get_ip_address()))
+                                   (qemu_emulator_path, self.host_dut.get_ip_address()))
             return None
-        self.qemu_emulator = qemu_emulator
+        self.qemu_emulator = qemu_emulator_path
+
+    def add_vm_qemu(self, **options):
+        """
+        path: absolute path for qemu emulator
+        """
+        if 'path' in options.keys():
+            self.set_qemu_emulator(options['path'])
 
     def has_virtual_ability(self):
         """
