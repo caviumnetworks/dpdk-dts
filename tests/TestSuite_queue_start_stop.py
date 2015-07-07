@@ -44,6 +44,7 @@ import re
 import os
 from test_case import TestCase
 from pmd_output import PmdOutput
+from settings import FOLDERS
 
 #
 #
@@ -69,7 +70,16 @@ class TestQueueStartStop(TestCase):
         """
         Run before each test case.
         """
-        pass
+        patch_file = FOLDERS["Depends"] + r'/macfwd_log.patch'
+        patch_dst = "/tmp/"
+
+        # dpdk patch and build
+        try:
+            self.dut.session.copy_file_to(patch_file, patch_dst)
+            self.patch_hotfix_dpdk(patch_dst + "macfwd_log.patch", True)
+            self.dut.build_dpdk_apps('./app/test-pmd')
+        except Exception, e:
+            raise IOError("dpdk setup failure: %s" % e)
 
     def check_forwarding(self, ports, nic, testerports=[None, None], pktSize=64, received=True):
         self.send_packet(ports[0], ports[1], self.nic, testerports[1], pktSize, received)
@@ -84,7 +94,8 @@ class TestQueueStartStop(TestCase):
             txitf = self.tester.get_interface(self.tester.get_local_port(txPort))
         else:
             itf = testerports
-        mac = self.dut.get_mac_address(txPort)
+        smac = self.tester.get_mac(self.tester.get_local_port(txPort))
+        dmac = self.dut.get_mac_address(txPort)
 
         self.tester.scapy_background()
         self.tester.scapy_append('p=sniff(iface="%s",count=1,timeout=5)' % rxitf)
@@ -94,7 +105,7 @@ class TestQueueStartStop(TestCase):
 
         pktlen = pktSize - 14
         padding = pktlen - 20
-        self.tester.scapy_append('sendp([Ether(dst="%s")/IP()/Raw(load="P"*%s)], iface="%s")' % (mac, padding, txitf))
+        self.tester.scapy_append('sendp([Ether(src="%s", dst="%s")/IP()/Raw(load="P"*%s)], iface="%s")' % (smac, dmac, padding, txitf))
 
         self.tester.scapy_execute()
         time.sleep(3)
@@ -105,102 +116,89 @@ class TestQueueStartStop(TestCase):
         else:
             self.verify('PPP' not in out, "stop queue failed")
 
-    def add_code_to_dpdk(self, file_name, standard_row, add_rows, offset=0):
+    def patch_hotfix_dpdk(self, patch_dir, on = True):
         """
-        this function for add code in dpdk src code file.
-        file: source code full path
-        standard_row: standard row for find the place that add code
-        offset: need offset row number
-        add_rows:add source code
-
-        return: source code lines
+        This function is to apply or remove patch for dpdk.
+        patch_dir: the abs path of the patch
+        on: True for apply, False for remove
         """
-        file_handel = open(file_name, "r+w")
-        source_lines = file_handel.readlines()
-
-        write_lines = source_lines
-
-        # get the index that need add code
-        index = -1
-        for line in write_lines:
-            if standard_row in line:
-                index = write_lines.index(line) + offset
-                break
-
-        # add source code and re-write the file
-        # print write_lines,index
-        for line in add_rows:
-            write_lines.insert(index, line)
-            index += 1
-        # print write_lines
-        file_handel.seek(file_handel.tell() * -1, 2)
-        file_handel.writelines(write_lines)
-        file_handel.close()
-
-        return source_lines
+        try:
+            if on:
+                self.dut.send_expect("patch -p0 < %s" % patch_dir, "#")
+            else:
+                self.dut.send_expect("patch -p0 -R < %s" % patch_dir, "#")
+        except Exception, e:
+            raise ValueError("patch_hotfix_dpdk failure: %s" % e)
 
     def test_queue_start_stop(self):
         """
-        queue start/stop test for fortville nic
+        queue start/stop test
         """
-        self.dut.session.copy_file_from(r'%s/app/test-pmd/macfwd.c' % self.dut.base_dir)
-        fwdmac_file = 'macfwd.c'
-        printf_lines = ['printf("ports %u queue %u revice %u packages", fs->rx_port, fs->rx_queue, nb_rx);\n', r'printf("\n");',"\n"]
-        sourcelines = self.add_code_to_dpdk(fwdmac_file, r'(unlikely(nb_rx == 0)', printf_lines, 2)
-        self.dut.session.copy_file_to(fwdmac_file)
-        self.dut.send_expect('scp  /root/macfwd.c %s/app/test-pmd/macfwd.c' % self.dut.base_dir, "#")
-        self.dut.build_dpdk_apps('./app/test-pmd')
+        #dpdk start
+        try:
+            self.dut.send_expect("./app/test-pmd/testpmd -c 0xf -n 4 -- -i --portmask=0x3", "testpmd>", 120)
+            self.dut.send_expect("set fwd mac", "testpmd>")
+            self.dut.send_expect("set promisc all off", "testpmd>")
+            self.dut.send_expect("start", "testpmd>")
+            self.check_forwarding([0, 1], self.nic)
+        except Exception, e:
+            raise IOError("dpdk start and first forward failure: %s" % e)
 
-        self.dut.send_expect("./app/test-pmd/testpmd -c 0xf -n 4 -- -i --portmask=0x3", "testpmd>", 120)
-        self.dut.send_expect("set fwd mac", "testpmd>")
-        self.dut.send_expect("start", "testpmd>")
-        self.check_forwarding([0, 1], self.nic)
+            # stop rx queue test
+        try:
+            print "test stop rx queue"
+            self.dut.send_expect("stop", "testpmd>")
+            self.dut.send_expect("port 0 rxq 0 stop", "testpmd>")
+            self.dut.send_expect("start", "testpmd>")
+            self.check_forwarding([0, 1], self.nic, received=False)
 
-        # stop rx queue test
-        print "test stop rx queue"
-        self.dut.send_expect("stop", "testpmd>")
-        self.dut.send_expect("port 0 rxq 0 stop", "testpmd>")
-        self.dut.send_expect("start", "testpmd>")
-        self.check_forwarding([0, 1], self.nic, received=False)
+            # start rx queue test
+            print "test start rx queue stop tx queue"
+            self.dut.send_expect("stop", "testpmd>")
+            self.dut.send_expect("port 0 rxq 0 start", "testpmd>")
+            self.dut.send_expect("port 1 txq 0 stop", "testpmd>")
+            self.dut.send_expect("start", "testpmd>")
+            self.check_forwarding([0, 1], self.nic, received=False)
+            out = self.dut.send_expect("\n", "testpmd>")
+        except Exception, e:
+            raise IOError("queue start/stop forward failure: %s" % e)
 
-        # start rx queue test
-        print "test start rx queue stop tx queue"
-        self.dut.send_expect("stop", "testpmd>")
-        self.dut.send_expect("port 0 rxq 0 start", "testpmd>")
-        self.dut.send_expect("port 1 txq 0 stop", "testpmd>")
-        self.dut.send_expect("start", "testpmd>")
-        self.check_forwarding([0, 1], self.nic, received=False)
-        out = self.dut.send_expect("\n", "testpmd>")
-        # print out
-        self.verify("ports 0 queue 0 revice 1 packages" in out, "start queue revice package failed")
+        self.verify("ports 0 queue 0 receive 1 packages" in out, "start queue revice package failed, out = %s"%out)
 
-        # start tx queue test
-        print "test start rx and tx queue"
-        self.dut.send_expect("stop", "testpmd>")
-        self.dut.send_expect("port 0 rxq 0 start", "testpmd>")
-        self.dut.send_expect("port 1 txq 0 start", "testpmd>")
-        self.dut.send_expect("start", "testpmd>")
-        self.check_forwarding([0, 1], self.nic)
-        self.dut.send_expect("quit", "testpmd>")
-
-        # recover testpmd changed
-        file_handel = open(fwdmac_file, "w")
-        file_handel.writelines(sourcelines)
-        file_handel.close()
-        self.dut.session.copy_file_to(fwdmac_file)
-        self.dut.send_expect('scp  /root/macfwd.c %s/app/test-pmd/macfwd.c' % self.dut.base_dir, "#")
+        try:
+            # start tx queue test
+            print "test start rx and tx queue"
+            self.dut.send_expect("stop", "testpmd>")
+            self.dut.send_expect("port 1 txq 0 start", "testpmd>")
+            self.dut.send_expect("start", "testpmd>")
+            self.check_forwarding([0, 1], self.nic)
+        except Exception, e:
+            raise IOError("queue start/stop forward failure: %s" % e)
 
     def tear_down(self):
         """
         Run after each test case.
         """
+        patch_dst = "/tmp/"
+
+        try:
+            self.dut.send_expect("stop", "testpmd>")
+            self.dut.send_expect("quit", "testpmd>")
+        except:
+            print "Failed to quit testpmd"
+
         self.dut.kill_all()
+
+        try:
+            self.patch_hotfix_dpdk(patch_dst + "macfwd_log.patch", False)
+        except Exception, e:
+            print "patch_hotfix_dpdk remove failure :%s" %e
 
     def tear_down_all(self):
         """
         Run after each test suite.
         """
         self.dut.kill_all()
-        #self.dut.send_expect("rm -rf ./app/test-pmd/testpmd", "#")
-        #self.dut.send_expect("rm -rf ./app/test-pmd/*.o", "#")
-        #self.dut.send_expect("rm -rf ./app/test-pmd/build", "#")
+        self.dut.send_expect("rm -rf ./app/test-pmd/testpmd", "#")
+        self.dut.send_expect("rm -rf ./app/test-pmd/*.o", "#")
+        self.dut.send_expect("rm -rf ./app/test-pmd/build", "#")
