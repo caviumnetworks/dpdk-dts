@@ -74,12 +74,13 @@ class TestVlan(TestCase):
         self.dut.send_expect("set verbose 1", "testpmd> ")
         out = self.dut.send_expect("set fwd mac", "testpmd> ")
 
-        if self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single"]:
+        if self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single", "redrockcanyou"]:
             self.dut.send_expect("set promisc all off", "testpmd> ")
             self.dut.send_expect("vlan set filter on %s"%dutRxPortId, "testpmd> ")
 
         self.dut.send_expect("vlan set strip off %s" % dutRxPortId, "testpmd> ")
         self.verify('Set mac packet forwarding mode' in out, "set fwd rxonly error")
+        self.vlan = 51
     
     def start_tcpdump(self):
         port = self.tester.get_local_port(dutTxPortId)
@@ -98,16 +99,17 @@ class TestVlan(TestCase):
         # The package stream : testTxPort->dutRxPort->dutTxport->testRxPort
         port = self.tester.get_local_port(dutRxPortId)
         txItf = self.tester.get_interface(port)
+        self.smac = self.tester.get_mac(port)
 
         port = self.tester.get_local_port(dutTxPortId)
         rxItf = self.tester.get_interface(port)
 
         # the package dect mac must is dut tx port id when the port promisc is off
-        mac = self.dut.get_mac_address(dutRxPortId)
+        self.dmac = self.dut.get_mac_address(dutRxPortId)
 
         # FIXME  send a burst with only num packet
 
-        self.tester.scapy_append('sendp([Ether(dst="%s")/Dot1Q(vlan=%s)/IP(len=46)], iface="%s")' % (mac, vid, txItf))
+        self.tester.scapy_append('sendp([Ether(src="%s",dst="%s")/Dot1Q(vlan=%s)/IP(len=46)], iface="%s")' % (self.smac, self.dmac, vid, txItf))
 
         self.tester.scapy_execute()
     def set_up(self):
@@ -120,16 +122,18 @@ class TestVlan(TestCase):
         Enable receipt of VLAN packets
         """
 
-        self.dut.send_expect("rx_vlan add 1 %s" % dutRxPortId, "testpmd> ")
+        if self.nic == "redrockcanyou" :
+            print dts.RED("fm10k not support this case\n")
+            return
+        self.dut.send_expect("rx_vlan add %d %s" % (self.vlan, dutRxPortId), "testpmd> ")
         self.dut.send_expect("vlan set strip off  %s" % dutRxPortId, "testpmd> ")
         self.dut.send_expect("start", "testpmd> ", 120)
         out = self.dut.send_expect("show port info %s" % dutRxPortId, "testpmd> ", 20)
         
         self.start_tcpdump()
-        self.vlan_send_packet(1)
-        #out = self.tester.scapy_get_result()
+        self.vlan_send_packet(self.vlan)
         out = self.get_tcpdump_package()
-        self.verify("vlan 1" in out, "Wrong vlan:" + out)
+        self.verify("vlan %d" % self.vlan in out, "Wrong vlan:" + out)
 
         self.dut.send_expect("stop", "testpmd> ")
 
@@ -140,13 +144,15 @@ class TestVlan(TestCase):
         """
 
 
-        self.dut.send_expect("rx_vlan rm 1 %s" % dutRxPortId, "testpmd> ")
+        self.dut.send_expect("rx_vlan rm %d %s" % (self.vlan, dutRxPortId), "testpmd> ")
         self.dut.send_expect("start", "testpmd> ", 120)
         self.start_tcpdump()
-        self.vlan_send_packet(1)
+        self.vlan_send_packet(self.vlan)
 
         out = self.get_tcpdump_package()
-        self.verify("vlan 1" not in out, "Wrong vlan:" + out)
+        # fm10k switch will redirect package if not send to nic
+        if (not((self.nic == "redrockcanyou") and ("%s > %s"%(self.smac, self.dmac) in out))):
+            self.verify("vlan %d" % self.vlan not in out, "Wrong vlan:" + out)
 
         out = self.dut.send_expect("stop", "testpmd> ")
 
@@ -154,45 +160,44 @@ class TestVlan(TestCase):
     def test_vlan_strip_config_on(self):
 
         self.dut.send_expect("vlan set strip on %s" % dutRxPortId, "testpmd> ", 20)
-        self.dut.send_expect("rx_vlan add 1 %s" % dutRxPortId, "testpmd> ", 20)
+        self.dut.send_expect("rx_vlan add %d %s" % (self.vlan, dutRxPortId), "testpmd> ", 20)
         out = self.dut.send_expect("show port info %s" % dutRxPortId, "testpmd> ", 20)
         self.verify("strip on" in out, "Wrong strip:" + out)
 
         self.dut.send_expect("start", "testpmd> ", 120)
         self.start_tcpdump()
-        self.vlan_send_packet(1)
+        self.vlan_send_packet(self.vlan)
         out = self.get_tcpdump_package()
-        self.verify("vlan 1" not in out, "Wrong vlan:" + out)
+        self.verify("vlan %d" % self.vlan not in out, "Wrong vlan:" + out)
         out = self.dut.send_expect("quit", "#", 120)
 
     def test_vlan_strip_config_off(self):
 
+        if self.nic == "redrockcanyou" :
+            print dts.RED("fm10k not support this case\n")
+            return
         self.dut.send_expect("vlan set strip off %s" % dutRxPortId, "testpmd> ", 20)
-        self.dut.send_expect("rx_vlan add 1 %s" % dutRxPortId, "testpmd> ", 20)
+        self.dut.send_expect("rx_vlan add %d %s" % (self.vlan, dutRxPortId), "testpmd> ", 20)
         out = self.dut.send_expect("show port info %s" % dutRxPortId, "testpmd> ", 20)
         self.verify("strip off" in out, "Wrong strip:" + out)
         self.dut.send_expect("set nbport 2", "testpmd> ")
         self.dut.send_expect("start", "testpmd> ", 120)
         self.start_tcpdump()
-        self.vlan_send_packet(1)
+        self.vlan_send_packet(self.vlan)
         out = self.get_tcpdump_package()
-        self.verify("vlan 1" in out, "Wrong strip vlan:" + out)
+        self.verify("vlan %d" % self.vlan in out, "Wrong strip vlan:" + out)
         out = self.dut.send_expect("stop", "testpmd> ", 120)
 
-    def FAILING_test_vlan_enable_vlan_insertion(self):
+    def test_vlan_enable_vlan_insertion(self):
         """
         Enable VLAN header insertion in transmitted packets
         """
 
-        port = self.tester.get_local_port(valports[0])
+        port = self.tester.get_local_port(dutTxPortId,)
         intf = self.tester.get_interface(port)
 
         self.dut.send_expect("set nbport 2", "testpmd> ")
-        self.dut.send_expect("tx_vlan set 1 %s" % valports[0], "testpmd> ")
-
-        self.dut.send_expect("set promisc all on", "testpmd> ")
-        if self.nic == 'hartwell':
-            self.dut.send_expect("vlan set strip on %s" % valports[0], "testpmd> ")
+        self.dut.send_expect("tx_vlan set %d %s" % (self.vlan, dutTxPortId), "testpmd> ")
 
         self.tester.scapy_background()
         self.tester.scapy_append('p = sniff(iface="%s", count=1, timeout=5)' % intf)
@@ -205,8 +210,9 @@ class TestVlan(TestCase):
         time.sleep(2)
 
         out = self.tester.scapy_get_result()
-        self.verify("vlan=1L" in out, "Wrong vlan: " + out)
-        if self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single"]:
+        self.verify("vlan=%dL" % self.vlan in out, "Wrong vlan: " + out)
+        if self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single", "redrockcanyou"]:
+            self.dut.send_expect("tx_vlan reset %s" % dutTxPortId, "testpmd> ", 30)
             self.dut.send_expect("stop", "testpmd> ", 30)
         else:
             self.dut.send_expect("quit", "# ", 30)
@@ -216,6 +222,7 @@ class TestVlan(TestCase):
         Run after each test case.
         """
         pass
+
 
     def tear_down_all(self):
         """
