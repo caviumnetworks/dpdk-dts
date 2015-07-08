@@ -110,7 +110,7 @@ class QEMUKvm(VirtBase):
 
         if not self.__default_nic:
             # add default control interface
-            def_nic = {'type': 'nic', 'opt_vlan': '0'}
+            def_nic = {'type': 'nic', 'opt_vlan': '0', 'opt_addr': '1f'}
             self.set_vm_net(**def_nic)
             def_net = {'type': 'user', 'opt_vlan': '0'}
             self.set_vm_net(**def_net)
