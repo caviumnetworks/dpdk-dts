@@ -586,6 +586,10 @@ def execute_test_case(test_suite, test_case):
     try:
         log_handler.info('Test Case %s Begin' % test_case.__name__)
         test_suite.running_case = test_case.__name__
+        # clear all previous output
+        test_suite.dut.get_session_output(timeout=0.1)
+        test_suite.tester.get_session_output(timeout=0.1)
+        # run set_up function for each case
         test_suite.set_up()
         # prepare debugger re-run case environment
         if debug_mode or debug_case:
