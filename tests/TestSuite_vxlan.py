@@ -430,10 +430,13 @@ class TestVxlan(TestCase, IxiaPacketGenerator):
         checksum
         """
         # create pcap file with supplied arguments
+        outer_ipv6 = False
         args = {}
         for arg in kwargs:
             if "invalid" not in arg:
                 args[arg] = kwargs[arg]
+                if "outer_ip6" in arg:
+                    outer_ipv6 = True
 
         config = VxlanTestConfig(self, **args)
         # now cloud filter will default enable L2 mac filter, so dst mac must
@@ -474,12 +477,16 @@ class TestVxlan(TestCase, IxiaPacketGenerator):
         # enable tx checksum offload
         self.dut.send_expect("set fwd csum", "testpmd>", 10)
         self.csum_set_type('ip', self.dut_port)
-        self.csum_set_type('outer-ip', self.dut_port)
+        # if packet outer L3 is ipv6, should not enable hardware checksum
+        if not outer_ipv6:
+            self.csum_set_type('outer-ip', self.dut_port)
         self.csum_set_type('udp', self.dut_port)
         self.csum_set_type('tcp', self.dut_port)
         self.csum_set_type('sctp', self.dut_port)
         self.csum_set_type('ip', self.recv_port)
-        self.csum_set_type('outer-ip', self.recv_port)
+        # if packet outer L3 is ipv6, should not enable hardware checksum
+        if not outer_ipv6:
+            self.csum_set_type('outer-ip', self.recv_port)
         self.csum_set_type('udp', self.recv_port)
         self.csum_set_type('tcp', self.recv_port)
         self.csum_set_type('sctp', self.recv_port)
@@ -759,7 +766,6 @@ class TestVxlan(TestCase, IxiaPacketGenerator):
         filter_type = 'omac-imac-tenid'
         queue_id = 3
 
-        self.filter_and_check(filter_type="imac", remove=True)
         config = VxlanTestConfig(self)
         config.outer_mac_dst = self.dut_port_mac
 
@@ -777,22 +783,22 @@ class TestVxlan(TestCase, IxiaPacketGenerator):
         args = [self.dut_port, config.outer_mac_dst, self.invalid_mac,
                 config.inner_ip_dst, vlan_id, filter_type, config.vni,
                 queue_id]
-        out = self.tunnel_filter_add(*args)
+        out = self.tunnel_filter_add_nocheck(*args)
         self.verify("Bad arguments" in out, "Failed to detect invalid mac")
         args = [self.dut_port, config.outer_mac_dst, config.inner_mac_dst,
                 self.invalid_ip, vlan_id, filter_type, config.vni, queue_id]
-        out = self.tunnel_filter_add(*args)
+        out = self.tunnel_filter_add_nocheck(*args)
         self.verify("Bad arguments" in out, "Failed to detect invalid ip")
         args = [self.dut_port, config.outer_mac_dst, config.inner_mac_dst,
                 config.inner_ip_dst, self.invalid_vlan, filter_type,
                 config.vni, queue_id]
-        out = self.tunnel_filter_add(*args)
+        out = self.tunnel_filter_add_nocheck(*args)
         self.verify("Input/output error" in out,
                     "Failed to detect invalid vlan")
         args = [self.dut_port, config.outer_mac_dst, config.inner_mac_dst,
                 config.inner_ip_dst, vlan_id, filter_type, config.vni,
                 self.invalid_queue]
-        out = self.tunnel_filter_add(*args)
+        out = self.tunnel_filter_add_nocheck(*args)
         self.verify("Input/output error" in out,
                     "Failed to detect invalid queue")
 
@@ -1094,9 +1100,17 @@ class TestVxlan(TestCase, IxiaPacketGenerator):
         self.verify("error" not in out, "Failed to add tunnel filter")
         return out
 
+    def tunnel_filter_add_nocheck(self, *args):
+        out = self.dut.send_expect("tunnel_filter add %d " % args[0] +
+                                   "%s %s %s " % (args[1], args[2], args[3]) +
+                                   "%d vxlan %s " % (args[4], args[5]) +
+                                   "%d %d" % (args[6], args[7]),
+                                   "testpmd>", 10)
+        return out
+
     def tunnel_filter_del(self, *args):
         out = self.dut.send_expect("tunnel_filter rm %d " % args[0] +
-                                   "%s %s %s" % (args[1], args[2], args[3]) +
+                                   "%s %s %s " % (args[1], args[2], args[3]) +
                                    "%d vxlan %s " % (args[4], args[5]) +
                                    "%d %d" % (args[6], args[7]),
                                    "testpmd>", 10)
