@@ -59,7 +59,7 @@ class NetDevice(object):
      
         if self.nic_is_pf():
             self.default_vf_driver = ''
-        self.intf_name = self.get_interface_name()
+        self.get_interface_name()
         self.socket = self.get_nic_socket()
 
     def __send_expect(self, cmds, expected, timeout=TIMEOUT, alt_session=True):
@@ -126,11 +126,18 @@ class NetDevice(object):
     def get_interface_name(self):
         """
         Get interface name of specified pci device.
+        Cal this function will update intf_name everytime
         """
         get_interface_name = getattr(
             self, 'get_interface_name_%s' %
             self.__get_os_type())
-        return get_interface_name(self.bus_id, self.devfun_id, self.current_driver)
+        out = get_interface_name(self.bus_id, self.devfun_id, self.current_driver)
+        if "No such file or directory" in out:
+            self.intf_name = 'N/A'
+        else:
+            self.intf_name = out
+
+        return self.intf_name
 
     def get_interface_name_linux(self, bus_id, devfun_id, driver):
         """
@@ -197,7 +204,11 @@ class NetDevice(object):
         Get mac address of specified pci device.
         """
         get_mac_addr = getattr(self, 'get_mac_addr_%s' % self.__get_os_type())
-        return get_mac_addr(self.intf_name, self.bus_id, self.devfun_id, self.current_driver)
+        out = get_mac_addr(self.intf_name, self.bus_id, self.devfun_id, self.current_driver)
+        if "No such file or directory" in out:
+            return 'N/A'
+        else:
+            return out
 
     def get_mac_addr_linux(self, intf, bus_id, devfun_id, driver):
         """
