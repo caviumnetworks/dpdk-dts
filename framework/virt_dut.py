@@ -313,16 +313,19 @@ class VirtDut(DPDKdut):
                 # for two vfs connected to same tester port
                 # need skip ping from devices on same pf device
                 remotepci = self.tester.ports_info[remotePort]['pci']
-                remoteport =  self.tester.ports_info[remotePort]['port']
-                vfs = []
-                # vm_dut and tester in same dut
-                host_ip = self.crb['IP'].split(':')[0]
-                if self.crb['tester IP'] == host_ip:
-                    vfs = remoteport.get_sriov_vfs_pci()
-                    # if hostpci is vf of tester port
-                    if hostpci == remotepci or hostpci in vfs:
-                        print dts.RED("Skip ping from same PF device")
-                        continue
+                port_type = self.tester.ports_info[remotePort]['type']
+                # IXIA port should not check whether has vfs
+                if port_type != 'ixia':
+                    remoteport =  self.tester.ports_info[remotePort]['port']
+                    vfs = []
+                    # vm_dut and tester in same dut
+                    host_ip = self.crb['IP'].split(':')[0]
+                    if self.crb['tester IP'] == host_ip:
+                        vfs = remoteport.get_sriov_vfs_pci()
+                        # if hostpci is vf of tester port
+                        if hostpci == remotepci or hostpci in vfs:
+                            print dts.RED("Skip ping from same PF device")
+                            continue
 
                 ipv6 = self.get_ipv6_address(vmPort)
                 if ipv6 == "Not connected":
