@@ -55,6 +55,10 @@ class TestScatter(TestCase):
         # Verify that enough ports are available
         self.verify(len(dutPorts) >= 2, "Insufficient ports")
         self.pmdout = PmdOutput(self.dut)
+        if self.nic in ["niantic", "fortville_eagle", "fortville_spirit", "fortville_spirit_single", "redrockcanyou"]:
+            self.mbsize = 2048
+        else:
+            self.mbsize = 1024
 
     def scatter_pktgen_send_packet(self, sPortid, rPortid, pktsize, num=1):
         """
@@ -62,12 +66,12 @@ class TestScatter(TestCase):
         """
         sport = self.tester.get_local_port(sPortid)
         sintf = self.tester.get_interface(sport)
-        smac = self.dut.get_mac_address(sPortid)
+        smac = self.tester.get_mac(sport)
+        dmac = self.dut.get_mac_address(sPortid)
         rport = self.tester.get_local_port(rPortid)
         rintf = self.tester.get_interface(rport)
-        if self.nic in ["niantic", "fortville_eagle", "fortville_spirit", "fortville_spirit_single"]:
-            self.tester.send_expect("ifconfig %s mtu 9000" % sintf, "#")
-            self.tester.send_expect("ifconfig %s mtu 9000" % rintf, "#")
+        self.tester.send_expect("ifconfig %s mtu 9000" % sintf, "#")
+        self.tester.send_expect("ifconfig %s mtu 9000" % rintf, "#")
 
         self.tester.scapy_background()
         self.tester.scapy_append(
@@ -79,12 +83,11 @@ class TestScatter(TestCase):
 
         self.tester.scapy_foreground()
         self.tester.scapy_append(
-            'sendp([Ether(dst="%s")/IP(len=%s)/Raw(load="\x50"*%s)], iface="%s")' % (smac, pktlen, padding, sintf))
+            'sendp([Ether(src="%s",dst="%s")/IP(len=%s)/Raw(load="\x50"*%s)], iface="%s")' % (smac, dmac,pktlen, padding, sintf))
         self.tester.scapy_execute()
         res = self.tester.scapy_get_result()
-        if self.nic in ["niantic", "fortville_eagle", "fortville_spirit", "fortville_spirit_single"]:
-            self.tester.send_expect("ifconfig %s mtu 1500" % sintf, "#")
-            self.tester.send_expect("ifconfig %s mtu 1500" % sintf, "#")
+        self.tester.send_expect("ifconfig %s mtu 1500" % sintf, "#")
+        self.tester.send_expect("ifconfig %s mtu 1500" % sintf, "#")
         return res
 
     def set_up(self):
@@ -103,25 +106,16 @@ class TestScatter(TestCase):
         portMask = dts.create_mask(dutPorts[:2])
 
         # set the mbuf size to 1024
-        if self.nic in ["niantic", "fortville_eagle", "fortville_spirit", "fortville_spirit_single"]:
-            out = self.pmdout.start_testpmd(
-                "1S/2C/2T", "--mbcache=200 --mbuf-size=2048 --portmask=%s --max-pkt-len=9000" % portMask)
-        else:
-            out = self.pmdout.start_testpmd(
-                "1S/2C/2T", "--mbcache=200 --mbuf-size=1024 --portmask=%s" % portMask)
+        out = self.pmdout.start_testpmd(
+                "1S/2C/2T", "--mbcache=200 --mbuf-size=%d --portmask=%s --max-pkt-len=9000" % (self.mbsize, portMask))
         self.verify("Error" not in out, "launch error 1")
 
-        if self.nic in ["niantic", "fortville_eagle", "fortville_spirit", "fortville_spirit_single"]:
-            self.dut.send_expect("set fwd mac", "testpmd> ", 120)
+        self.dut.send_expect("set fwd mac", "testpmd> ", 120)
         self.dut.send_expect("start", "testpmd> ")
 
         for offset in [-1, 0, 1, 4, 5]:
-            if self.nic in ["niantic", "fortville_eagle", "fortville_spirit", "fortville_spirit_single"]:
-                ret = self.scatter_pktgen_send_packet(
-                    dutPorts[0], dutPorts[1], 2048 + offset)
-            else:
-                ret = self.scatter_pktgen_send_packet(
-                    dutPorts[0], dutPorts[1], 1024 + offset)
+            ret = self.scatter_pktgen_send_packet(
+                dutPorts[0], dutPorts[1], self.mbsize + offset)
             self.verify("load='P" in ret, "packet receive error")
 
         self.dut.send_expect("stop", "testpmd> ")
