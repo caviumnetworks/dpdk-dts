@@ -120,7 +120,7 @@ parser.add_argument('-v', '--verbose',
 
 parser.add_argument('--virttype',
                     default='kvm',
-                    help='set virt type,support libvirt,xen,kvm')
+                    help='set virt type,support kvm, libvirtd')
 
 parser.add_argument('--debug',
                     action='store_true',
