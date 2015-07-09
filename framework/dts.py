@@ -400,7 +400,7 @@ def run_all(config_file, pkgName, git, patch, skip_setup,
 
     # prepare the output folder
     if output_dir == '':
-        output_dir = time.strftime("output/%Y_%m_%d_%H_%M_%S")
+        output_dir = FOLDERS['Output']
 
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)

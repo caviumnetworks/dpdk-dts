@@ -39,6 +39,7 @@ FOLDERS = {
     'Framework': 'framework',
     'Testscripts': 'tests',
     'Configuration': 'conf',
+    'Output': 'output',
 }
 
 """
