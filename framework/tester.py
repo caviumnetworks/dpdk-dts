@@ -65,7 +65,8 @@ class Tester(Crb):
                                      self.NAME, self.get_password())
         self.session.init_log(self.logger)
         self.alt_session = SSHConnection(self.get_ip_address(),
-                                         self.NAME + '_alt', self.get_password())
+                                         self.NAME + '_alt',
+                                         self.get_password())
         self.alt_session.init_log(self.logger)
 
         self.bgProcIsRunning = False
@@ -199,6 +200,9 @@ class Tester(Crb):
         """
         Restore Linux interfaces.
         """
+        if self.skip_setup:
+            return
+
         self.send_expect("modprobe igb", "# ", 20)
         self.send_expect("modprobe ixgbe", "# ", 20)
         self.send_expect("modprobe e1000e", "# ", 20)
@@ -218,7 +222,6 @@ class Tester(Crb):
         sleep(2)
 
     def load_serializer_ports(self):
-        self.ports_info = []
         cached_ports_info = self.serializer.load(self.PORT_INFO_CACHE_KEY)
         if cached_ports_info is None:
             return
@@ -243,6 +246,7 @@ class Tester(Crb):
         """
         if self.read_cache:
             self.load_serializer_ports()
+            self.scan_ports_cached()
 
         if not self.read_cache or self.ports_info is None:
             self.scan_ports_uncached()
@@ -252,6 +256,21 @@ class Tester(Crb):
 
         for port_info in self.ports_info:
             self.logger.info(port_info)
+
+    def scan_ports_cached(self):
+        if self.ports_info is None:
+            return
+
+        for port_info in self.ports_info:
+            if port_info['type'] == 'ixia':
+                continue
+
+            port = NetDevice(self, port_info['pci'], port_info['type'])
+            intf = port.get_interface_name()
+
+            self.logger.info("Tester cached: [000:%s %s] %s" % (
+                             port_info['pci'], port_info['type'], intf))
+            port_info['port'] = port
 
     def scan_ports_uncached(self):
         """

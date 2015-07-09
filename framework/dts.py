@@ -235,7 +235,8 @@ def dts_crbs_init(crbInst, skip_setup, read_cache, project, base_dir, nic, virtt
     """
     global dut
     global tester
-    serializer.set_serialized_filename('.%s.cache' % crbInst['IP'])
+    serializer.set_serialized_filename(FOLDERS['Output'] +
+                                       '/.%s.cache' % crbInst['IP'])
     serializer.load_from_file()
 
     dut = get_project_obj(project, Dut, crbInst, serializer)

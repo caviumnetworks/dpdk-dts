@@ -44,8 +44,6 @@ from virt_resource import VirtResource
 from utils import RED
 
 
-
-
 class Dut(Crb):
 
     """
@@ -274,7 +272,6 @@ class Dut(Crb):
 
             if total_huge_pages != arch_huge_pages:
                 self.set_huge_pages(arch_huge_pages)
-
 
         self.mount_huge_pages()
         self.hugepage_path = self.strip_hugepage_path()
@@ -541,19 +538,20 @@ class Dut(Crb):
             port_info['ipv6'] = ipv6
 
     def load_serializer_ports(self):
-        self.ports_info = []
         cached_ports_info = self.serializer.load(self.PORT_INFO_CACHE_KEY)
         if cached_ports_info is None:
             return
-        for port in cached_ports_info:
-            self.ports_info.append({'pci': port['pci'], 'type': port['type'],
-                                    'numa': port['numa']})
+
+        self.ports_info = cached_ports_info
 
     def save_serializer_ports(self):
         cached_ports_info = []
         for port in self.ports_info:
-            cached_ports_info.append({'pci': port['pci'], 'type': port['type'],
-                                      'numa': port['numa']})
+            port_info = {}
+            for key in port.keys():
+                if type(port[key]) is str:
+                    port_info[key] = port[key]
+            cached_ports_info.append(port_info)
         self.serializer.save(self.PORT_INFO_CACHE_KEY, cached_ports_info)
 
     def scan_ports(self):
@@ -562,10 +560,34 @@ class Dut(Crb):
         """
         if self.read_cache:
             self.load_serializer_ports()
+            self.scan_ports_cached()
 
         if not self.read_cache or self.ports_info is None:
             self.scan_ports_uncached()
             self.save_serializer_ports()
+
+    def scan_ports_cached(self):
+        """
+        Scan cached ports, instantiate tester port
+        """
+        scan_ports_cached = getattr(self, 'scan_ports_cached_%s' % self.get_os_type())
+        return scan_ports_cached()
+
+    def scan_ports_cached_linux(self):
+        """
+        Scan Linux ports and instantiate tester port
+        """
+        if self.ports_info is None:
+            return
+
+        for port_info in self.ports_info:
+            port = NetDevice(self, port_info['pci'], port_info['type'])
+            intf = port.get_interface_name()
+
+            self.logger.info("DUT cached: [000:%s %s] %s" % (port_info['pci'],
+                             port_info['type'], intf))
+
+            port_info['port'] = port
 
     def scan_ports_uncached(self):
         """
@@ -699,7 +721,6 @@ class Dut(Crb):
 
     def get_vm_core_list(self):
         return VMCORELIST[self.crb['VM CoreList']]
-
 
     def load_portconf(self):
         """
