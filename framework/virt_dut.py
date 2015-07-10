@@ -316,7 +316,7 @@ class VirtDut(DPDKdut):
                 port_type = self.tester.ports_info[remotePort]['type']
                 # IXIA port should not check whether has vfs
                 if port_type != 'ixia':
-                    remoteport =  self.tester.ports_info[remotePort]['port']
+                    remoteport = self.tester.ports_info[remotePort]['port']
                     vfs = []
                     # vm_dut and tester in same dut
                     host_ip = self.crb['IP'].split(':')[0]

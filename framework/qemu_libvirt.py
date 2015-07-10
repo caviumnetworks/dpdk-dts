@@ -502,3 +502,4 @@ class LibvirtKvm(VirtBase):
 
     def stop(self):
         self.__control_session("shutdown")
+        time.sleep(5)

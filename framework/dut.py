@@ -65,7 +65,7 @@ class Dut(Crb):
         super(Dut, self).__init__(crb, serializer)
         self.NAME = 'dut'
 
-        self.host_init_flag = 0
+        self.host_init_flag = False
         self.logger = getLogger(self.NAME)
         self.session = SSHConnection(self.get_ip_address(), self.NAME,
                                      self.get_password())
@@ -93,7 +93,7 @@ class Dut(Crb):
                 self.NAME + '_host',
                 self.get_password())
             self.host_session.init_log(self.logger)
-            self.host_init_flag = 1
+            self.host_init_flag = True
 
     def change_config_option(self, target, parameter, value):
         """
@@ -849,3 +849,12 @@ class Dut(Crb):
         else:
             ports = [0, ]
         return ports[-1]
+
+    def close(self):
+        """
+        Close ssh session of DUT.
+        """
+        self.session.close()
+        self.alt_session.close()
+        if self.host_init_flag:
+            self.host_session.close()

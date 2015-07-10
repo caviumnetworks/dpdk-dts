@@ -346,12 +346,14 @@ class VirtBase(object):
             raise exception.VirtDutInitException(vm_dut)
             return None
 
+        self.vm_dut = vm_dut
         return vm_dut
 
     def stop(self):
         """
         Stop the VM.
         """
+        self.vm_dut.close_sessions()
         self._stop_vm()
         self.virt_pool.free_all_resource(self.vm_name)
 
