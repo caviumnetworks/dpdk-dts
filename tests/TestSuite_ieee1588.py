@@ -70,14 +70,15 @@ class TestIeee1588(TestCase):
         """
         IEEE1588 Enable test case.
         """
-        self.dut.send_expect("set fwd ieee1588", "testpmd> ")
+        self.dut.send_expect("set fwd ieee1588", "testpmd> ", 10)
         # Waiting for 'testpmd> ' Fails due to log messages, "Received non PTP packet", in the output
-        self.dut.send_expect("start", ">", 5)  
+        self.dut.send_expect("start", ">", 10)  
         # Allow the output from the "start" command to finish before looking for a regexp in expect
         time.sleep(1)
 
         # use the first port on that self.nic
         dutPorts = self.dut.get_ports()
+        mac =  self.dut.get_mac_address(dutPorts[0])
         port = self.tester.get_local_port(dutPorts[0])
         itf = self.tester.get_interface(port)
 
@@ -88,7 +89,7 @@ class TestIeee1588(TestCase):
         # this is the output of sniff
         # [<Ether  dst=01:1b:19:00:00:00 src=00:00:00:00:00:00 type=0x88f7 |<Raw  load='\x00\x02' |>>]
         self.tester.scapy_foreground()
-        self.tester.scapy_append('nutmac="01:1b:19:00:00:00"')
+        self.tester.scapy_append('nutmac="%s"' % mac)
         self.tester.scapy_append('sendp([Ether(dst=nutmac,type=0x88f7)/"\\x00\\x02"], iface="%s")' % itf)
         self.tester.scapy_append('time.sleep(1)')
 
@@ -102,9 +103,9 @@ class TestIeee1588(TestCase):
 
         text = dts.regexp(out, "(.*) by hardware")
         self.verify("IEEE1588 PTP V2 SYNC" in text, "Not filtered " + text)
-
-        rx_time = dts.regexp(out, "RX timestamp value (0x[0-9a-fA-F]+)")
-        tx_time = dts.regexp(out, "TX timestamp value (0x[0-9a-fA-F]+)")
+        
+        rx_time = dts.regexp(out, "RX timestamp value (\d+)")
+        tx_time = dts.regexp(out, "TX timestamp value (\d+)")
 
         self.verify(rx_time is not None, "RX timestamp error ")
         self.verify(tx_time is not None, "TX timestamp error ")
@@ -114,11 +115,12 @@ class TestIeee1588(TestCase):
         """
         IEEE1588 Disable test case.
         """
-        self.dut.send_expect("stop", "testpmd> ")
+        self.dut.send_expect("stop", "testpmd> ", 10)
         time.sleep(3)
 
         # use the first port on that self.nic
         dutPorts = self.dut.get_ports()
+        mac =  self.dut.get_mac_address(dutPorts[0])
         port = self.tester.get_local_port(dutPorts[0])
         itf = self.tester.get_interface(port)
 
@@ -127,7 +129,7 @@ class TestIeee1588(TestCase):
         self.tester.scapy_append('RESULT = p[1].summary()')
 
         self.tester.scapy_foreground()
-        self.tester.scapy_append('nutmac="01:1b:19:00:00:00"')
+        self.tester.scapy_append('nutmac="%s"' % mac)
         self.tester.scapy_append('sendp([Ether(dst=nutmac,type=0x88f7)/"\\x00\\x02"], iface="%s")' % itf)
 
         self.tester.scapy_execute()
