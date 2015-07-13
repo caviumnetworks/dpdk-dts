@@ -513,6 +513,17 @@ class Dut(Crb):
         return False
 
     def rescan_ports(self):
+        """
+        Rescan ports information
+        """
+        if self.read_cache and self.load_serializer_ports():
+            return
+
+        if self.ports_info:
+            self.rescan_ports_uncached()
+            self.save_serializer_ports()
+
+    def rescan_ports_uncached(self):
         unknow_interface = RED('Skipped: unknow_interface')
 
         for port_info in self.ports_info:
@@ -540,7 +551,7 @@ class Dut(Crb):
     def load_serializer_ports(self):
         cached_ports_info = self.serializer.load(self.PORT_INFO_CACHE_KEY)
         if cached_ports_info is None:
-            return
+            return None
 
         self.ports_info = cached_ports_info
 
@@ -564,7 +575,6 @@ class Dut(Crb):
 
         if not self.read_cache or self.ports_info is None:
             self.scan_ports_uncached()
-            self.save_serializer_ports()
 
     def scan_ports_cached(self):
         """
