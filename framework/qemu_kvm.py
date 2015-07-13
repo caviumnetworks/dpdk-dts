@@ -85,7 +85,7 @@ class QEMUKvm(VirtBase):
         self.char_idx = 0
         self.netdev_idx = 0
         self.pt_idx = 0
-
+        self.cuse_id = 0
         # devices pass-through into vm
         self.pt_devices = []
         self.pci_maps = []
@@ -569,6 +569,8 @@ class QEMUKvm(VirtBase):
                 self.__add_vm_virtio_net_pci(**options)
             elif options['driver'] == 'vhost-user':
                 self.__add_vm_virtio_user_pci(**options)
+            elif options['driver'] == 'vhost-cuse':
+                self.__add_vm_virtio_cuse_pci(**options)
 
     def __add_vm_pci_assign(self, **options):
         """
@@ -619,6 +621,24 @@ class QEMUKvm(VirtBase):
                 opts['opt_mac'] = options['opt_mac']
 
             self.__add_vm_virtio_net_pci(**opts)
+
+    def __add_vm_virtio_cuse_pci(self, **options):
+        """
+        driver virtio-net-pci
+        opt_mac: 52:54:00:00:00:01
+        """
+        separator = ','
+        dev_boot_line = '-netdev tap'
+        cuse_id = 'vhost%d' % self.cuse_id
+        dev_boot_line += separator + 'id=%s' % cuse_id + separator + 'ifname=tap_%s' % cuse_id + separator + "vhost=on" + separator + "script=no"
+        self.cuse_id += 1
+        self.__add_boot_line(dev_boot_line)
+        # device parameter
+        opts = {'opt_netdev': '%s' % cuse_id,
+                'opt_id': '%s_net' % cuse_id}
+        if 'opt_mac' in options.keys() and options['opt_mac']:
+                opts['opt_mac'] = options['opt_mac']
+        self.__add_vm_virtio_net_pci(**opts)
 
     def __add_vm_virtio_net_pci(self, **options):
         """
