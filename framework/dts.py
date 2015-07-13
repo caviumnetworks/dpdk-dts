@@ -199,6 +199,7 @@ def dts_log_testsuite(test_suite, log_handler, test_classname):
     test_suite.logger.config_suite(test_classname)
     log_handler.config_suite(test_classname, 'dts')
     dut.logger.config_suite(test_classname, 'dut')
+    dut.test_classname = test_classname
     tester.logger.config_suite(test_classname, 'tester')
     if duts and len(duts):
         for crb in duts:
@@ -241,6 +242,7 @@ def dts_crbs_init(crbInst, skip_setup, read_cache, project, base_dir, nic, virtt
 
     dut = get_project_obj(project, Dut, crbInst, serializer)
     tester = get_project_obj(project, Tester, crbInst, serializer)
+    dts_log_execution(log_handler)
     dut.tester = tester
     tester.dut = dut
     dut.set_virttype(virttype)

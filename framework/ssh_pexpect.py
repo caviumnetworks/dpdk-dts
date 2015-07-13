@@ -42,7 +42,6 @@ class SSHPexpect(object):
 
     def init_log(self, logger, name):
         self.logger = logger
-        self.logger.config_execution(name)
         self.logger.info("ssh %s@%s" % (self.username, self.host))
 
     def send_expect_base(self, command, expected, timeout):

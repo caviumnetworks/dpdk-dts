@@ -217,6 +217,11 @@ class DTSLOG(BaseLoggerAdapter):
         self.fh = None
         self.ch = None
 
+        # add default log file
+        fh = logging.FileHandler(self.log_path + "/" + self.dts_log)
+        ch = ColorHandler()
+        self.__log_hander(fh, ch)
+
     def __log_hander(self, fh, ch):
         """
         Config stream handler and file handler.

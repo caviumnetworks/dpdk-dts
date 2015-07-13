@@ -63,7 +63,6 @@ class VirtDut(DPDKdut):
         # load port config from suite cfg
         self.suite = suite
         self.logger = getLogger(self.NAME)
-        self.logger.config_suite(suite, 'virtdut')
         self.session = SSHConnection(self.vm_ip, self.NAME,
                                      self.get_password())
         self.session.init_log(self.logger)
@@ -80,6 +79,9 @@ class VirtDut(DPDKdut):
         self.ports_info = None
         self.ports_map = []
         self.virttype = virttype
+
+    def init_log(self):
+        self.logger.config_suite(self.host_dut.test_classname, 'virtdut')
 
     def close_sessions(self):
         if self.session:

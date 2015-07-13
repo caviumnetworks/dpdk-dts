@@ -53,7 +53,6 @@ class SSHConnection(object):
 
     def init_log(self, logger):
         self.logger = logger
-        self.logger.config_execution(self.name)
         self.session.init_log(logger, self.name)
 
     def send_expect(self, cmds, expected, timeout=15, verify=False):

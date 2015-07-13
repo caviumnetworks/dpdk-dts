@@ -325,6 +325,7 @@ class VirtBase(object):
         vm_dut.tester = self.host_dut.tester
         vm_dut.host_dut = self.host_dut
         vm_dut.host_session = self.host_session
+        vm_dut.init_log()
 
         read_cache = False
         skip_setup = self.host_dut.skip_setup
