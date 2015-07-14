@@ -331,6 +331,25 @@ class Crb(object):
         cmd = "for i in `lsof /var/run/.rte_config /var/run/dpdk_config \
                 | awk '/config/ {print $2}'` ; do kill -9 $i; done"
         self.alt_session.session.send_expect(cmd, "# ", 10)
+        proce_cmd = "lsof /var/run/.rte_config /var/run/dpdk_config | awk '{print $2}'"
+        hugepage_cmd = "lsof /var/run/.rte_hugepage_info | awk {print $2}"
+        out = self.alt_session.session.send_expect(proce_cmd, "# ",10)
+        if "PID" in out:
+            self.logger.warning("There are same dpdk process not killed")
+            self.logger.warning("**************************************")
+            self.logger.warning(out)
+            self.logger.warning("**************************************")
+        else:
+            self.logger.info("not any dpdk process running")
+           
+        out = self.alt_session.session.send_expect(hugepage_cmd, "# ",10)
+        if "PID" in out:
+            self.logger.warning("There are some dpdk process not free hugepage")
+            self.logger.warning("**************************************")
+            self.logger.warning(out)
+            self.logger.warning("**************************************")
+        else:
+            self.logger.info("not any dpdk process used hugepage")    
         time.sleep(.7)
 
     def close(self):
