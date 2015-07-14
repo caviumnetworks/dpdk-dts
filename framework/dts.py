@@ -258,7 +258,7 @@ def dts_crbs_init(crbInst, skip_setup, read_cache, project, base_dir, nic, virtt
 
 def dts_crbs_exit():
     """
-    Remove logger handler when exit.
+    Call dut and tester exit function after execution finished
     """
     dut.crb_exit()
     tester.crb_exit()

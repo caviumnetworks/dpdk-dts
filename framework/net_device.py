@@ -367,6 +367,10 @@ class NetDevice(object):
         """
         self.__send_expect("sysctl net.ipv6.conf.%s.disable_ipv6=0" %
                            intf, "# ")
+        # FVL interface need down and up for re-enable ipv6
+        if self.default_driver == 'i40e':
+            self.__send_expect("ifconfig %s down" % intf, "# ")
+            self.__send_expect("ifconfig %s up" % intf, "# ")
 
     def enable_ipv6_freebsd(self, intf):
         pass
@@ -374,7 +378,7 @@ class NetDevice(object):
     @nic_has_driver
     def disable_ipv6(self):
         """
-        Enable ipv6 address of specified pci device.
+        Disable ipv6 address of specified pci device.
         """
         if self.current_driver != self.default_driver:
             return
@@ -384,7 +388,7 @@ class NetDevice(object):
 
     def disable_ipv6_linux(self, intf):
         """
-        Enable ipv6 address of specified pci device on linux.
+        Disable ipv6 address of specified pci device on linux.
         """
         self.__send_expect("sysctl net.ipv6.conf.%s.disable_ipv6=1" %
                            intf, "# ")
