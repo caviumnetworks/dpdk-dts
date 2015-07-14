@@ -552,6 +552,9 @@ def execute_test_setup_all(test_case):
     Execute suite setup_all function before cases.
     """
     try:
+        # clear all previous output
+        test_case.dut.get_session_output(timeout=0.1)
+        test_case.tester.get_session_output(timeout=0.1)
         test_case.set_up_all()
         return True
     except Exception:
