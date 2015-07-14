@@ -66,6 +66,9 @@ class VirtScene(object):
         self.auto_portmap = True
         self.vm_type = 'kvm'
 
+        # for vm dut init_log
+        self.host_dut.test_classname = 'dts'
+
     def load_config(self):
         try:
             self.vm_confs = {}
@@ -433,7 +436,7 @@ class VirtScene(object):
             for vm_obj in vm_info.keys():
                 if 'session' in vm_obj:
                     vm_info[vm_obj].kill_all()
-                    vm_info[vm_obj].close()
+                    vm_info[vm_obj].close_sessions()
                     vm_info[vm_obj].logger.logger_exit()
             for vm_obj in vm_info.keys():
                 if 'session' not in vm_obj:
