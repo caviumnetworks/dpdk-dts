@@ -56,7 +56,7 @@ class NetDevice(object):
         self.pci = bus_id + ':' + devfun_id
         self.pci_id = self.get_pci_id(bus_id, devfun_id)
         self.default_driver = settings.get_nic_driver(self.pci_id)
-     
+
         if self.nic_is_pf():
             self.default_vf_driver = ''
         self.get_interface_name()
@@ -118,7 +118,6 @@ class NetDevice(object):
             socket = -1
         return socket
 
-
     def get_nic_socket_freebsd(self, bus_id, devfun_id):
         NotImplemented
 
@@ -178,11 +177,11 @@ class NetDevice(object):
         """
         try:
             get_interface_name_freebsd = getattr(self,
-                                               'get_interface_name_freebsd_%s' % driver)
+                                                 'get_interface_name_freebsd_%s' % driver)
         except Exception as e:
             generic_driver = 'generic'
             get_interface_name_freebsd = getattr(self,
-                                               'get_interface_name_freebsd_%s' % generic_driver)
+                                                 'get_interface_name_freebsd_%s' % generic_driver)
 
         return get_interface_name_freebsd(bus_id, devfun_id)
 
@@ -253,7 +252,7 @@ class NetDevice(object):
         Get MAC by the default way on linux.
         """
         virtio_cmd = ('ls /sys/bus/pci/devices/0000\:%s\:%s/ | grep --color=never virtio' %
-                    (bus_id, devfun_id))
+                      (bus_id, devfun_id))
         virtio = self.__send_expect(virtio_cmd, '# ')
 
         command = ('cat /sys/bus/pci/devices/0000\:%s\:%s/%s/net/%s/address' %
@@ -349,6 +348,58 @@ class NetDevice(object):
             return None
 
         return match[0]
+
+    @nic_has_driver
+    def enable_ipv6(self):
+        """
+        Enable ipv6 address of specified pci device.
+        """
+        if self.current_driver != self.default_driver:
+            return
+
+        enable_ipv6 = getattr(
+            self, 'enable_ipv6_%s' % self.__get_os_type())
+        return enable_ipv6(self.intf_name)
+
+    def enable_ipv6_linux(self, intf):
+        """
+        Enable ipv6 address of specified pci device on linux.
+        """
+        self.__send_expect("sysctl net.ipv6.conf.%s.disable_ipv6=0" %
+                           intf, "# ")
+
+    def enable_ipv6_freebsd(self, intf):
+        pass
+
+    @nic_has_driver
+    def disable_ipv6(self):
+        """
+        Enable ipv6 address of specified pci device.
+        """
+        if self.current_driver != self.default_driver:
+            return
+        disable_ipv6 = getattr(
+            self, 'disable_ipv6_%s' % self.__get_os_type())
+        return disable_ipv6(self.intf_name)
+
+    def disable_ipv6_linux(self, intf):
+        """
+        Enable ipv6 address of specified pci device on linux.
+        """
+        self.__send_expect("sysctl net.ipv6.conf.%s.disable_ipv6=1" %
+                           intf, "# ")
+
+    def disable_ipv6_freebsd(self, intf):
+        pass
+
+    @nic_has_driver
+    def get_ipv6_addr(self):
+        """
+        Get ipv6 address of specified pci device.
+        """
+        get_ipv6_addr = getattr(
+            self, 'get_ipv6_addr_%s' % self.__get_os_type())
+        return get_ipv6_addr(self.intf_name, self.current_driver)
 
     @nic_has_driver
     def get_ipv6_addr(self):
@@ -560,7 +611,7 @@ class NetDevice(object):
             vf_reg_path = self.__send_expect(regx_reg_path, "# ")
         else:
             vf_reg_path = os.path.join("/sys/bus/pci/devices/0000:%s:%s" %
-                                   (bus_id, devfun_id), vf_reg_file)
+                                       (bus_id, devfun_id), vf_reg_file)
         self.__send_expect("echo %d > %s" %
                            (int(vf_num), vf_reg_path), "# ")
 

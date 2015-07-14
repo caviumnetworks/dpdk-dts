@@ -834,13 +834,13 @@ class Dut(Crb):
 
     def disable_tester_ipv6(self):
         for tester_port in self.ports_map:
-            intf = self.tester.get_interface(tester_port)
-            self.tester.disable_ipv6(intf)
+            port = self.tester.ports_info[tester_port]['port']
+            port.disable_ipv6()
 
     def enable_tester_ipv6(self):
         for tester_port in self.ports_map:
-            intf = self.tester.get_interface(tester_port)
-            self.tester.enable_ipv6(intf)
+            port = self.tester.ports_info[tester_port]['port']
+            port.enable_ipv6()
 
     def check_port_occupied(self, port):
         out = self.alt_session.send_expect('lsof -i:%d' % port, '# ')
