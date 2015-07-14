@@ -45,15 +45,9 @@ reta_lines = []
 # and collect the hash result of five tuple and the queue id.
 from test_case import TestCase
 from pmd_output import PmdOutput
-#
-#
-# Test class.
-#
+
+
 class TestPmdrssreta(TestCase):
-    #
-    #
-    # Utility methods and other non-test code.
-    #
     def send_packet(self, itf, tran_type):
         """
         Sends packets.
@@ -174,11 +168,6 @@ class TestPmdrssreta(TestCase):
         reta_lines = []
         self.verify(sum(result) == 0, "the reta update function failed!")
 
-    #
-    #
-    #
-    # Test cases.
-    #
     def set_up_all(self):
         """
         Run at the start of each test suite.
@@ -222,10 +211,6 @@ class TestPmdrssreta(TestCase):
                 self.dut.send_expect(
                     "set nbcore %d" % (queue + 1), "testpmd> ")
 
-                # self.dut.send_expect("port stop all", "testpmd> ")
-                # self.dut.send_expect("port config all rss udp", "testpmd> ")
-                # self.dut.send_expect("port start all", "testpmd> ")
-
                 # configure the reta with specific mappings.
                 if(self.nic == "niantic"):
                     for i in range(128):
@@ -241,6 +226,30 @@ class TestPmdrssreta(TestCase):
                 self.send_packet(itf, iptype)
 
             self.dut.send_expect("quit", "# ", 30)
+
+    def test_rss_key_size(self):
+        nic_rss_key_size = {"fortville_eagle": 52, "fortville_spirit": 52, "fortville_spirit_single": 52, "niantic": 40, "e1000": 40}
+        self.verify(self.nic in nic_rss_key_size.keys(), "Not supporte rss key on %s" % self.nic)
+
+        dutPorts = self.dut.get_ports(self.nic)
+        localPort = self.tester.get_local_port(dutPorts[0])
+        itf = self.tester.get_interface(localPort)
+        self.dut.kill_all()
+        self.dut.send_expect("./%s/app/testpmd  -c fffff -n %d -- -i --coremask=0xffffe --rxq=2 --txq=2" % (self.target, self.dut.get_memory_channels()), "testpmd> ", 120)
+        self.dut.send_expect("start", "testpmd> ", 120)
+        out = self.dut.send_expect("show port info all", "testpmd> ", 120)
+        self.dut.send_expect("quit", "# ", 30)
+
+        pattern = re.compile("Hash key size in bytes:\s(\d+)")
+        m = pattern.search(out)
+        if m is not None:
+            size = m.group(1)
+            print dts.GREEN("******************")
+            print dts.GREEN("NIC %s hash size %d and expected %d" % (self.nic, size, nic_rss_key_size[self.nic]))
+            if (nic_rss_key_size[self.nic] == int(size)):
+                self.verify(True, "pass")
+            else:
+                self.verify(False, "fail")
 
     def tear_down(self):
         """
