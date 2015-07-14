@@ -269,7 +269,7 @@ class VirtBase(object):
             return True
         elif type(vm_except) is exception.VirtDutConnectException:
             # need stop vm
-            self.stop()
+            self._stop_vm()
             return True
         elif type(vm_except) is exception.VirtDutInitException:
             # need close session
