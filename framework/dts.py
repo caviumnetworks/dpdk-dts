@@ -260,8 +260,8 @@ def dts_crbs_exit():
     """
     Remove logger handler when exit.
     """
-    dut.logger.logger_exit()
-    tester.logger.logger_exit()
+    dut.crb_exit()
+    tester.crb_exit()
 
 
 def dts_run_prerequisties(pkgName, patch):
@@ -324,9 +324,7 @@ def dts_run_target(crbInst, targets, test_suites, nic, scenario):
         scene = None
 
     dut.restore_interfaces()
-    dut.close()
     tester.restore_interfaces()
-    tester.close()
 
 
 def dts_run_suite(crbInst, test_suites, target, nic, scene):

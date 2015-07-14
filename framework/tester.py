@@ -467,6 +467,18 @@ class Tester(Crb):
         """
         Close ssh session and IXIA tcl session.
         """
-        super(Tester, self).close()
+        if self.session:
+            self.session.close()
+            self.session = None
+        if self.alt_session:
+            self.alt_session.close()
+            self.alt_session = None
         if self.it_uses_external_generator():
             self.ixia_packet_gen.close()
+
+    def crb_exit(self):
+        """
+        Close all resource before crb exit
+        """
+        self.logger.logger_exit()
+        self.close()

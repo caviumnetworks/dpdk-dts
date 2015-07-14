@@ -864,7 +864,19 @@ class Dut(Crb):
         """
         Close ssh session of DUT.
         """
-        self.session.close()
-        self.alt_session.close()
+        if self.session:
+            self.session.close()
+            self.session = None
+        if self.alt_session:
+            self.alt_session.close()
+            self.alt_session = None
         if self.host_init_flag:
             self.host_session.close()
+
+    def crb_exit(self):
+        """
+        Recover all resource before crb exit
+        """
+        self.logger.logger_exit()
+        self.enable_tester_ipv6()
+        self.close()
