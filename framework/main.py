@@ -107,7 +107,7 @@ parser.add_argument('--suite-dir',
                     help='Test suite directory where test suites will be imported')
 
 parser.add_argument('-t', '--test-cases',
-                    nargs='+',
+                    action='append',
                     help='executes only the followings test cases')
 
 parser.add_argument('-d', '--dir',
