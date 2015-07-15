@@ -522,8 +522,15 @@ class Dut(Crb):
         if self.ports_info:
             self.rescan_ports_uncached()
             self.save_serializer_ports()
-
+ 
     def rescan_ports_uncached(self):
+        """
+        rescan ports and update port's mac adress, intf, ipv6 address.
+        """
+        rescan_ports_uncached = getattr(self, 'rescan_ports_uncached_%s' % self.get_os_type())
+        return rescan_ports_uncached()
+
+    def rescan_ports_uncached_linux(self):
         unknow_interface = RED('Skipped: unknow_interface')
 
         for port_info in self.ports_info:
@@ -542,6 +549,27 @@ class Dut(Crb):
             ipv6 = out.split('/')[0]
             # Unconnected ports don't have IPv6
             if ":" not in ipv6:
+                ipv6 = "Not connected"
+
+            port_info['mac'] = macaddr
+            port_info['intf'] = intf
+            port_info['ipv6'] = ipv6
+
+    def rescan_ports_uncached_freebsd(self):
+        unknow_interface = RED('Skipped: unknow_interface')
+
+        for port_info in self.ports_info:
+            port = port_info['port']
+            intf = port.get_interface_name()
+            if "No such file" in intf:
+                self.logger.info("DUT: [0000:%s] %s" % (pci_bus, unknow_interface))
+                continue
+            self.send_expect("ifconfig %s up" % intf, "# ")
+            time.sleep(5)
+            macaddr = port.get_mac_addr()
+            ipv6 = port.get_ipv6_addr()
+            # Unconnected ports don't have IPv6
+            if ipv6 is None:
                 ipv6 = "Not connected"
 
             port_info['mac'] = macaddr
