@@ -65,17 +65,16 @@ class PmdOutput():
             return None
         else:
             return int(m.group(2))
-    
+
     def set_default_corelist(self):
         """
         set default cores for start testpmd
-        """        
+        """
         core_number = len(self.dut.cores)
         if core_number < 2:
             raise
         else:
             self.default_cores = "1S/2C/1T"
-             
 
     def get_pmd_stats(self, portid):
         stats = {}
@@ -105,7 +104,9 @@ class PmdOutput():
         if "--txqflags" not in param:
             param += " --txqflags=0"
 
-        if cores == "Default":
+        if type(cores) == list:
+            core_list = cores
+        elif cores == "Default":
             core_list = self.dut.get_core_list(self.default_cores)
         else:
             core_list = self.dut.get_core_list(cores, socket)
