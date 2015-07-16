@@ -29,6 +29,7 @@
 # THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import time
 import dts
 
 from settings import CONFIG_ROOT_PATH, get_netdev
@@ -36,6 +37,7 @@ from config import VirtConf
 from config import VIRTCONF
 from exception import *
 from qemu_kvm import QEMUKvm
+from pmd_output import PmdOutput
 
 # scenario module for handling scenario
 # 1. load configurations
@@ -65,6 +67,8 @@ class VirtScene(object):
         self.vm_dut_enable = False
         self.auto_portmap = True
         self.vm_type = 'kvm'
+        self.def_target = "x86_64-native-linuxapp-gcc"
+        self.host_bound = False
 
         # for vm dut init_log
         self.host_dut.test_classname = 'dts'
@@ -82,10 +86,15 @@ class VirtScene(object):
             raise VirtConfigParseException
 
     def prepare_vm(self):
+        host_cfg = None
         for conf in self.vm_confs.keys():
             if conf == 'scene':
-                suite_cfg = self.vm_confs['scene'][0]
-                self.prepare_suite(suite_cfg)
+                for cfg in self.vm_confs['scene']:
+                    if 'suite' in cfg.keys():
+                        self.prepare_suite(cfg['suite'])
+                    if 'host' in cfg.keys():
+                        self.host_bound = True
+                        host_cfg = cfg['host'][0]
                 self.vm_confs.pop('scene')
             else:
                 vm_name = conf
@@ -93,6 +102,10 @@ class VirtScene(object):
                 self.prepare_cpu(vm_name, vm_conf)
                 self.prepare_devices(vm_conf)
                 self.prepare_vmdevice(vm_conf)
+
+        # dpdk should start after vf devices created
+        if host_cfg:
+            self.prepare_host(**host_cfg)
 
     def cleanup_vm(self):
         # reload config for has been changed when handle config
@@ -104,23 +117,45 @@ class VirtScene(object):
                 self.cleanup_devices(vm_conf)
 
     def prepare_suite(self, conf):
-        if 'suite' in conf.keys():
-            for param in conf['suite']:
-                if 'dut' in param.keys():
-                    if param['dut'] == 'vm_dut':
-                        self.vm_dut_enable = True
-                if 'type' in param.keys():
-                    if param['type'] == 'xen':
-                        self.vm_type = 'xen'
-                    # not implement yet
-                    if param['type'] == 'vmware':
-                        self.vm_type = 'vmware'
-                    # not implement yet
-                    if param['type'] == 'container':
-                        self.vm_type = 'container'
-                if 'portmap' in param.keys():
-                    if param['portmap'] == 'cfg':
-                        self.auto_portmap = False
+        for param in conf:
+            if 'dut' in param.keys():
+                if param['dut'] == 'vm_dut':
+                    self.vm_dut_enable = True
+            if 'type' in param.keys():
+                if param['type'] == 'xen':
+                    self.vm_type = 'xen'
+                # not implement yet
+                if param['type'] == 'vmware':
+                    self.vm_type = 'vmware'
+                # not implement yet
+                if param['type'] == 'container':
+                    self.vm_type = 'container'
+            if 'portmap' in param.keys():
+                if param['portmap'] == 'cfg':
+                    self.auto_portmap = False
+
+    def prepare_host(self, **opts):
+        if 'dpdk' not in opts.keys():
+            print dts.RED("Scenario host parameter request dpdk option!!!")
+            raise VirtConfigParamException('host')
+
+        if 'cores' not in opts.keys():
+            print dts.RED("Scenario host parameter request cores option!!!")
+            raise VirtConfigParamException('host')
+
+        if 'target' in opts.keys():
+            target = opts['target']
+        else:
+            target = self.def_target
+
+        self.host_dut.set_target(target, bind_dev=True)
+
+        if opts['dpdk'] == 'testpmd':
+            self.pmdout = PmdOutput(self.host_dut)
+            cores = opts['cores'].split()
+            out = self.pmdout.start_testpmd(cores)
+            if 'Error' in out:
+                raise VirtHostPrepareException()
 
     def prepare_cpu(self, vm_name, conf):
         cpu_param = {}
@@ -241,9 +276,10 @@ class VirtScene(object):
     def reset_pf_cmds(self, port):
         command = {}
         command['type'] = 'host'
-        intf = self.host_dut.ports_info[port]['intf']
-        command['command'] = 'ifconfig %s up' % intf
-        self.reg_postvm_cmds(command)
+        if not self.host_bound:
+            intf = self.host_dut.ports_info[port]['intf']
+            command['command'] = 'ifconfig %s up' % intf
+            self.reg_postvm_cmds(command)
 
     def handle_dev_gen(self, **opts):
         if 'pf_idx' in opts.keys():
