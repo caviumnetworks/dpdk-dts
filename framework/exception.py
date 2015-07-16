@@ -137,3 +137,6 @@ class VirtDeviceCreateException(Exception):
 
 class VirtVmOperationException(Exception):
     pass
+
+class VirtHostPrepareException(Exception):
+    pass
