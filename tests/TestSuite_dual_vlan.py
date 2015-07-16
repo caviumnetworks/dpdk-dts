@@ -208,7 +208,7 @@ class TestDualVlan(TestCase):
         self.mode_config(strip=temp[0], filter=temp[1], qinq=temp[2])
 
         if (caseDef & txCase) != 0:
-            self.dut.send_expect('tx_vlan set %s %s' % (txvlan, dutTxPortId), "testpmd> ")
+            self.dut.send_expect('tx_vlan set %s %s' % (dutTxPortId, txvlan), "testpmd> ")
 
 
         configMode = "Strip %s, filter %s 0x1, extend %s, insert %s" % (temp[0], temp[1], temp[2], "on" if (caseDef & txCase) != 0 else "off")
@@ -372,7 +372,7 @@ class TestDualVlan(TestCase):
         if(self.nic == "hartwell"):
             self.dut.send_expect("vlan set strip on %s" % dutTxPortId, "testpmd> ")
 
-        self.dut.send_expect("tx_vlan set %s %s" % (txvlan, dutTxPortId), "testpmd> ")
+        self.dut.send_expect("tx_vlan set %s %s" % (dutTxPortId, txvlan), "testpmd> ")
 
         self.vlan_send_packet()
         #out = self.tester.scapy_get_result()

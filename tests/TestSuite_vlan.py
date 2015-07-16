@@ -94,7 +94,7 @@ class TestVlan(TestCase):
         return self.tester.send_expect("tcpdump -nn -e -v -r ./vlan_test.cap","#")
     def vlan_send_packet(self, vid, num=1):
         """
-        Send $num of packet to portid
+        Send $num of packet to portid, if vid is -1, it means send pakcage not include vlan id.
         """
         # The package stream : testTxPort->dutRxPort->dutTxport->testRxPort
         port = self.tester.get_local_port(dutRxPortId)
@@ -108,8 +108,10 @@ class TestVlan(TestCase):
         self.dmac = self.dut.get_mac_address(dutRxPortId)
 
         # FIXME  send a burst with only num packet
-
-        self.tester.scapy_append('sendp([Ether(src="%s",dst="%s")/Dot1Q(vlan=%s)/IP(len=46)], iface="%s")' % (self.smac, self.dmac, vid, txItf))
+        if vid == -1:
+            self.tester.scapy_append('sendp([Ether(src="%s",dst="%s")/IP(len=46)], iface="%s")' % (self.smac, self.dmac, txItf))
+        else:
+            self.tester.scapy_append('sendp([Ether(src="%s",dst="%s")/Dot1Q(vlan=%s)/IP(len=46)], iface="%s")' % (self.smac, self.dmac, vid, txItf))
 
         self.tester.scapy_execute()
     def set_up(self):
@@ -197,20 +199,14 @@ class TestVlan(TestCase):
         intf = self.tester.get_interface(port)
 
         self.dut.send_expect("set nbport 2", "testpmd> ")
-        self.dut.send_expect("tx_vlan set %d %s" % (self.vlan, dutTxPortId), "testpmd> ")
+        self.dut.send_expect("tx_vlan set %s %d" % (dutTxPortId, self.vlan), "testpmd> ")
+        self.start_tcpdump()
 
-        self.tester.scapy_background()
-        self.tester.scapy_append('p = sniff(iface="%s", count=1, timeout=5)' % intf)
-        self.tester.scapy_append('RESULT=str(p)')
-        self.tester.scapy_foreground()
-
-        self.tester.scapy_execute()
-        time.sleep(2)
-        self.dut.send_expect("start tx_first", "testpmd> ")
-        time.sleep(2)
-
-        out = self.tester.scapy_get_result()
-        self.verify("vlan=%dL" % self.vlan in out, "Wrong vlan: " + out)
+        self.dut.send_expect("start", "testpmd> ")
+        self.vlan_send_packet(-1)
+        
+        out = self.get_tcpdump_package()
+        self.verify("vlan %d" % self.vlan in out, "Wrong vlan: " + out)
         if self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single", "redrockcanyou"]:
             self.dut.send_expect("tx_vlan reset %s" % dutTxPortId, "testpmd> ", 30)
             self.dut.send_expect("stop", "testpmd> ", 30)
