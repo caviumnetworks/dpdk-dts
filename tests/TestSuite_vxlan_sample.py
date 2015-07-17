@@ -196,6 +196,9 @@ class TestVxlanSample(TestCase):
         pass
 
     def prepare_vxlan_sample_env(self, tep_cmd, vm_num=1):
+        # remove unexpected socke
+        self.dut.send_expect("rm -rf vhost-net", "# ")
+
         # start tep_termination first
         self.dut.send_expect(tep_cmd, "VHOST_CONFIG: bind to vhost-net")
 
