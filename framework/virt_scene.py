@@ -472,7 +472,7 @@ class VirtScene(object):
             for vm_obj in vm_info.keys():
                 if 'session' in vm_obj:
                     vm_info[vm_obj].kill_all()
-                    vm_info[vm_obj].close_sessions()
+                    vm_info[vm_obj].close()
                     vm_info[vm_obj].logger.logger_exit()
             for vm_obj in vm_info.keys():
                 if 'session' not in vm_obj:

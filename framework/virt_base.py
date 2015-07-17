@@ -273,7 +273,7 @@ class VirtBase(object):
             return True
         elif type(vm_except) is exception.VirtDutInitException:
             # need close session
-            vm_except.vm_dut.close_sessions()
+            vm_except.vm_dut.close()
             # need stop vm
             self.stop()
             return True
@@ -354,7 +354,7 @@ class VirtBase(object):
         """
         Stop the VM.
         """
-        self.vm_dut.close_sessions()
+        self.vm_dut.close()
         self._stop_vm()
         self.virt_pool.free_all_resource(self.vm_name)
 

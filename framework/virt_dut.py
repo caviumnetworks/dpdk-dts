@@ -83,7 +83,7 @@ class VirtDut(DPDKdut):
     def init_log(self):
         self.logger.config_suite(self.host_dut.test_classname, 'virtdut')
 
-    def close_sessions(self):
+    def close(self):
         if self.session:
             self.session.close()
         if self.alt_session:
