@@ -98,8 +98,11 @@ class Crb(object):
         Mount hugepage file system on CRB.
         """
         self.send_expect("umount `awk '/hugetlbfs/ { print $2 }' /proc/mounts`", '# ')
-        self.send_expect('mkdir -p /mnt/huge', '# ')
-        self.send_expect('mount -t hugetlbfs nodev /mnt/huge', '# ')
+        out = self.send_expect("awk '/hugetlbfs/ { print $2 }' /proc/mounts", "# ")
+        # only mount hugepage when no hugetlbfs mounted
+        if not len(out):
+            self.send_expect('mkdir -p /mnt/huge', '# ')
+            self.send_expect('mount -t hugetlbfs nodev /mnt/huge', '# ')
 
     def strip_hugepage_path(self):
         mounts = self.send_expect("cat /proc/mounts |grep hugetlbfs", "# ")
