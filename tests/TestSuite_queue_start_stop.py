@@ -70,7 +70,12 @@ class TestQueueStartStop(TestCase):
         """
         Run before each test case.
         """
-        patch_file = FOLDERS["Depends"] + r'/macfwd_log.patch'
+        try:
+            patch_file = FOLDERS["Depends"] + r'/macfwd_log.patch'
+        except:
+            self.logger.warningstr(FOLDERS))
+            patch_file = r'dep/macfwd_log.patch'
+            FOLDERS["Depends"] = 'dep'
         patch_dst = "/tmp/"
 
         # dpdk patch and build
