@@ -862,13 +862,15 @@ class Dut(Crb):
 
     def disable_tester_ipv6(self):
         for tester_port in self.ports_map:
-            port = self.tester.ports_info[tester_port]['port']
-            port.disable_ipv6()
+            if self.tester.ports_info[tester_port]['type'] != 'ixia':
+                port = self.tester.ports_info[tester_port]['port']
+                port.disable_ipv6()
 
     def enable_tester_ipv6(self):
         for tester_port in self.ports_map:
-            port = self.tester.ports_info[tester_port]['port']
-            port.enable_ipv6()
+            if self.tester.ports_info[tester_port]['type'] != 'ixia':
+                port = self.tester.ports_info[tester_port]['port']
+                port.enable_ipv6()
 
     def check_port_occupied(self, port):
         out = self.alt_session.send_expect('lsof -i:%d' % port, '# ')
