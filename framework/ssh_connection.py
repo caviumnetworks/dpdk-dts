@@ -68,6 +68,12 @@ class SSHConnection(object):
 
     def close(self):
         self.session.close()
+        connection = {}
+        connection[self.name] = self.session
+        try:
+            CONNECTIONS.remove(connection)
+        except:
+            pass
 
     def isalive(self):
         return self.session.isalive()
