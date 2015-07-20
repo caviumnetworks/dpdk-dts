@@ -107,7 +107,7 @@ class TestVhostCUSESample(TestCase, IxiaPacketGenerator):
         self.dst1 = "192.168.3.1"
         self.dst2 = "192.168.4.1"
         self.vm_dut = None
-
+        self.virtio_cmd_params = 'csum=off,gso=off,guest_csum=off,guest_tso4=off,guest_tso6=off,guest_ecn=off'
         # Define the table columns
         self.header_row = ["Test", "Mode", "Frame", "Mpps", "% linerate"]
         self.memory_channel = 4
@@ -185,10 +185,12 @@ class TestVhostCUSESample(TestCase, IxiaPacketGenerator):
             vm_params = {}
             vm_params['driver'] = 'vhost-cuse'
             vm_params['opt_mac'] = self.virtio1_mac
+            vm_params['opt_settings'] = self.virtio_cmd_params
             self.vm.set_vm_device(**vm_params)
+
             vm_params['opt_mac'] = self.virtio2_mac
+            vm_params['opt_settings'] = self.virtio_cmd_params
             self.vm.set_vm_device(**vm_params)
-            print "cuse setup is done, vm_params: ", vm_params
         try:
             self.vm_dut = self.vm.start(auto_portmap=False)
             if self.vm_dut is None:
@@ -414,7 +416,7 @@ class TestVhostCUSESample(TestCase, IxiaPacketGenerator):
             linerate = self.wirespeed(self.nic, frame_size, 1)
             pct = pps * 100 / linerate
             scenario = self.running_case
-            mode = "vhost user"
+            mode = "vhost cuse"
             data_row = [scenario, mode, frame_size, str(pps), str(pct)]
             dts.results_table_add_row(data_row)
 
