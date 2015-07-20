@@ -73,7 +73,7 @@ class TestQueueStartStop(TestCase):
         try:
             patch_file = FOLDERS["Depends"] + r'/macfwd_log.patch'
         except:
-            self.logger.warningstr(FOLDERS))
+            self.logger.warning(str(FOLDERS))
             patch_file = r'dep/macfwd_log.patch'
             FOLDERS["Depends"] = 'dep'
         patch_dst = "/tmp/"
