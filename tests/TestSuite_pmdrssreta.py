@@ -245,7 +245,7 @@ class TestPmdrssreta(TestCase):
         if m is not None:
             size = m.group(1)
             print dts.GREEN("******************")
-            print dts.GREEN("NIC %s hash size %d and expected %d" % (self.nic, size, nic_rss_key_size[self.nic]))
+            print dts.GREEN("NIC %s hash size %d and expected %d" % (self.nic, int(size), nic_rss_key_size[self.nic]))
             if (nic_rss_key_size[self.nic] == int(size)):
                 self.verify(True, "pass")
             else:

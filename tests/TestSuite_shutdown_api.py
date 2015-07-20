@@ -214,7 +214,7 @@ class TestShutdownApi(TestCase):
         """
         Promiscuous mode.
         """
-        self.pmdout.start_testpmd("Default", "--portmask=%s" % dts.create_mask([self.ports[0], self.ports[1]]), self.ports_socket)
+        self.pmdout.start_testpmd("Default", "--portmask=%s" % dts.create_mask([self.ports[0], self.ports[1]]), socket = self.ports_socket)
 
         self.dut.send_expect("port stop all", "testpmd> ", 100)
         self.dut.send_expect("set promisc all off", "testpmd> ")
