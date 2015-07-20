@@ -638,6 +638,9 @@ class QEMUKvm(VirtBase):
                 'opt_id': '%s_net' % cuse_id}
         if 'opt_mac' in options.keys() and options['opt_mac']:
                 opts['opt_mac'] = options['opt_mac']
+        if 'opt_settings' in options.keys() and options['opt_settings']:
+                opts['opt_settings'] = options['opt_settings']
+        
         self.__add_vm_virtio_net_pci(**opts)
 
     def __add_vm_virtio_net_pci(self, **options):
@@ -648,6 +651,7 @@ class QEMUKvm(VirtBase):
         opt_mac: 00:00:00:00:01:03
         opt_bus: pci.0
         opt_addr: 0x3
+        opt_settings: csum=off,gso=off,guest_csum=off
         """
         dev_boot_line = '-device virtio-net-pci'
         separator = ','
@@ -666,6 +670,9 @@ class QEMUKvm(VirtBase):
         if 'opt_addr' in options.keys() and \
                 options['opt_addr']:
             dev_boot_line += separator + 'addr=%s' % options['opt_addr']
+        if 'opt_settings' in options.keys() and \
+                options['opt_settings']:
+            dev_boot_line += separator + '%s'  % options['opt_settings']
 
         if self.__string_has_multi_fields(dev_boot_line, separator):
             self.__add_boot_line(dev_boot_line)
