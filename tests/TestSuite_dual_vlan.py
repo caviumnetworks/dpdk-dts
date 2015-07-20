@@ -73,20 +73,8 @@ vlanCase = ["OUTER+INNER", "INNER", ("OUTER+INNER", "NONE"), ("INNER", "NONE"),
 from test_case import TestCase
 from pmd_output import PmdOutput
 
-#
-#
-# Test class.
-#
-
 
 class TestDualVlan(TestCase):
-
-    #
-    #
-    #
-    # Test cases.
-    #
-
     def set_up_all(self):
         """
         Run at the start of each test suite.
@@ -123,15 +111,14 @@ class TestDualVlan(TestCase):
         self.verify('Set mac packet forwarding mode' in out, "set fwd mac error")
         out = self.dut.send_expect("start", "testpmd> ", 120)
 
-    def start_tcpdump(self,rxItf):
+    def start_tcpdump(self, rxItf):
 
-        self.tester.send_expect("rm -rf ./getPackageByTcpdump.cap","#")
-        self.tester.send_expect("tcpdump -i %s -w ./getPackageByTcpdump.cap 2> /dev/null& "%rxItf,"#" )
+        self.tester.send_expect("rm -rf ./getPackageByTcpdump.cap", "#")
+        self.tester.send_expect("tcpdump -i %s -w ./getPackageByTcpdump.cap 2> /dev/null& " % rxItf, "#")
 
     def get_tcpdump_package(self):
-        self.tester.send_expect("killall tcpdump","#")
-        return self.tester.send_expect("tcpdump -nn -e -v -r ./getPackageByTcpdump.cap","#")
-
+        self.tester.send_expect("killall tcpdump", "#")
+        return self.tester.send_expect("tcpdump -nn -e -v -r ./getPackageByTcpdump.cap", "#")
 
     def vlan_send_packet(self, *vid):
         """
@@ -162,14 +149,14 @@ class TestDualVlan(TestCase):
         for mode in modeName:
             if self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single"]:
                 # fortville NIC vlan filter can't close, if want close need remove rx_vlan
-                if mode == "filter": 
+                if mode == "filter":
                     if modeName[mode] == "off":
                         self.dut.send_expect("rx_vlan add %s %s" % (outvlan, dutRxPortId), "testpmd> ")
                         continue
                     else:
                         self.dut.send_expect("rx_vlan rm %s %s" % (outvlan, dutRxPortId), "testpmd> ")
                         continue
-                
+
             if mode == "stripq":
                 self.dut.send_expect("vlan set %s %s %s,0" % (mode, modeName[mode], dutRxPortId), "testpmd> ")
             else:
@@ -210,17 +197,14 @@ class TestDualVlan(TestCase):
         if (caseDef & txCase) != 0:
             self.dut.send_expect('tx_vlan set %s %s' % (dutTxPortId, txvlan), "testpmd> ")
 
-
         configMode = "Strip %s, filter %s 0x1, extend %s, insert %s" % (temp[0], temp[1], temp[2], "on" if (caseDef & txCase) != 0 else "off")
 
         if (caseDef & filterCase) != 0:
-            #print "configMode%s,"%configMode
             self.dut.send_expect('rx_vlan add %s %s' % (outvlan, dutRxPortId), "testpmd> ")
             self.vlan_send_packet(outvlan, invlan)
             self.check_result(vlanCase[caseIndex][0], configMode + " result Error")
-            self.dut.send_expect('rx_vlan rm %s %s' %(outvlan, dutRxPortId), "testpmd> ")
+            self.dut.send_expect('rx_vlan rm %s %s' % (outvlan, dutRxPortId), "testpmd> ")
             self.dut.send_expect('rx_vlan add %s %s' % (invlan, dutRxPortId), "testpmd> ")
-            #self.dut.send_expect('rx_vlan rm 1 %s' % dutRxPortId, "testpmd> ")
             self.vlan_send_packet(outvlan, invlan)
             self.check_result(vlanCase[caseIndex][1], configMode + " result Error")
             self.dut.send_expect('rx_vlan rm %s %s' % (invlan, dutRxPortId), "testpmd> ")
@@ -234,13 +218,13 @@ class TestDualVlan(TestCase):
             if (caseDef & txCase) != 0:
                 self.dut.send_expect('tx_vlan reset %s' % dutTxPortId, "testpmd> ")
             self.dut.send_expect('rx_vlan rm %s %s' % (invlan, dutRxPortId), "testpmd> ")
-            self.dut.send_expect('rx_vlan rm %s %s' % (outvlan,dutRxPortId), "testpmd> ")
+            self.dut.send_expect('rx_vlan rm %s %s' % (outvlan, dutRxPortId), "testpmd> ")
 
     def check_result(self, resultKey, errorString):
         """
         Check results of synthetic test.
         """
-        print "vlan flage config:%s"%errorString
+        print "vlan flage config:%s" % errorString
         out = self.get_tcpdump_package()
         if allResult[resultKey][0] == "No":
             self.verify("vlan" not in out, errorString)
@@ -250,8 +234,7 @@ class TestDualVlan(TestCase):
                 resultList.append("vlan %s" % allResult[resultKey][i])
             resultList.append("vlan %s" % allResult[resultKey][len(allResult[resultKey]) - 1])
             for line in resultList:
-                self.verify(line in out,"reviceive package is wrong:%s"%out)
-    
+                self.verify(line in out, "reviceive package is wrong:%s" % out)
 
     def set_up(self):
         """
@@ -267,23 +250,20 @@ class TestDualVlan(TestCase):
         self.mode_config(strip="off")
         self.mode_config(qinq="off")
         self.vlan_send_packet(outvlan)
-        #out = self.tester.scapy_get_result()
         out = self.get_tcpdump_package()
         print out
-        self.verify(out is not None and "vlan %s"%outvlan not in out, "Vlan filter enable error: " + out)
+        self.verify(out is not None and "vlan %s" % outvlan not in out, "Vlan filter enable error: " + out)
 
         if self.nic not in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single"]:
             self.mode_config(filter="off")
             self.vlan_send_packet(outvlan)
             out = self.get_tcpdump_package()
-            #out = self.tester.scapy_get_result()
-            self.verify("vlan %s"%outvlan in out, "Vlan filter disable error: " + out)
+            self.verify("vlan %s" % outvlan in out, "Vlan filter disable error: " + out)
         else:
             self.dut.send_expect('rx_vlan add %s %s' % (outvlan, dutRxPortId), "testpmd> ")
             self.vlan_send_packet(outvlan)
             out = self.get_tcpdump_package()
-            #out = self.tester.scapy_get_result()
-            self.verify("vlan %s"%outvlan in out, "Vlan filter disable error: " + out)
+            self.verify("vlan %s" % outvlan in out, "Vlan filter disable error: " + out)
             self.dut.send_expect('rx_vlan rm %s %s' % (outvlan, dutRxPortId), "testpmd> ")
 
     def test_vlan_filter_table(self):
@@ -295,17 +275,15 @@ class TestDualVlan(TestCase):
         self.mode_config(strip="off")
         self.mode_config(qinq="off")
 
-        self.dut.send_expect("rx_vlan add %s %s" %(outvlan, dutRxPortId), "testpmd> ")
+        self.dut.send_expect("rx_vlan add %s %s" % (outvlan, dutRxPortId), "testpmd> ")
         self.vlan_send_packet(outvlan)
         out = self.get_tcpdump_package()
-        #out = self.tester.scapy_get_result()
-        self.verify("vlan %s"%outvlan in out, "vlan filter table enable error: " + out)
+        self.verify("vlan %s" % outvlan in out, "vlan filter table enable error: " + out)
 
         self.dut.send_expect("rx_vlan rm %s %s" % (outvlan, dutRxPortId), "testpmd> ")
         self.vlan_send_packet(outvlan)
         out = self.get_tcpdump_package()
-        #out = self.tester.scapy_get_result()
-        self.verify(out is not None and "vlan %s"%outvlan not in out, "vlan filter table disable error: " + out)
+        self.verify(out is not None and "vlan %s" % outvlan not in out, "vlan filter table disable error: " + out)
 
     def test_vlan_strip_config(self):
         """
@@ -316,51 +294,47 @@ class TestDualVlan(TestCase):
         self.mode_config(qinq="off")
         self.mode_config(strip="on")
         if self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single"]:
-             self.dut.send_expect('rx_vlan add %s %s' % (outvlan, dutRxPortId), "testpmd> ")
+            self.dut.send_expect('rx_vlan add %s %s' % (outvlan, dutRxPortId), "testpmd> ")
         self.vlan_send_packet(outvlan)
         out = self.get_tcpdump_package()
-        #out = self.tester.scapy_get_result()
-        self.verify("vlan %s"%outvlan not in out, "Vlan strip enable error: " + out)
+        self.verify("vlan %s" % outvlan not in out, "Vlan strip enable error: " + out)
 
         self.mode_config(strip="off")
         self.vlan_send_packet(outvlan)
-        #out = self.tester.scapy_get_result()
         out = self.get_tcpdump_package()
-        self.verify("vlan %s"%outvlan in out, "Vlan strip disable error: " + out)
+        self.verify("vlan %s" % outvlan in out, "Vlan strip disable error: " + out)
         if self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single"]:
-             self.dut.send_expect('rx_vlan rm %s %s' %(outvlan, dutRxPortId), "testpmd> ")
+            self.dut.send_expect('rx_vlan rm %s %s' % (outvlan, dutRxPortId), "testpmd> ")
 
     def test_vlan_stripq_config(self):
         """
         Enable/Disable VLAN packets strip on queue
         """
-        self.verify(self.nic not in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single"],"%s NIC not support queue vlan strip "%self.nic)
+        self.verify(self.nic not in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single"], "%s NIC not support queue vlan strip " % self.nic)
 
         self.mode_config(filter="off")
         self.mode_config(qinq="off")
         self.mode_config(strip="off")
         self.mode_config(stripq="off")
         if self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single"]:
-             self.dut.send_expect('rx_vlan add %s %s' % (outvlan, dutRxPortId), "testpmd> ")
+            self.dut.send_expect('rx_vlan add %s %s' % (outvlan, dutRxPortId), "testpmd> ")
         self.vlan_send_packet(outvlan)
         out = self.get_tcpdump_package()
-        #out = self.tester.scapy_get_result()
-        self.verify("vlan %s"%outvlan in out, "vlan strip queue disable error : " + out)
-        #if self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single"]:
+        self.verify("vlan %s" % outvlan in out, "vlan strip queue disable error : " + out)
+        # if self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single"]:
         self.mode_config(strip="on")
         self.mode_config(stripq="on")
         self.vlan_send_packet(outvlan)
         out = self.get_tcpdump_package()
-        #out = self.tester.scapy_get_result()
-        self.verify("vlan %s"%outvlan not in out, "vlan strip enable error: " + out)
+        self.verify("vlan %s" % outvlan not in out, "vlan strip enable error: " + out)
 
         self.mode_config(stripq="off")
         self.vlan_send_packet(outvlan)
         out = self.get_tcpdump_package()
-        #out = self.tester.scapy_get_result()
-        self.verify("vlan %s"%outvlan  in out, "vlan strip queue disable error: " + out)
+        self.verify("vlan %s" % outvlan in out, "vlan strip queue disable error: " + out)
         if self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single"]:
-             self.dut.send_expect('rx_vlan rm %s %s' % (outvlan, dutRxPortId), "testpmd> ")
+            self.dut.send_expect('rx_vlan rm %s %s' % (outvlan, dutRxPortId), "testpmd> ")
+
     def test_vlan_insert_config(self):
         """
         Enable/Disable VLAN packets inserting
@@ -375,35 +349,31 @@ class TestDualVlan(TestCase):
         self.dut.send_expect("tx_vlan set %s %s" % (dutTxPortId, txvlan), "testpmd> ")
 
         self.vlan_send_packet()
-        #out = self.tester.scapy_get_result()
         out = self.get_tcpdump_package()
-        self.verify("vlan %s"%txvlan in out, "vlan inset enalber error: " + out)
+        self.verify("vlan %s" % txvlan in out, "vlan inset enalber error: " + out)
 
         self.dut.send_expect("tx_vlan reset %s" % dutTxPortId, "testpmd> ")
         self.vlan_send_packet()
-        #out = self.tester.scapy_get_result()
         out = self.get_tcpdump_package()
-        self.verify("vlan %s"%txvlan not in out, "vlan inset disable error: " + out)
+        self.verify("vlan %s" % txvlan not in out, "vlan inset disable error: " + out)
 
     def test_vlan_tpid_config(self):
         """
         Configure receive port out vlan TPID
         """
-        self.verify(self.nic not in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single","hartwell"],"%s NIC not support tcpid "%self.nic)
+        self.verify(self.nic not in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single", "hartwell"], "%s NIC not support tcpid " % self.nic)
 
         self.mode_config(filter="on", strip="on", qinq="on")
         self.dut.send_expect("vlan set tpid 1234 %s" % dutRxPortId, "testpmd> ")
         self.vlan_send_packet(outvlan, invlan)
 
-        #out = self.tester.scapy_get_result()
         out = self.get_tcpdump_package()
-        self.verify("vlan %s"%outvlan in out, "vlan tpid disable error: " + out)
-        self.verify("vlan %s"%invlan in out, "vlan tpid disable error: " + out)
+        self.verify("vlan %s" % outvlan in out, "vlan tpid disable error: " + out)
+        self.verify("vlan %s" % invlan in out, "vlan tpid disable error: " + out)
 
         self.dut.send_expect("vlan set tpid 0x8100 %s" % dutRxPortId, "testpmd> ")
         self.vlan_send_packet(outvlan, invlan)
 
-        #out = self.tester.scapy_get_result()
         out = self.get_tcpdump_package()
         self.verify(out is not None and "vlan" not in out, "vlane tpid enable error: " + out)
 
