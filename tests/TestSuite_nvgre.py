@@ -163,14 +163,14 @@ class NvgreTestConfig(object):
         """
         if self.outer_ip_proto != 47:
             if self.outer_l3_type == 'IPv4':
-                return 'PKT_RX_IPV4_HDR'
+                return '(outer) L3 type: IPV4_EXT_UNKNOWN'
             else:
-                return 'PKT_RX_IPV6_HDR'
+                return '(outer) L3 type: IPV6_EXT_UNKNOWN'
         else:
-            if self.outer_l3_type == 'IPv4':
-                return 'PKT_RX_TUNNEL_IPV4_HDR'
+            if self.inner_l3_type == 'IPv4':
+                return 'Inner L3 type: IPV4_EXT_UNKNOWN'
             else:
-                return 'PKT_RX_TUNNEL_IPV6_HDR'
+                return 'Inner L3 type: IPV6_EXT_UNKNOWN'
 
     def create_pcap(self, scp=True):
         """
