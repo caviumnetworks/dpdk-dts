@@ -126,22 +126,22 @@ class DPDKdut(Dut):
         Set default RX/TX PMD function, now only take effect on ixgbe.
         """
         [arch, machine, env, toolchain] = self.target.split('-')
-        if 'mode' not in self.crb:
+        if dts.rx_mode is None:
             mode = 'default'
         else:
-            mode = self.crb['mode']
+            mode = dts.rx_mode
 
-        if mode is 'scalar':
+        if mode == 'scalar':
             self.send_expect("sed -i -e 's/CONFIG_RTE_IXGBE_INC_VECTOR=.*$/"
                              + "CONFIG_RTE_IXGBE_INC_VECTOR=n/' config/common_%s" % env, "# ", 30)
             self.send_expect("sed -i -e 's/CONFIG_RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC=.*$/"
                              + "CONFIG_RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC=y/' config/common_%s" % env, "# ", 30)
-        if mode is 'full':
+        if mode == 'full':
             self.send_expect("sed -i -e 's/CONFIG_RTE_IXGBE_INC_VECTOR=.*$/"
                              + "CONFIG_RTE_IXGBE_INC_VECTOR=n/' config/common_%s" % env, "# ", 30)
             self.send_expect("sed -i -e 's/CONFIG_RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC=.*$/"
                              + "CONFIG_RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC=n/' config/common_%s" % env, "# ", 30)
-        if mode is 'vector':
+        if mode == 'vector':
             self.send_expect("sed -i -e 's/CONFIG_RTE_IXGBE_INC_VECTOR=.*$/"
                              + "CONFIG_RTE_IXGBE_INC_VECTOR=y/' config/common_%s" % env, "# ", 30)
             self.send_expect("sed -i -e 's/CONFIG_RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC=.*$/"

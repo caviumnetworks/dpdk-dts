@@ -73,6 +73,7 @@ results_table_header = []
 performance_only = False
 functional_only = False
 nic = None
+rx_mode = None
 requested_tests = None
 dut = None
 duts = None
@@ -153,6 +154,7 @@ def dts_parse_config(section):
         scenario = ''
 
     global nic
+    global rx_mode
 
     duts = [dut_.strip() for dut_ in config.get(section,
                                                 'crbs').split(',')]
@@ -160,6 +162,10 @@ def dts_parse_config(section):
                for target in config.get(section, 'targets').split(',')]
     test_suites = [suite.strip()
                    for suite in config.get(section, 'test_suites').split(',')]
+    try:
+        rx_mode = config.get(section, 'rx_mode').strip()
+    except:
+        rx_mode = None
 
     for suite in test_suites:
         if suite == '':
