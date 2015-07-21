@@ -640,7 +640,7 @@ class QEMUKvm(VirtBase):
                 opts['opt_mac'] = options['opt_mac']
         if 'opt_settings' in options.keys() and options['opt_settings']:
                 opts['opt_settings'] = options['opt_settings']
-        
+
         self.__add_vm_virtio_net_pci(**opts)
 
     def __add_vm_virtio_net_pci(self, **options):
@@ -672,7 +672,7 @@ class QEMUKvm(VirtBase):
             dev_boot_line += separator + 'addr=%s' % options['opt_addr']
         if 'opt_settings' in options.keys() and \
                 options['opt_settings']:
-            dev_boot_line += separator + '%s'  % options['opt_settings']
+            dev_boot_line += separator + '%s' % options['opt_settings']
 
         if self.__string_has_multi_fields(dev_boot_line, separator):
             self.__add_boot_line(dev_boot_line)
@@ -699,10 +699,10 @@ class QEMUKvm(VirtBase):
         index = self.find_option_index('monitor')
         if index:
             self.params[index] = {'monitor': [{'path': '/tmp/%s_monitor.sock' %
-                                                (self.vm_name)}]}
+                                              (self.vm_name)}]}
         else:
             self.params.append({'monitor': [{'path': '/tmp/%s_monitor.sock' %
-                                         (self.vm_name)}]})
+                               (self.vm_name)}]})
 
     def add_vm_monitor(self, **options):
         """
@@ -870,7 +870,7 @@ class QEMUKvm(VirtBase):
 
         if len(req_cpus) != len(cpus):
             self.host_logger.warning("VCPUs not enough, required [ %s ], just [ %s ]" %
-                                  (req_cpus, cpus))
+                                     (req_cpus, cpus))
             raise Exception("No enough required vcpus!!!")
 
         vcpus_pinned_to_vm = ''
@@ -1004,7 +1004,7 @@ class QEMUKvm(VirtBase):
         devices = self.__strip_guest_pci()
         for hostpci in self.pt_devices:
             index = self.pt_devices.index(hostpci)
-            pt_id = 'pt_%d' %index
+            pt_id = 'pt_%d' % index
             pci_map = {}
             for device in devices:
                 if device['id'] == pt_id:
@@ -1053,7 +1053,7 @@ class QEMUKvm(VirtBase):
             m = re.match(pci_reg, line)
             n = re.match(id_reg, line)
             if m:
-                pci = "%02d:%02d.%d" %(int(m.group(2)), int(m.group(4)), int(m.group(5)))
+                pci = "%02d:%02d.%d" % (int(m.group(2)), int(m.group(4)), int(m.group(5)))
             if n:
                 dev_id = n.group(1)
                 if dev_id != '':
