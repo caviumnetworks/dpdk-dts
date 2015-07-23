@@ -291,7 +291,7 @@ class TestVxlanSample(TestCase):
                 'iface="%s", count=%d, timeout=5)' % (itf, count))
         if pkt_dmac != "":
             self.tester.scapy_append(
-                'p = sniff(filter="ether dst %s",' % pkt_smac +
+                'p = sniff(filter="ether dst %s",' % pkt_dmac +
                 'iface="%s", count=%d, timeout=5)' % (itf, count))
         self.tester.scapy_append(
             'wrpcap(\"%s\", p)' % self.capture_file)
