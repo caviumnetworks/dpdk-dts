@@ -67,24 +67,27 @@ Send time sync packet from tester::
         iface=txItf)
 
 Check below message dumped by testpmd::
-    (outer) L2 type: MAC Timesync
+    (outer) L2 type: ETHER_Timesync
     
 Send ARP packet from tester::
-    sendp([Ether(dst='FF:FF:FF:FF:FF:FF'/ARP()],
+    sendp([Ether(dst='FF:FF:FF:FF:FF:FF')/ARP()],
         iface=txItf)
 
 Check below message dumped by testpmd::
-    (outer) L2 type: ARP
+    (outer) L2 type: ETHER_ARP
         
 Send LLDP packet from tester::
     sendp([Ether()/LLDP()/LLDPManagementAddress()], iface=txItf)
 
 Check below message dumped by testpmd::
-    (outer) L2 type: LLDP
+    (outer) L2 type: ETHER_LLDP
 
 Test Case: IPv4&L4 packet type detect
 =====================================
 This case checked that whether L3 and L4 packet can be normally detected.
+Niantic and i350 will shown that L2 type is MAC.
+Only Fortville can detect icmp packet.
+Only niantic and i350 can detect ipv4 extension packet.
 Fortville did not detect whether packet contian ipv4 header options, so L3
 type will be shown as IPV4_EXT_UNKNOWN.
 Fortville will identify all unrecognized L4 packet as L4_NONFRAG.
@@ -93,48 +96,53 @@ Only Fortville can inentify L4 fragement packet.
 Send IP only packet and verify L2/L3/L4 corrected::
     sendp([Ether()/IP()/Raw('\0'*60)], iface=txItf)
     
-    (outer) L2 type: MAC
+    (outer) L2 type: ETHER
     (outer) L3 type: IPV4
     (outer) L4 type: Unknown
 
 Send IP+UDP packet and verify L2/L3/L4 corrected::
     sendp([Ether()/IP()/UDP()/Raw('\0'*60)], iface=txItf)
-    
-    (outer) L2 type: MAC
-    (outer) L3 type: IPV4
+
     (outer) L4 type: UDP
 
 Send IP+TCP packet and verify L2/L3/L4 corrected::
     sendp([Ether()/IP()/TCP()/Raw('\0'*60)], iface=txItf)
-    
-    (outer) L2 type: MAC
-    (outer) L3 type: IPV4
+
     (outer) L4 type: TCP
 
 Send IP+SCTP packet and verify L2/L3/L4 corrected::
     sendp([Ether()/IP()/SCTP()/Raw('\0'*60)], iface=txItf)
-    
-    (outer) L2 type: MAC
-    (outer) L3 type: IPV4
+
     (outer) L4 type: SCTP
 
-Send IP+ICMP packet and verify L2/L3/L4 corrected::
+Send IP+ICMP packet and verify L2/L3/L4 corrected(Fortville)::
     sendp([Ether()/IP()/ICMP()/Raw('\0'*60)], iface=txItf)
 
-    (outer) L2 type: MAC
-    (outer) L3 type: IPV4
     (outer) L4 type: ICMP
 
-Send IP fragment+TCP packet and verify L2/L3/L4 corrected::
+Send IP fragment+TCP packet and verify L2/L3/L4 corrected(Fortville)::
     sendp([Ether()/IP(frag=5)/TCP()/Raw('\0'*60)], iface=txItf)
-    
-    (outer) L2 type: MAC
+
+    (outer) L2 type: ETHER
     (outer) L3 type: IPV4_EXT_UNKNOWN
     (outer) L4 type: L4_FRAG
+
+Send IP extension packet and verify L2/L3 corrected(Niantic,i350)::
+    sendp([Ether()/IP(ihl=10)/Raw('\0'*40)],iface=txItf)
+
+    (outer) L3 type: IPV4_EXT
+    (outer) L4 type: Unknown
+
+Send IP extension+SCTP packet and verify L2/L3/L4 corrected(Niantic,i350)::
+    sendp([Ether()/IP(ihl=10)/SCTP()/Raw('\0'*40)],iface=txItf)
+
+    (outer) L3 type: IPV4_EXT
+    (outer) L4 type: SCTP
 
 Test Case: IPv6&L4 packet type detect
 =====================================
 This case checked that whether IPv6 and L4 packet can be normally detected.
+Niantic and i350 will shown that L2 type is MAC.
 Fortville did not detect whether packet contian ipv6 extension options, so L3
 type will be shown as IPV6_EXT_UNKNOWN.
 Fortville will identify all unrecognized L4 packet as L4_NONFRAG.
@@ -143,31 +151,31 @@ Only Fortville can inentify L4 fragement packet.
 Send IPv6 only packet and verify L2/L3/L4 corrected::
     sendp([Ether()/IPv6()/Raw('\0'*60)], iface=txItf)
 
-    (outer) L2 type: MAC
+    (outer) L2 type: ETHER
     (outer) L3 type: IPV6
     (outer) L4 type: Unknown 
 
 Send IPv6+UDP packet and verify L2/L3/L4 corrected::
     sendp([Ether()/IPv6()/UDP()/Raw('\0'*60)], iface=txItf)
 
-    (outer) L2 type: MAC
-    (outer) L3 type: IPV6
     (outer) L4 type: UDP 
 
 Send IPv6+TCP packet and verify L2/L3/L4 corrected::
     sendp([Ether()/IPv6()/TCP()/Raw('\0'*60)], iface=txItf)
 
-    (outer) L2 type: MAC
-    (outer) L3 type: IPV6
     (outer) L4 type: TCP
 
-Send IPv6 fragment packet and verify L2/L3/L4 corrected::
+Send IPv6 fragment packet and verify L2/L3/L4 corrected(Fortville)::
     sendp([Ether()/IPv6()/IPv6ExtHdrFragment()/Raw('\0'*60)],iface=txItf)
 
-    (outer) L2 type: MAC
     (outer) L3 type: IPV6_EXT_UNKNOWN
     (outer) L4 type: L4_FRAG
 
+Send IPv6 fragment packet and verify L2/L3/L4 corrected(Niantic,i350)::
+    sendp([Ether()/IPv6()/IPv6ExtHdrFragment()/Raw('\0'*60)],iface=txItf)
+
+    (outer) L3 type: IPV6_EXT
+    (outer) L4 type: Unknown
     
 Test Case: IP in IPv4 tunnel packet type detect
 ===============================================
@@ -177,7 +185,7 @@ detected by Fortville.
 Send IPv4+IPv4 fragment packet and verify inner and outer L2/L3/L4 corrected::
     sendp([Ether()/IP()/IP(frag=5)/UDP()/Raw('\0'*40)], iface=txItf)
 
-    (outer) L2 type: MAC
+    (outer) L2 type: ETHER
     (outer) L3 type: IPV4_EXT_UNKNOWN
     (outer) L4 type: Unknown
     Tunnel type: IP
@@ -217,7 +225,7 @@ Send IPv4+IPv6 fragment packet and inner and outer L2/L3/L4 corrected::
     Inner L4 type: L4_FRAG  
     
 Send IPv4+IPv6 packet and verify inner and outer L2/L3/L4 corrected::
-    sendp([Ether()/IP()/IPv6()/IPv6ExtHdrFragment()/Raw('\0'*40)],iface=txItf)
+    sendp([Ether()/IP()/IPv6()/Raw('\0'*40)],iface=txItf)
 
     Inner L4 type: L4_NONFRAG   
 
@@ -241,10 +249,10 @@ Send IPv4+IPv6+ICMP packet and verify inner and outer L2/L3/L4 corrected::
     
     Inner L4 type: ICMP
 
-Test Case: IPv6 in IPv4 tunnel packet type detect by niantic
-============================================================
+Test Case: IPv6 in IPv4 tunnel packet type detect by niantic and i350
+=====================================================================
 This case checked that whether IPv4 in IPv6 tunnel packet can be normally
-detected by Niantic.
+detected by Niantic and i350.
 
 Send IPv4+IPv6 packet and verify inner and outer L2/L3/L4 corrected::
     sendp([Ether()/IP()/IPv6()/Raw('\0'*40)], iface=txItf)
@@ -295,7 +303,7 @@ detected by Fortville.
 Send IPv4+IPv4 fragment packet and verify inner and outer L2/L3/L4 corrected::
     sendp([Ether()/IP()/IP(frag=5)/UDP()/Raw('\0'*40)],iface=txItf)
 
-    (outer) L2 type: MAC
+    (outer) L2 type: ETHER
     (outer) L3 type: IPV4_EXT_UNKNOWN
     (outer) L4 type: Unknown
     Tunnel type: IP
@@ -373,11 +381,11 @@ corrected::
     sendp([Ether()/IP()/NVGRE()/Ether()/IP(frag=5)/Raw('\0'*40)],
     iface=txItf)
 
-    (outer) L2 type: MAC
+    (outer) L2 type: ETHER
     (outer) L3 type: IPV4_EXT_UNKNOWN
     (outer) L4 type: Unknown
     Tunnel type: GRENAT
-    Inner L2 type: MAC
+    Inner L2 type: ETHER
     Inner L3 type: IPV4_EXT_UNKNOWN
     Inner L4 type: L4_FRAG
 
@@ -392,7 +400,7 @@ Send IPv4+NVGRE+MAC_VLAN packet and verify inner and outer L2/L3/L4
 corrected::
     sendp([Ether()/IP()/NVGRE()/Ether()/Dot1Q()/Raw('\0'*40)], iface=txItf)
 
-    Inner L2 type: MAC_VLAN
+    Inner L2 type: ETHER_VLAN
     Inner L4 type: Unknown
     
 Send IPv4+NVGRE+MAC_VLAN+IPv4 fragment packet and verify inner and outer
@@ -428,7 +436,7 @@ Send IPv4+NVGRE+MAC_VLAN+IPv4+SCTP packet and verify inner and outer L2/L3/L4
 corrected::
     sendp([Ether()/IP()/NVGRE()/Ether()/Dot1Q()/IP()/SCTP()/Raw('\0'*40)],
     iface=txItf)
-    Inner L4 type: UDP
+    Inner L4 type: SCTP
     
 Send IPv4+NVGRE+MAC_VLAN+IPv4+ICMP packet and verify inner and outer L2/L3/L4
 corrected::
@@ -488,11 +496,11 @@ be displayed as GRENAT.
 Send IPV6+NVGRE+MAC packet and verify inner and outer L2/L3/L4 corrected::
     sendp([Ether()/IPv6(nh=47)/NVGRE()/Ether()/Raw('\0'*18)], iface=txItf)
     
-    (outer) L2 type: MAC
+    (outer) L2 type: ETHER
     (outer) L3 type: IPV6_EXT_UNKNOWN
     (outer) L4 type: Unknown
     Tunnel type: GRENAT
-    Inner L2 type: MAC
+    Inner L2 type: ETHER
     Inner L3 type: Unkown
     Inner L4 type: Unknown
     
@@ -587,7 +595,7 @@ corrected::
     sendp([Ether()/IPv6(nh=47)/NVGRE()/Ether()/Dot1Q()/IP(frag=5)/
     Raw('\0'*40)], iface=txItf)
 
-    Inner L2 type: MAC_VLAN
+    Inner L2 type: ETHER_VLAN
     Inner L3 type: IPV4_EXT_UNKNOWN
     Inner L4 type: L4_FRAG
     
@@ -680,7 +688,7 @@ Send IPv4+GRE+IPv4 fragment packet and verify inner and outer L2/L3/L4
 corrected::
     sendp([Ether()/IP()/GRE()/IP(frag=5)/Raw('x'*40)], iface=txItf)
 
-    (outer) L2 type: MAC
+    (outer) L2 type: ETHER
     (outer) L3 type: IPV4_EXT_UNKNOWN
     (outer) L4 type: Unknown
     Tunnel type: GRENAT
@@ -731,11 +739,11 @@ corrected::
     sendp([Ether()/IP()/UDP()/Vxlan()/Ether()/IP(frag=5)/Raw('\0'*40)],
     iface=txItf)
 
-    (outer) L2 type: MAC
+    (outer) L2 type: ETHER
     (outer) L3 type: IPV4_EXT_UNKNOWN
     (outer) L4 type: Unknown
     Tunnel type: GRENAT
-    Inner L2 type: MAC
+    Inner L2 type: ETHER
     Inner L3 type: IPV4_EXT_UNKNOWN
     Inner L4 type: L4_FRAG
     
@@ -798,7 +806,7 @@ corrected::
     
 Send IPv4+Vxlan+MAC+IPv6+TCP packet and verify inner and outer L2/L3/L4
 corrected::
-    sendp([Ether()/IP()/UDP()/Vxlan()/Ether()/IPv6()/UDP()/Raw('\0'*40)],
+    sendp([Ether()/IP()/UDP()/Vxlan()/Ether()/IPv6()/TCP()/Raw('\0'*40)],
     iface=txItf)
 
     Inner L4 type: TCP
