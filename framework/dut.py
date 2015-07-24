@@ -176,6 +176,8 @@ class Dut(Crb):
 
         self.init_core_list()
         self.pci_devices_information()
+        # make sure ipv6 enable before scan
+        self.enable_tester_ipv6()
         # scan ports before restore interface
         self.scan_ports()
         # restore dut ports to kernel
@@ -867,7 +869,7 @@ class Dut(Crb):
                 port.disable_ipv6()
 
     def enable_tester_ipv6(self):
-        for tester_port in self.ports_map:
+        for tester_port in range(len(self.tester.ports_info)):
             if self.tester.ports_info[tester_port]['type'] != 'ixia':
                 port = self.tester.ports_info[tester_port]['port']
                 port.enable_ipv6()
