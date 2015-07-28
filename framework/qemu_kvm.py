@@ -1025,7 +1025,7 @@ class QEMUKvm(VirtBase):
         if not self.monitor_sock_path:
             self.host_logger.info(
                 "No monitor between on host [ %s ] for guest [ %s ]" %
-                (self.host_dut.Name, self.vm_name))
+                (self.host_dut.NAME, self.vm_name))
             return None
 
         self.host_session.send_expect('nc -U %s' % self.monitor_sock_path, '(qemu)', 2)
@@ -1045,10 +1045,14 @@ class QEMUKvm(VirtBase):
         pci_reg = r'^.*Bus(\s+)(\d+), device(\s+)(\d+), function (\d+)'
         id_reg = r'^.*id \"(.*)\"'
 
+        pcis = []
         out = self.__monitor_session('info', 'pci')
+
+        if out is None:
+            return pcis
+
         lines = out.split("\r\n")
 
-        pcis = []
         for line in lines:
             m = re.match(pci_reg, line)
             n = re.match(id_reg, line)
@@ -1076,7 +1080,7 @@ class QEMUKvm(VirtBase):
         if not self.qga_sock_path:
             self.host_logger.info(
                 "No QGA service between host [ %s ] and guest [ %s ]" %
-                (self.host_dut.Name, self.vm_name))
+                (self.host_dut.NAME, self.vm_name))
             return None
 
         cmd_head = '~/QMP/' + \
