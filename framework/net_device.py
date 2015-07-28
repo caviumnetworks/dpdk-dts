@@ -518,6 +518,10 @@ class NetDevice(object):
             "cat /sys/bus/pci/devices/0000\:%s\:%s/sriov_numvfs" %
             (bus_id, devfun_id), "# ")
         sriov_vfs_pci = []
+
+        if "No such file" in sriov_numvfs:
+            return sriov_vfs_pci
+
         if int(sriov_numvfs) == 0:
             pass
         else:
