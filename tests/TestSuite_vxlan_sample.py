@@ -231,9 +231,6 @@ class TestVxlanSample(TestCase):
         if self.vm_dut:
             self.vm_dut.kill_all()
             time.sleep(1)
-            self.vm_dut.close()
-            self.vm_dut.logger.logger_exit()
-            self.vm_dut = None
 
         if self.vm:
             self.vm.stop()

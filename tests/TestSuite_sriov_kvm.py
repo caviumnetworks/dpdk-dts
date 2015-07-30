@@ -307,14 +307,10 @@ class TestSriovKvm(TestCase):
         self.setup_2vm_2vf_env_flag = 1
 
     def destroy_2vm_2pf_env(self):
-        self.vm_dut_0.close()
-        self.vm_dut_0.logger.logger_exit()
         self.vm0.stop()
         self.port0.bind_driver('igb_uio')
         self.vm0 = None
 
-        self.vm_dut_1.close()
-        self.vm_dut_1.logger.logger_exit()
         self.vm1.stop()
         self.port1.bind_driver('igb_uio')
         self.vm1 = None
@@ -373,16 +369,10 @@ class TestSriovKvm(TestCase):
             raise Exception(e)
 
     def destroy_2vm_2vf_env(self):
-        if getattr(self, 'vm_dut_0', None):
-            self.vm_dut_0.close()
-            self.vm_dut_0.logger.logger_exit()
         if getattr(self, 'vm0', None):
             self.vm0.stop()
             self.vm0 = None
 
-        if getattr(self, 'vm_dut_1', None):
-            self.vm_dut_1.close()
-            self.vm_dut_1.logger.logger_exit()
         if getattr(self, 'vm1', None):
             self.vm1.stop()
             self.vm1 = None
@@ -468,30 +458,18 @@ class TestSriovKvm(TestCase):
             raise Exception(e)
 
     def destroy_4vm_4vf_env(self):
-        if getattr(self, 'vm_dut_0', None):
-            self.vm_dut_0.close()
-            self.vm_dut_0.logger.logger_exit()
         if getattr(self, 'vm0', None):
             self.vm0.stop()
             self.vm0 = None
 
-        if getattr(self, 'vm_dut_1', None):
-            self.vm_dut_1.close()
-            self.vm_dut_1.logger.logger_exit()
         if getattr(self, 'vm1', None):
             self.vm1.stop()
             self.vm1 = None
 
-        if getattr(self, 'vm_dut_2', None):
-            self.vm_dut_2.close()
-            self.vm_dut_2.logger.logger_exit()
         if getattr(self, 'vm2', None):
             self.vm2.stop()
             self.vm2 = None
 
-        if getattr(self, 'vm_dut_3', None):
-            self.vm_dut_3.close()
-            self.vm_dut_3.logger.logger_exit()
         if getattr(slef, 'vm3', None):
             self.vm3.stop()
             self.vm3 = None

@@ -355,6 +355,8 @@ class VirtBase(object):
         Stop the VM.
         """
         self.vm_dut.close()
+        self.vm_dut.logger.logger_exit()
+        self.vm_dut = None
         self._stop_vm()
         self.virt_pool.free_all_resource(self.vm_name)
 
