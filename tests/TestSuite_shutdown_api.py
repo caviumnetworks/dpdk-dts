@@ -249,14 +249,16 @@ class TestShutdownApi(TestCase):
                        self.tester.get_interface(self.tester.get_local_port(self.ports[1]))
                        ]
         #blackList = self.dut.create_blacklist_string(self.target, self.nic)
+        testcorelist = self.dut.get_core_list("1S/8C/1T", socket=self.ports_socket)
 
-        self.pmdout.start_testpmd("1S/8C/1T", "--portmask=%s" % dts.create_mask([self.ports[0], self.ports[1]]), socket=self.ports_socket)
+        self.pmdout.start_testpmd(testcorelist, "--portmask=%s" % dts.create_mask([self.ports[0], self.ports[1]]), socket=self.ports_socket)
+        fwdcoremask = dts.create_mask(testcorelist[-3:])
 
         self.dut.send_expect("port stop all", "testpmd> ", 100)
         self.dut.send_expect("port config all rxq 2", "testpmd> ")
         self.dut.send_expect("port config all txq 2", "testpmd> ")
         #self.dut.send_expect("set coremask 0x1e", "testpmd> ")
-        self.dut.send_expect("set coremask 0xe0", "testpmd> ")
+        self.dut.send_expect("set coremask %s" % fwdcoremask, "testpmd> ")
         self.dut.send_expect("set fwd mac", "testpmd>")
         self.dut.send_expect("port start all", "testpmd> ", 100)
         out = self.dut.send_expect("show config rxtx", "testpmd> ")
