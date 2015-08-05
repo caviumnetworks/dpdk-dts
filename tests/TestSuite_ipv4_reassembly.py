@@ -96,8 +96,10 @@ class TestIpReassembly(TestCase):
         #               r"examples/ip_reassembly/ipv4_rsmbl.h")
         # self.dut.send_expect("sed -i 's/CONFIG_RTE_LIBRTE_IP_FRAG_MAX_FRAG=.*$/CONFIG_RTE_LIBRTE_IP_FRAG_MAX_FRAG=%s/' ./config/common_linuxapp" %int(num_of_fragments), "# ")
         # self.dut.send_expect(sed_command % int(num_of_fragments), '#', 60)
-
-        self.dut.send_expect("sed -i 's/CONFIG_RTE_LIBRTE_IP_FRAG_MAX_FRAG=.*$/CONFIG_RTE_LIBRTE_IP_FRAG_MAX_FRAG=%s/' ./config/common_linuxapp" % int(num_of_fragments), "# ")
+        if 'bsdapp' in self.target:
+            self.dut.send_expect("sed -i 's/CONFIG_RTE_LIBRTE_IP_FRAG_MAX_FRAG=.*$/CONFIG_RTE_LIBRTE_IP_FRAG_MAX_FRAG=%s/' ./config/common_bsdapp" % int(num_of_fragments), "# ")
+        else:
+            self.dut.send_expect("sed -i 's/CONFIG_RTE_LIBRTE_IP_FRAG_MAX_FRAG=.*$/CONFIG_RTE_LIBRTE_IP_FRAG_MAX_FRAG=%s/' ./config/common_linuxapp" % int(num_of_fragments), "# ")
         self.dut.send_expect("export RTE_TARGET=" + self.target, "#")
         self.dut.send_expect("export RTE_SDK=`pwd`", "#")
         self.dut.send_expect("rm -rf %s" % self.target, "# ", 5)
