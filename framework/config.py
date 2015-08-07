@@ -36,7 +36,7 @@ Generic port and crbs configuration file load function
 import re
 import ConfigParser  # config parse module
 import argparse      # prase arguments module
-
+from settings import IXIA
 from exception import ConfigParseException, VirtConfigParseException
 
 PORTCONF = "conf/ports.cfg"
@@ -185,6 +185,60 @@ class PortConf(UserConf):
             return False
 
 
+class CrbsConf(UserConf):
+    DEF_CRB = {'IP': '', 'name': 'CrownPassCRB1', 'user': '',
+               'pass': '', 'tester IP': '', 'tester pass': '',
+               IXIA: None, 'memory channels': 4,
+               'bypass core0': True}
+
+    def __init__(self, crbs_conf=CRBCONF):
+        self.config_file = crbs_conf
+        self.crbs_cfg = []
+        try:
+            self.crbs_conf = UserConf(self.config_file)
+        except ConfigParseException:
+            self.crbs_conf = None
+            raise ConfigParseException
+
+    def load_crbs_config(self):
+        sections = self.crbs_conf.get_sections()
+        if not sections:
+            return self.crbs_cfg
+
+        for name in sections:
+            crb = self.DEF_CRB.copy()
+            crb_confs = self.crbs_conf.load_section(name)
+            if not crb_confs:
+                continue
+
+            # covert file configuration to dts crbs
+            for conf in crb_confs:
+                key, value = conf
+                if key == 'dut_ip':
+                    crb['IP'] = value
+                elif key == 'dut_user':
+                    crb['user'] = value
+                elif key == 'dut_passwd':
+                    crb['pass'] = value
+                elif key == 'os':
+                    crb['OS'] = value
+                elif key == 'tester_ip':
+                    crb['tester IP'] = value
+                elif key == 'tester_passwd':
+                    crb['tester pass'] = value
+                elif key == 'ixia_group':
+                    crb[IXIA] = value
+                elif key == 'channels':
+                    crb['memory channels'] = int(value)
+                elif key == 'bypass_core0':
+                    if value == 'True':
+                        crb['bypass core0'] = True
+                    else:
+                        crb['bypass core0'] = False
+
+            self.crbs_cfg.append(crb)
+        return self.crbs_cfg
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description="Load DTS configuration files")
@@ -218,3 +272,7 @@ if __name__ == '__main__':
     virtconf = VirtConf(VIRTCONF)
     virtconf.load_virt_config('LIBVIRT')
     print virtconf.get_virt_config()
+
+    # example for crbs configuration file
+    crbsconf = CrbsConf(CRBCONF)
+    print crbsconf.load_crbs_config()
