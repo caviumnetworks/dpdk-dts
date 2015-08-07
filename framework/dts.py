@@ -57,7 +57,7 @@ from logger import getLogger
 import logger
 import debugger
 from virt_scene import VirtScene
-
+from checkCase import *
 import sys
 reload(sys)
 sys.setdefaultencoding('UTF8')
@@ -291,6 +291,8 @@ def dts_run_target(crbInst, targets, test_suites, nic, scenario):
     """
     Run each target in execution targets.
     """
+    global skip_case_mode
+    skip_case_mode = check_case_skip(dut)
     if scenario != '':
         scene = VirtScene(dut, tester, scenario)
     else:
@@ -299,7 +301,7 @@ def dts_run_target(crbInst, targets, test_suites, nic, scenario):
     if scene:
         scene.load_config()
         scene.create_scene()
-
+    
     for target in targets:
         log_handler.info("\nTARGET " + target)
         result.target = target
@@ -402,11 +404,12 @@ def run_all(config_file, pkgName, git, patch, skip_setup,
     global Package
     global Patches
     global scenario
-
+    global check_case_inst
     # save global variable
     Package = pkgName
     Patches = patch
-
+    check_case = parse_file()
+    check_case.set_filter_case()
     # prepare the output folder
     if output_dir == '':
         output_dir = FOLDERS['Output']
@@ -459,7 +462,6 @@ def run_all(config_file, pkgName, git, patch, skip_setup,
 
         # verify if the delimiter is good if the lists are vertical
         dutIP, targets, test_suites, nics, scenario = dts_parse_config(section)
-
         log_handler.info("\nDUT " + dutIP)
 
         # look up in crbs - to find the matching IP
@@ -479,6 +481,7 @@ def run_all(config_file, pkgName, git, patch, skip_setup,
         # init dut, tester crb
         dts_crbs_init(crbInst, skip_setup, read_cache, project, base_dir, nics, virttype)
 
+        check_case_inst = check_case_skip(dut)
         # Run DUT prerequisites
         if dts_run_prerequisties(pkgName, patch) is False:
             dts_crbs_exit()
@@ -591,8 +594,14 @@ def execute_test_case(test_suite, test_case):
     global debug_case
     global module
     result.test_case = test_case.__name__
-
     rst.write_title("Test Case: " + test_case.__name__)
+    if check_case_inst.case_skip(test_case.__name__[len("test_"):]):
+       log_handler.info('Test Case %s Result SKIPED:' % test_case.__name__)
+       rst.write_result("N/A")
+       result.test_case_skip(skip_case_mode.comments)
+       save_all_results()
+       return
+
     if performance_only:
         rst.write_annex_title("Annex: " + test_case.__name__)
     try:
