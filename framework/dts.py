@@ -41,7 +41,6 @@ import signal       # signal module for debug mode
 import time         # time module for unique output folder
 
 import rst          # rst file support
-from crbs import crbs
 from tester import Tester
 from dut import Dut
 from settings import FOLDERS, NICS, DRIVERS
@@ -57,6 +56,7 @@ from logger import getLogger
 import logger
 import debugger
 from virt_scene import VirtScene
+from config import CrbsConf
 from checkCase import *
 import sys
 reload(sys)
@@ -456,6 +456,10 @@ def run_all(config_file, pkgName, git, patch, skip_setup,
     excel_report = ExcelReporter(output_dir + '/test_results.xls')
     stats = StatsReporter(output_dir + '/statistics.txt')
 
+    crbInst = None
+    crbs_conf = CrbsConf()
+    crbs = crbs_conf.load_crbs_config()
+
     # for all Exectuion sections
     for section in config.sections():
         dts_parse_param(section)
@@ -465,7 +469,6 @@ def run_all(config_file, pkgName, git, patch, skip_setup,
         log_handler.info("\nDUT " + dutIP)
 
         # look up in crbs - to find the matching IP
-        crbInst = None
         for crb in crbs:
             if crb['IP'] == dutIP:
                 crbInst = crb
@@ -744,3 +747,21 @@ def save_all_results():
     """
     excel_report.save(result)
     stats.save(result)
+
+def accepted_nic(pci_id):
+    """
+    Return True if the pci_id is a known NIC card in the settings file and if
+    it is selected in the execution file, otherwise it returns False.
+    """
+    global nic
+    if pci_id not in NICS.values():
+        return False
+
+    if nic is 'any':
+        return True
+
+    else:
+        if pci_id == NICS[nic]:
+            return True
+
+    return False
