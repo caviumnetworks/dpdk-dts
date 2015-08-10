@@ -33,7 +33,7 @@ import re
 import string
 import time
 import dts
-import ixiacfg
+from config import IxiaConf
 from ssh_connection import SSHConnection
 from settings import SCAPY2IXIA
 from logger import getLogger
@@ -147,16 +147,19 @@ class IxiaPacketGenerator(SSHConnection):
         self.conRelation = {}
 
         ixiaRef = self.tester.get_external_traffic_generator()
-        if ixiaRef is None or ixiaRef not in ixiacfg.ixiaPorts:
+
+        ixiacfg = IxiaConf()
+        ixiaPorts = ixiacfg.load_ixia_config()
+        if ixiaRef is None or ixiaRef not in ixiaPorts:
             return
 
-        self.ixiaVersion = ixiacfg.ixiaPorts[ixiaRef]["Version"]
-        self.ports = ixiacfg.ixiaPorts[ixiaRef]["Ports"]
+        self.ixiaVersion = ixiaPorts[ixiaRef]["Version"]
+        self.ports = ixiaPorts[ixiaRef]["Ports"]
 
         self.logger.info(self.ixiaVersion)
         self.logger.info(self.ports)
 
-        self.tclServerIP = ixiacfg.ixiaPorts[ixiaRef]["IP"]
+        self.tclServerIP = ixiaPorts[ixiaRef]["IP"]
 
         # prepare tcl shell and ixia library
         self.send_expect("tclsh", "% ")
