@@ -42,6 +42,7 @@ from exception import ConfigParseException, VirtConfigParseException
 PORTCONF = "conf/ports.cfg"
 CRBCONF = "conf/crbs.cfg"
 VIRTCONF = "conf/virt_global.cfg"
+IXIACONF = "conf/ixia.cfg"
 
 
 class UserConf():
@@ -239,12 +240,70 @@ class CrbsConf(UserConf):
             self.crbs_cfg.append(crb)
         return self.crbs_cfg
 
+
+class IxiaConf(UserConf):
+
+    def __init__(self, ixia_conf=IXIACONF):
+        self.config_file = ixia_conf
+        self.ixia_cfg = {}
+        try:
+            self.ixia_conf = UserConf(self.config_file)
+        except ConfigParseException:
+            self.ixia_conf = None
+            raise ConfigParseException
+
+    def load_ixia_config(self):
+        port_reg = r'card=(\d+),port=(\d+)'
+        groups = self.ixia_conf.get_sections()
+        if not groups:
+            return self.ixia_cfg
+
+        for group in groups:
+            ixia_group = {}
+            ixia_confs = self.ixia_conf.load_section(group)
+            if not ixia_confs:
+                continue
+
+            # convert file configuration to dts ixiacfg
+            for conf in ixia_confs:
+                key, value = conf
+                if key == 'ixia_version':
+                    ixia_group['Version'] = value
+                elif key == 'ixia_ip':
+                    ixia_group['IP'] = value
+                elif key == 'ixia_ports':
+                    ports = self.ixia_conf.load_config(value)
+                    ixia_ports = []
+                    for port in ports:
+                        m = re.match(port_reg, port)
+                        if m:
+                            ixia_port = {}
+                            ixia_port["card"] = int(m.group(1))
+                            ixia_port["port"] = int(m.group(2))
+                            ixia_ports.append(ixia_port)
+                    ixia_group['Ports'] = ixia_ports
+
+            if 'Version' not in ixia_group:
+                print 'ixia configuration file request ixia_version option!!!'
+                continue
+            if 'IP' not in ixia_group:
+                print 'ixia configuration file request ixia_ip option!!!'
+                continue
+            if 'Ports' not in ixia_group:
+                print 'ixia configuration file request ixia_ports option!!!'
+                continue
+
+            self.ixia_cfg[group] = ixia_group
+
+        return self.ixia_cfg
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description="Load DTS configuration files")
     parser.add_argument("-p", "--portconf", default=PORTCONF)
     parser.add_argument("-c", "--crbconf", default=CRBCONF)
     parser.add_argument("-v", "--virtconf", default=VIRTCONF)
+    parser.add_argument("-i", "--ixiaconf", default=IXIACONF)
     args = parser.parse_args()
 
     # not existed configuration file
@@ -276,3 +335,7 @@ if __name__ == '__main__':
     # example for crbs configuration file
     crbsconf = CrbsConf(CRBCONF)
     print crbsconf.load_crbs_config()
+
+    # example for ixia configuration file
+    ixiaconf = IxiaConf(IXIACONF)
+    print ixiaconf.load_ixia_config()
