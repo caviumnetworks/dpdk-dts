@@ -171,7 +171,7 @@ class TestVlan(TestCase):
         self.vlan_send_packet(self.vlan)
         out = self.get_tcpdump_package()
         self.verify("vlan %d" % self.vlan not in out, "Wrong vlan:" + out)
-        out = self.dut.send_expect("quit", "#", 120)
+        out = self.dut.send_expect("stop", "testpmd> ", 120)
 
     def test_vlan_strip_config_off(self):
 
@@ -207,11 +207,8 @@ class TestVlan(TestCase):
 
         out = self.get_tcpdump_package()
         self.verify("vlan %d" % self.vlan in out, "Wrong vlan: " + out)
-        if self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single", "redrockcanyou"]:
-            self.dut.send_expect("tx_vlan reset %s" % dutTxPortId, "testpmd> ", 30)
-            self.dut.send_expect("stop", "testpmd> ", 30)
-        else:
-            self.dut.send_expect("quit", "# ", 30)
+        self.dut.send_expect("tx_vlan reset %s" % dutTxPortId, "testpmd> ", 30)
+        self.dut.send_expect("stop", "testpmd> ", 30)
 
     def tear_down(self):
         """
@@ -223,4 +220,5 @@ class TestVlan(TestCase):
         """
         Run after each test suite.
         """
+        self.dut.kill_all()
         pass
