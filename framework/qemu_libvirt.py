@@ -145,6 +145,16 @@ class LibvirtKvm(VirtBase):
             memoryBacking = ET.SubElement(self.domain, 'memoryBacking')
             ET.SubElement(memoryBacking, 'hugepages')
 
+    def set_vm_cpu(self, **options):
+        """
+        Set VM cpu.
+        """
+        index = self.find_option_index('cpu')
+        if index:
+            self.params[index] = {'cpu': [options]}
+        else:
+            self.params.append({'cpu': [options]})
+
     def add_vm_cpu(self, **options):
         """
         'number' : '4' #number of vcpus

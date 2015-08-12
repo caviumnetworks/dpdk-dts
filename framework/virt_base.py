@@ -113,7 +113,8 @@ class VirtBase(object):
         global_conf = conf.get_virt_config()
         for param in global_conf:
             for key in param.keys():
-                self.__save_local_config(key, param[key])
+                if self.find_option_index(key) is None:
+                    self.__save_local_config(key, param[key])
 
     def load_local_config(self, suite_name):
         """
