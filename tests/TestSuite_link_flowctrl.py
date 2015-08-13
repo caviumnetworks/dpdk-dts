@@ -149,10 +149,11 @@ class TestLinkFlowctrl(TestCase):
         tgenInput = []
         tgenInput.append((tester_tx_port, tester_rx_port, "test.pcap"))
 
-        self.dut.send_expect("set flow_ctrl rx %s tx %s 300 50 10 1 mac_ctrl_frame_fwd %s autoneg on %d " % (
+        self.dut.send_expect("set flow_ctrl rx %s tx %s 300 50 10 1 mac_ctrl_frame_fwd %s autoneg %s %d " % (
                              flow_control,
                              flow_control,
                              pause_frame_fwd,
+                             flow_control,
                              self.rx_port),
                              "testpmd> ")
 
