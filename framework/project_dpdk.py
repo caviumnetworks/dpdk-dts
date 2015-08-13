@@ -39,7 +39,7 @@ from crb import Crb
 from dut import Dut
 from tester import Tester
 from logger import getLogger
-from settings import IXIA
+from settings import IXIA, accepted_nic
 
 
 class DPDKdut(Dut):
@@ -50,16 +50,17 @@ class DPDKdut(Dut):
     """
 
     def __init__(self, crb, serializer):
-        self.NAME = 'dut'
         super(DPDKdut, self).__init__(crb, serializer)
+        self.testpmd = None
 
-    def set_target(self, target):
+    def set_target(self, target, bind_dev=True):
         """
         Set env variable, these have to be setup all the time. Some tests
         need to compile example apps by themselves and will fail otherwise.
         Set hugepage on DUT and install modules required by DPDK.
         Configure default ixgbe PMD function.
         """
+        self.target = target
         self.set_toolchain(target)
 
         # set env variable
@@ -75,7 +76,7 @@ class DPDKdut(Dut):
         self.setup_memory()
         self.setup_modules(target)
 
-        if self.get_os_type() == 'linux':
+        if bind_dev and self.get_os_type() == 'linux':
             self.bind_interfaces_linux(dts.drivername)
 
     def setup_modules(self, target):
@@ -100,6 +101,7 @@ class DPDKdut(Dut):
             if "igb_uio" in out:
                 self.send_expect("rmmod -f igb_uio", "#", 70)
             self.send_expect("insmod ./" + target + "/kmod/igb_uio.ko", "#", 60)
+
             out = self.send_expect("lsmod | grep igb_uio", "#")
             assert ("igb_uio" in out), "Failed to insmod igb_uio"
 
@@ -110,7 +112,7 @@ class DPDKdut(Dut):
         binding_list = ''
 
         for (pci_bus, pci_id) in self.pci_devices_info:
-            if dts.accepted_nic(pci_id):
+            if accepted_nic(pci_id):
                 binding_list += '%s,' % (pci_bus)
 
         self.send_expect("kldunload if_ixgbe.ko", "#")
@@ -124,22 +126,22 @@ class DPDKdut(Dut):
         Set default RX/TX PMD function, now only take effect on ixgbe.
         """
         [arch, machine, env, toolchain] = self.target.split('-')
-        if 'mode' not in self.crb:
+        if dts.rx_mode is None:
             mode = 'default'
         else:
-            mode = self.crb['mode']
+            mode = dts.rx_mode
 
-        if mode is 'scalar':
+        if mode == 'scalar':
             self.send_expect("sed -i -e 's/CONFIG_RTE_IXGBE_INC_VECTOR=.*$/"
                              + "CONFIG_RTE_IXGBE_INC_VECTOR=n/' config/common_%s" % env, "# ", 30)
             self.send_expect("sed -i -e 's/CONFIG_RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC=.*$/"
                              + "CONFIG_RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC=y/' config/common_%s" % env, "# ", 30)
-        if mode is 'full':
+        if mode == 'full':
             self.send_expect("sed -i -e 's/CONFIG_RTE_IXGBE_INC_VECTOR=.*$/"
                              + "CONFIG_RTE_IXGBE_INC_VECTOR=n/' config/common_%s" % env, "# ", 30)
             self.send_expect("sed -i -e 's/CONFIG_RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC=.*$/"
                              + "CONFIG_RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC=n/' config/common_%s" % env, "# ", 30)
-        if mode is 'vector':
+        if mode == 'vector':
             self.send_expect("sed -i -e 's/CONFIG_RTE_IXGBE_INC_VECTOR=.*$/"
                              + "CONFIG_RTE_IXGBE_INC_VECTOR=y/' config/common_%s" % env, "# ", 30)
             self.send_expect("sed -i -e 's/CONFIG_RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC=.*$/"
@@ -191,10 +193,7 @@ class DPDKdut(Dut):
         assert ("Error" not in out), "Compilation error..."
         assert ("No rule to make" not in out), "No rule to make error..."
 
-    def prerequisites(self, pkgName, patch):
-        """
-        Copy DPDK package to DUT and apply patch files.
-        """
+    def prepare_package(self, pkgName, patch):
         if not self.skip_setup:
             assert (os.path.isfile(pkgName) is True), "Invalid package"
 
@@ -249,6 +248,11 @@ class DPDKdut(Dut):
                                            (self.base_dir, dst_dir + p), "# ")
                     assert "****" not in out
 
+    def prerequisites(self, pkgName, patch):
+        """
+        Copy DPDK package to DUT and apply patch files.
+        """
+        self.prepare_package(pkgName, patch)
         self.dut_prerequisites()
 
     def bind_interfaces_linux(self, driver='igb_uio', nics_to_bind=None):
@@ -354,7 +358,7 @@ class DPDKtester(Tester):
             total_huge_pages = self.get_total_huge_pages()
             if total_huge_pages == 0:
                 self.mount_huge_pages()
-                self.set_huge_pages(4096)
+                self.set_huge_pages(1024)
 
             self.session.copy_file_to("dep/tgen.tgz")
             self.session.copy_file_to("dep/tclclient.tgz")
@@ -386,10 +390,10 @@ class DPDKtester(Tester):
         """
         hugepages_size = self.send_expect("awk '/Hugepagesize/ {print $2}' /proc/meminfo", "# ")
 
-        if int(hugepages_size) < (1024 * 1024):
-            arch_huge_pages = hugepages if hugepages > 0 else 4096
+        if int(hugepages_size) < (2048 * 2048):
+            arch_huge_pages = hugepages if hugepages > 0 else 2048
             total_huge_pages = self.get_total_huge_pages()
 
-            self.mount_huge_pages()
-            if total_huge_pages != arch_huge_pages:
-                self.set_huge_pages(arch_huge_pages)
+        self.mount_huge_pages()
+        if total_huge_pages != arch_huge_pages:
+            self.set_huge_pages(arch_huge_pages)

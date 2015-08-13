@@ -2,7 +2,8 @@ import time
 import pexpect
 import pxssh
 from debugger import ignore_keyintr, aware_keyintr
-from exception import TimeoutException, SSHConnectionException
+from exception import TimeoutException, SSHConnectionException, SSHSessionDeadException
+from utils import RED, GREEN
 
 """
 Module handle ssh sessions between tester and DUT.
@@ -14,24 +15,36 @@ Aslo support transfer files to tester or DUT.
 class SSHPexpect(object):
 
     def __init__(self, host, username, password):
-        self.magic_prompt = "[MAGIC PROMPT]"
+        self.magic_prompt = "MAGIC PROMPT"
         try:
             self.session = pxssh.pxssh()
-            self.username = username
             self.host = host
+            self.username = username
             self.password = password
-            self.session.login(self.host, self.username,
-                               self.password, original_prompt='[$#>]')
+            if ':' in host:
+                self.ip = host.split(':')[0]
+                self.port = int(host.split(':')[1])
+                self.session.login(self.ip, self.username,
+                                   self.password, original_prompt='[$#>]',
+                                   port=self.port, login_timeout=20)
+            else:
+                self.session.login(self.host, self.username,
+                                   self.password, original_prompt='[$#>]')
             self.send_expect('stty -echo', '# ', timeout=2)
-        except Exception:
+        except Exception, e:
+            print RED(e)
+            if getattr(self, 'port', None):
+                suggestion = "\nSuggession: Check if the fireware on [ %s ] " % \
+                    self.ip + "is stoped\n"
+                print GREEN(suggestion)
+
             raise SSHConnectionException(host)
 
     def init_log(self, logger, name):
         self.logger = logger
-        self.logger.config_execution(name)
         self.logger.info("ssh %s@%s" % (self.username, self.host))
 
-    def send_expect_base(self, command, expected, timeout=15):
+    def send_expect_base(self, command, expected, timeout):
         ignore_keyintr()
         self.__flush() # clear buffer
         self.session.PROMPT = expected
@@ -45,30 +58,54 @@ class SSHPexpect(object):
     def send_expect(self, command, expected, timeout=15, verify=False):
         ret = self.send_expect_base(command, expected, timeout)
         if verify:
-            ret_status = self.send_expect_base("echo $?", expected)
+            ret_status = self.send_expect_base("echo $?", expected, timeout)
             if not int(ret_status):
                 return ret
             else:
                 self.logger.error("Command: %s failure!" % command)
-                return -1
+                self.logger.error(ret)
+                return int(ret_status)
         else:
             return ret
 
-    def __flush(self):
+    def get_session_before(self, timeout=15):
+        """
+        Get all output before timeout
+        """
+        ignore_keyintr()
         self.session.PROMPT = self.magic_prompt
-        self.session.prompt(0.1)
+        try:
+            self.session.prompt(timeout)
+        except Exception as e:
+            pass
+
+        aware_keyintr()
+        before = self.get_output_before()
+        self.__flush()
+        return before
+
+    def __flush(self):
+        """
+        Clear all session buffer
+        """
+        self.session.buffer = ""
+        self.session.before = ""
 
     def __prompt(self, command, timeout):
         if not self.session.prompt(timeout):
             raise TimeoutException(command, self.get_output_all())
 
     def __sendline(self, command):
+        if not self.isalive():
+            raise SSHSessionDeadException(self.host)
         if len(command) == 2 and command.startswith('^'):
             self.session.sendcontrol(command[1])
         else:
             self.session.sendline(command)
 
     def get_output_before(self):
+        if not self.isalive():
+            raise SSHSessionDeadException(self.host)
         self.session.flush()
         before = self.session.before.rsplit('\r\n', 1)
         if before[0] == "[PEXPECT]":
@@ -104,6 +141,12 @@ class SSHPexpect(object):
         Sends a local file to a remote place.
         """
         command = 'scp {0} {1}@{2}:{3}'.format(src, self.username, self.host, dst)
+        if ':' in self.host:
+            command = 'scp -P {0} -o NoHostAuthenticationForLocalhost=yes {1} {2}@{3}:{4}'.format(
+                str(self.port), src, self.username, self.ip, dst)
+        else:
+            command = 'scp {0} {1}@{2}:{3}'.format(
+                src, self.username, self.host, dst)
         if password == '':
             self._spawn_scp(command, self.password)
         else:

@@ -28,23 +28,30 @@ import signal
 import code
 import time
 import dts
+import imp
+import dts
 
+from test_case import TestCase
 
-console = None  # global console object
-debug_cmd = ''  # global debug state
+console = None      # global console object
+debug_cmd = ''      # global debug state
+AliveSuite = None   # global suite for run command
+AliveModule = None  # global module for reload
+AliveCase = None    # global case name for run command
 
 
 def help_command():
     console.push('print \'Help on debug module\'')
     console.push('print \'DESCRIPTION\'')
     console.push('print \'DTS debug module support few debug commands\'')
-    console.push('print \'  - help: help messages\'')
-    console.push('print \'  - list: list all connections\'')
-    console.push('print \'  - connect: bind to specified connection\'')
+    console.push('print \'  - help(): help messages\'')
+    console.push('print \'  - list(): list all connections\'')
+    console.push('print \'  - connect(): bind to specified connection\'')
     console.push('print \'  -        : connect(\"dut\")\'')
-    console.push('print \'  - quit: quit debug module\'')
-    console.push('print \'  - exit: exit processing procedure\'')
-    console.push('print \'  - debug: call python debug module for further debug\'')
+    console.push('print \'  - quit(): quit debug module\'')
+    console.push('print \'  - exit(): exit processing procedure\'')
+    console.push('print \'  - debug(): call python debug module for further debug\'')
+    console.push('print \'  - rerun(): re-run the interrupted test case\'')
 
 
 def list_command():
@@ -68,6 +75,30 @@ def connect_command(connect):
         for name, session in connection.items():
             if name == connect:
                 session.session.interact()
+
+
+def rerun_command():
+    """
+    Rerun test case specified in command line
+    """
+    global AliveSuite, AliveModule, AliveCase
+    new_module = imp.reload(AliveModule)
+
+    # save arguments required to initialize suite
+    dut = AliveSuite.__dict__['dut']
+    tester = AliveSuite.__dict__['tester']
+    target = AliveSuite.__dict__['target']
+    suite = AliveSuite.__dict__['suite']
+
+    for test_classname, test_class in dts.get_subclasses(new_module, TestCase):
+        suite_obj = test_class(dut, tester, target, suite)
+
+        # copy all element from previous suite to reloaded suite
+        dts.copy_instance_attr(AliveSuite, suite_obj)
+        # re-run specified test case
+        for case in dts.get_test_cases(suite_obj, r'%s' % AliveCase):
+            if callable(case):
+                case()
 
 
 def exit_command():
@@ -108,6 +139,7 @@ def keyboard_handle(signum, frame):
     command['debug'] = debug_command
     command['help'] = help_command
     command['connect'] = connect_command
+    command['rerun'] = rerun_command
     console.push('print \"Use help command for detail information\"')
     try:
         code.interact(local=command)

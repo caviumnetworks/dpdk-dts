@@ -33,11 +33,15 @@ import os
 import re
 import time
 import dts
-from config import UserConf
-from settings import NICS
+import settings
+from config import PortConf
+from settings import NICS, LOG_NAME_SEP
 from ssh_connection import SSHConnection
 from crb import Crb
+from net_device import NetDevice
 from logger import getLogger
+from virt_resource import VirtResource
+from utils import RED
 
 
 class Dut(Crb):
@@ -60,20 +64,36 @@ class Dut(Crb):
     def __init__(self, crb, serializer):
         super(Dut, self).__init__(crb, serializer)
         self.NAME = 'dut'
+
+        self.host_init_flag = False
         self.logger = getLogger(self.NAME)
         self.session = SSHConnection(self.get_ip_address(), self.NAME,
                                      self.get_password())
         self.session.init_log(self.logger)
-        self.alt_session = SSHConnection(self.get_ip_address(), self.NAME + '_alt',
-                                         self.get_password())
+        self.alt_session = SSHConnection(
+            self.get_ip_address(),
+            self.NAME + '_alt',
+            self.get_password())
         self.alt_session.init_log(self.logger)
         self.number_of_cores = 0
         self.tester = None
         self.cores = []
         self.architecture = None
         self.ports_info = None
-        self.conf = UserConf()
+        self.conf = PortConf()
         self.ports_map = []
+        self.virt_pool = None
+
+    def init_host_session(self):
+        if self.host_init_flag:
+            pass
+        else:
+            self.host_session = SSHConnection(
+                self.get_ip_address(),
+                self.NAME + '_host',
+                self.get_password())
+            self.host_session.init_log(self.logger)
+            self.host_init_flag = True
 
     def change_config_option(self, target, parameter, value):
         """
@@ -82,12 +102,12 @@ class Dut(Crb):
         self.send_expect("sed -i 's/%s=.*$/%s=%s/'  config/defconfig_%s" %
                          (parameter, parameter, value, target), "# ")
 
-    def set_nic_type(self, nic):
+    def set_nic_type(self, nic_type):
         """
         Set CRB NICS ready to validated.
         """
-        self.nic = nic
-        if 'cfg' in nic:
+        self.nic_type = nic_type
+        if 'cfg' in nic_type:
             self.conf.load_ports_config(self.get_ip_address())
 
     def set_toolchain(self, target):
@@ -156,6 +176,8 @@ class Dut(Crb):
 
         self.init_core_list()
         self.pci_devices_information()
+        # make sure ipv6 enable before scan
+        self.enable_tester_ipv6()
         # scan ports before restore interface
         self.scan_ports()
         # restore dut ports to kernel
@@ -167,10 +189,16 @@ class Dut(Crb):
         self.mount_procfs()
         # auto detect network topology
         self.map_available_ports()
+        # disable tester port ipv6
+        self.disable_tester_ipv6()
         # print latest ports_info
-        self.logger.info(dts.pprint(self.ports_info))
+        for port_info in self.ports_info:
+            self.logger.info(port_info)
         if self.ports_map is None or len(self.ports_map) == 0:
             raise ValueError("ports_map should not be empty, please check all links")
+
+        # initialize virtualization resource pool
+        self.virt_pool = VirtResource(self)
 
     def restore_interfaces(self):
         """
@@ -195,12 +223,14 @@ class Dut(Crb):
             pci_bus = port['pci']
             pci_id = port['type']
             # get device driver
-            driver = dts.get_nic_driver(pci_id)
+            driver = settings.get_nic_driver(pci_id)
             if driver is not None:
                 # unbind device driver
                 addr_array = pci_bus.split(':')
                 bus_id = addr_array[0]
                 devfun_id = addr_array[1]
+
+                port = NetDevice(self, bus_id, devfun_id)
 
                 self.send_expect('echo 0000:%s > /sys/bus/pci/devices/0000\:%s\:%s/driver/unbind'
                                  % (pci_bus, bus_id, devfun_id), '# ')
@@ -208,7 +238,7 @@ class Dut(Crb):
                 self.send_expect('modprobe %s' % driver, '# ')
                 self.send_expect('echo 0000:%s > /sys/bus/pci/drivers/%s/bind'
                                  % (pci_bus, driver), '# ')
-                itf = self.get_interface_name(addr_array[0], addr_array[1])
+                itf = port.get_interface_name()
                 self.send_expect("ifconfig %s up" % itf, "# ")
             else:
                 self.logger.info("NOT FOUND DRIVER FOR PORT (%s|%s)!!!" % (pci_bus, pci_id))
@@ -228,7 +258,10 @@ class Dut(Crb):
         """
         Setup Linux hugepages.
         """
+        if self.virttype == 'XEN':
+            return
         hugepages_size = self.send_expect("awk '/Hugepagesize/ {print $2}' /proc/meminfo", "# ")
+        total_huge_pages = self.get_total_huge_pages()
 
         if int(hugepages_size) < (1024 * 1024):
             if self.architecture == "x86_64":
@@ -239,11 +272,11 @@ class Dut(Crb):
             elif self.architecture == "x86_x32":
                 arch_huge_pages = hugepages if hugepages > 0 else 256
 
-            total_huge_pages = self.get_total_huge_pages()
-
-            self.mount_huge_pages()
             if total_huge_pages != arch_huge_pages:
                 self.set_huge_pages(arch_huge_pages)
+
+        self.mount_huge_pages()
+        self.hugepage_path = self.strip_hugepage_path()
 
     def setup_memory_freebsd(self, hugepages=-1):
         """
@@ -265,6 +298,20 @@ class Dut(Crb):
 
         return 'taskset %s ' % core
 
+    def is_ssh_session_port(self, pci_bus):
+        """
+        Check if the pci device is the dut SSH session port.
+        """
+        port = None
+        for port_info in self.ports_info:
+            if pci_bus == port_info['pci']:
+                port = port_info['port']
+                break
+        if port and port.get_ipv4_addr() == crbs['IP'].strip():
+            return True
+        else:
+            return False
+
     def bind_interfaces_linux(self, driver='igb_uio', nics_to_bind=None):
         """
         Bind the interfaces to the selected driver. nics_to_bind can be None
@@ -275,12 +322,17 @@ class Dut(Crb):
 
         current_nic = 0
         for (pci_bus, pci_id) in self.pci_devices_info:
-            if dts.accepted_nic(pci_id):
+            if settings.accepted_nic(pci_id):
+                if self.is_ssh_session_port(pci_bus):
+                    continue
 
                 if nics_to_bind is None or current_nic in nics_to_bind:
                     binding_list += '%s ' % (pci_bus)
 
                 current_nic += 1
+        if current_nic == 0:
+            self.logger.info("Not nic need bind driver: %s" % driver)
+            return
 
         self.send_expect('tools/dpdk_nic_bind.py %s' % binding_list, '# ')
 
@@ -293,12 +345,18 @@ class Dut(Crb):
 
         current_nic = 0
         for (pci_bus, pci_id) in self.pci_devices_info:
-            if dts.accepted_nic(pci_id):
+            if settings.accepted_nic(pci_id):
+                if self.is_ssh_session_port(pci_bus):
+                    continue
 
                 if nics_to_bind is None or current_nic in nics_to_bind:
                     binding_list += '%s ' % (pci_bus)
 
                 current_nic += 1
+
+        if current_nic == 0:
+            self.logger.info("Not nic need unbind driver")
+            return
 
         self.send_expect('tools/dpdk_nic_bind.py %s' % binding_list, '# ', 30)
 
@@ -321,7 +379,10 @@ class Dut(Crb):
         elif nic_type == 'cfg':
             for portid in range(len(self.ports_info)):
                 if self.ports_info[portid]['source'] == 'cfg':
-                    ports.append(portid)
+                    if (socket is None or
+                        self.ports_info[portid]['numa'] == -1 or
+                            socket == self.ports_info[portid]['numa']):
+                        ports.append(portid)
             return ports
         else:
             for portid in range(len(self.ports_info)):
@@ -439,36 +500,52 @@ class Dut(Crb):
         Check that whether auto scanned ports ready to use
         """
         pci_addr = "%s:%s" % (pci_bus, pci_id)
-        if self.nic == 'any':
+        if self.nic_type == 'any':
             return True
-        elif self.nic == 'cfg':
+        elif self.nic_type == 'cfg':
             if self.conf.check_port_available(pci_bus) is True:
                 return True
-        elif self.nic not in NICS.keys():
-            self.logger.warning("NOT SUPPORTED NIC TYPE: %s" % self.nic)
+        elif self.nic_type not in NICS.keys():
+            self.logger.warning("NOT SUPPORTED NIC TYPE: %s" % self.nic_type)
         else:
-            codename = NICS[self.nic]
+            codename = NICS[self.nic_type]
             if pci_id == codename:
                 return True
 
         return False
 
     def rescan_ports(self):
-        unknow_interface = dts.RED('Skipped: unknow_interface')
+        """
+        Rescan ports information
+        """
+        if self.read_cache and self.load_serializer_ports():
+            return
+
+        if self.ports_info:
+            self.rescan_ports_uncached()
+            self.save_serializer_ports()
+ 
+    def rescan_ports_uncached(self):
+        """
+        rescan ports and update port's mac adress, intf, ipv6 address.
+        """
+        rescan_ports_uncached = getattr(self, 'rescan_ports_uncached_%s' % self.get_os_type())
+        return rescan_ports_uncached()
+
+    def rescan_ports_uncached_linux(self):
+        unknow_interface = RED('Skipped: unknow_interface')
 
         for port_info in self.ports_info:
-            pci_bus = port_info['pci']
-            addr_array = pci_bus.split(':')
-            bus_id = addr_array[0]
-            devfun_id = addr_array[1]
-            intf = self.get_interface_name(bus_id, devfun_id)
+            port = port_info['port']
+            intf = port.get_interface_name()
             if "No such file" in intf:
                 self.logger.info("DUT: [0000:%s] %s" % (pci_bus, unknow_interface))
+                continue
             out = self.send_expect("ip link show %s" % intf, "# ")
             if "DOWN" in out:
                 self.send_expect("ip link set %s up" % intf, "# ")
                 time.sleep(5)
-            macaddr = self.get_mac_addr(intf, bus_id, devfun_id)
+            macaddr = port.get_mac_addr()
             out = self.send_expect("ip -family inet6 address show dev %s | awk '/inet6/ { print $2 }'"
                                    % intf, "# ")
             ipv6 = out.split('/')[0]
@@ -480,16 +557,77 @@ class Dut(Crb):
             port_info['intf'] = intf
             port_info['ipv6'] = ipv6
 
+    def rescan_ports_uncached_freebsd(self):
+        unknow_interface = RED('Skipped: unknow_interface')
+
+        for port_info in self.ports_info:
+            port = port_info['port']
+            intf = port.get_interface_name()
+            if "No such file" in intf:
+                self.logger.info("DUT: [0000:%s] %s" % (pci_bus, unknow_interface))
+                continue
+            self.send_expect("ifconfig %s up" % intf, "# ")
+            time.sleep(5)
+            macaddr = port.get_mac_addr()
+            ipv6 = port.get_ipv6_addr()
+            # Unconnected ports don't have IPv6
+            if ipv6 is None:
+                ipv6 = "Not connected"
+
+            port_info['mac'] = macaddr
+            port_info['intf'] = intf
+            port_info['ipv6'] = ipv6
+
+    def load_serializer_ports(self):
+        cached_ports_info = self.serializer.load(self.PORT_INFO_CACHE_KEY)
+        if cached_ports_info is None:
+            return None
+
+        self.ports_info = cached_ports_info
+
+    def save_serializer_ports(self):
+        cached_ports_info = []
+        for port in self.ports_info:
+            port_info = {}
+            for key in port.keys():
+                if type(port[key]) is str:
+                    port_info[key] = port[key]
+            cached_ports_info.append(port_info)
+        self.serializer.save(self.PORT_INFO_CACHE_KEY, cached_ports_info)
+
     def scan_ports(self):
         """
         Scan ports information or just read it from cache file.
         """
         if self.read_cache:
-            self.ports_info = self.serializer.load(self.PORT_INFO_CACHE_KEY)
+            self.load_serializer_ports()
+            self.scan_ports_cached()
 
         if not self.read_cache or self.ports_info is None:
             self.scan_ports_uncached()
-            self.serializer.save(self.PORT_INFO_CACHE_KEY, self.ports_info)
+
+    def scan_ports_cached(self):
+        """
+        Scan cached ports, instantiate tester port
+        """
+        scan_ports_cached = getattr(self, 'scan_ports_cached_%s' % self.get_os_type())
+        return scan_ports_cached()
+
+    def scan_ports_cached_linux(self):
+        """
+        Scan Linux ports and instantiate tester port
+        """
+        if self.ports_info is None:
+            return
+
+        for port_info in self.ports_info:
+            port = NetDevice(self, port_info['pci'], port_info['type'])
+            intf = port.get_interface_name()
+
+            self.logger.info("DUT cached: [000:%s %s] %s" % (port_info['pci'],
+                             port_info['type'], intf))
+
+            port_info['port'] = port
 
     def scan_ports_uncached(self):
         """
@@ -504,8 +642,8 @@ class Dut(Crb):
         """
         self.ports_info = []
 
-        skipped = dts.RED('Skipped: Unknown/not selected')
-        unknow_interface = dts.RED('Skipped: unknow_interface')
+        skipped = RED('Skipped: Unknown/not selected')
+        unknow_interface = RED('Skipped: unknow_interface')
 
         for (pci_bus, pci_id) in self.pci_devices_info:
             if self.check_ports_available(pci_bus, pci_id) is False:
@@ -517,9 +655,11 @@ class Dut(Crb):
             bus_id = addr_array[0]
             devfun_id = addr_array[1]
 
-            numa = self.get_device_numa(bus_id, devfun_id)
+            port = NetDevice(self, bus_id, devfun_id)
+            numa = port.socket
             # store the port info to port mapping
-            self.ports_info.append({'pci': pci_bus, 'type': pci_id, 'numa': numa})
+            self.ports_info.append(
+                {'port': port, 'pci': pci_bus, 'type': pci_id, 'numa': numa})
 
     def scan_ports_uncached_freebsd(self):
         """
@@ -527,19 +667,20 @@ class Dut(Crb):
         """
         self.ports_info = []
 
-        skipped = dts.RED('Skipped: Unknown/not selected')
+        skipped = RED('Skipped: Unknown/not selected')
 
         for (pci_bus, pci_id) in self.pci_devices_info:
 
-            if not dts.accepted_nic(pci_id):
+            if not settings.accepted_nic(pci_id):
                 self.logger.info("DUT: [%s %s] %s" % (pci_bus, pci_id,
                                                       skipped))
                 continue
 
-            intf = self.get_interface_name(pci_bus)
+            port = NetDevice(self, pci_bus, '')
+            intf = port.get_interface_name()
 
-            macaddr = self.get_mac_addr(intf)
-            ipv6 = self.get_ipv6_addr(intf)
+            macaddr = port.get_mac_addr()
+            ipv6 = port.get_ipv6_addr()
 
             if ipv6 is None:
                 ipv6 = "Not available"
@@ -559,8 +700,67 @@ class Dut(Crb):
             pci_str = "%s:%s.%s" % (pci_bus_id, pci_dev_str, pci_split[2])
 
             # store the port info to port mapping
-            self.ports_info.append({'pci': pci_str, 'type': pci_id, 'intf':
+            self.ports_info.append({'port': port, 'pci': pci_str, 'type': pci_id, 'intf':
                                     intf, 'mac': macaddr, 'ipv6': ipv6, 'numa': -1})
+
+    def generate_sriov_vfs_by_port(self, port_id, vf_num, driver='default'):
+        """
+        Generate SRIOV VFs with default driver it is bound now or specifid driver.
+        """
+        port = self.ports_info[port_id]['port']
+        port_driver = port.get_nic_driver()
+
+        if driver == 'default':
+            if not port_driver:
+                self.logger.info(
+                    "No driver on specified port, can not generate SRIOV VF.")
+                return None
+        else:
+            if port_driver != driver:
+                port.bind_driver(driver)
+        port.generate_sriov_vfs(vf_num)
+
+        # append the VF PCIs into the ports_info
+        sriov_vfs_pci = port.get_sriov_vfs_pci()
+        self.ports_info[port_id]['sriov_vfs_pci'] = sriov_vfs_pci
+
+        # instantiate the VF with NetDevice
+        vfs_port = []
+        for vf_pci in sriov_vfs_pci:
+            addr_array = vf_pci.split(':')
+            bus_id = addr_array[0]
+            devfun_id = addr_array[1]
+            vf_port = NetDevice(self, bus_id, devfun_id)
+            vfs_port.append(vf_port)
+        self.ports_info[port_id]['vfs_port'] = vfs_port
+
+        pci = self.ports_info[port_id]['pci']
+        self.virt_pool.add_vf_on_pf(pf_pci=pci, vflist=sriov_vfs_pci)
+
+    def destroy_sriov_vfs_by_port(self, port_id):
+        port = self.ports_info[port_id]['port']
+        vflist = []
+        port_driver = port.get_nic_driver()
+        if 'sriov_vfs_pci' in self.ports_info[port_id] and \
+           self.ports_info[port_id]['sriov_vfs_pci']:
+            vflist = self.ports_info[port_id]['sriov_vfs_pci']
+        else:
+            if not port.get_sriov_vfs_pci():
+                return
+
+        if not port_driver:
+            self.logger.info(
+                "No driver on specified port, skip destroy SRIOV VF.")
+        else:
+            sriov_vfs_pci = port.destroy_sriov_vfs()
+        self.ports_info[port_id]['sriov_vfs_pci'] = []
+        self.ports_info[port_id]['vfs_port'] = []
+
+        pci = self.ports_info[port_id]['pci']
+        self.virt_pool.del_vf_on_pf(pf_pci=pci, vflist=vflist)
+
+    def get_vm_core_list(self):
+        return VMCORELIST[self.crb['VM CoreList']]
 
     def load_portconf(self):
         """
@@ -636,7 +836,13 @@ class Dut(Crb):
                 if ipv6 == "Not connected":
                     continue
 
-                out = self.tester.send_ping6(remotePort, ipv6, self.get_mac_address(dutPort))
+                if getattr(self, 'send_ping6', None):
+                    out = self.send_ping6(
+                        dutPort, self.tester.ports_info[remotePort]['ipv6'],
+                        self.get_mac_address(dutPort))
+                else:
+                    out = self.tester.send_ping6(
+                        remotePort, ipv6, self.get_mac_address(dutPort))
 
                 if ('64 bytes from' in out):
                     self.logger.info("PORT MAP: [dut %d: tester %d]" % (dutPort, remotePort))
@@ -655,3 +861,54 @@ class Dut(Crb):
 
         for port in remove:
             self.ports_info.remove(port)
+
+    def disable_tester_ipv6(self):
+        for tester_port in self.ports_map:
+            if self.tester.ports_info[tester_port]['type'] != 'ixia':
+                port = self.tester.ports_info[tester_port]['port']
+                port.disable_ipv6()
+
+    def enable_tester_ipv6(self):
+        for tester_port in range(len(self.tester.ports_info)):
+            if self.tester.ports_info[tester_port]['type'] != 'ixia':
+                port = self.tester.ports_info[tester_port]['port']
+                port.enable_ipv6()
+
+    def check_port_occupied(self, port):
+        out = self.alt_session.send_expect('lsof -i:%d' % port, '# ')
+        if out == '':
+            return False
+        else:
+            return True
+
+    def get_maximal_vnc_num(self):
+        out = self.send_expect("ps aux | grep '\-vnc' | grep -v grep", '# ')
+        if out:
+            ports = re.findall(r'-vnc .*?:(\d+)', out)
+            for num in range(len(ports)):
+                ports[num] = int(ports[num])
+                ports.sort()
+        else:
+            ports = [0, ]
+        return ports[-1]
+
+    def close(self):
+        """
+        Close ssh session of DUT.
+        """
+        if self.session:
+            self.session.close()
+            self.session = None
+        if self.alt_session:
+            self.alt_session.close()
+            self.alt_session = None
+        if self.host_init_flag:
+            self.host_session.close()
+
+    def crb_exit(self):
+        """
+        Recover all resource before crb exit
+        """
+        self.logger.logger_exit()
+        self.enable_tester_ipv6()
+        self.close()

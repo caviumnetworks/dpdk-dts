@@ -189,11 +189,34 @@ class IxiaPacketGenerator(SSHConnection):
         self.send_expect("clearOwnershipAndLogout", "% ")
 
     def parse_pcap(self, fpcap):
-        """
-        Parse packet in pcap file and convert it into tcl commands.
-        """
-        self.send_expect("echo {print [i.command() for i in rdpcap('%s', -1)]; exit()} > dumppcap.py" %
-                         fpcap, "% ")
+        dump_str1 = "cmds = []\n"
+        dump_str2 = "for i in rdpcap('%s', -1):\n" % fpcap
+        dump_str3 = "    if 'Vxlan' in i.command():\n" + \
+                    "        vxlan_str = ''\n" + \
+                    "        l = len(i[Vxlan])\n" + \
+                    "        vxlan = str(i[Vxlan])\n" + \
+                    "        first = True\n" + \
+                    "        for j in range(l):\n" + \
+                    "            if first:\n" + \
+                    "                vxlan_str += \"Vxlan(hexval='%02X\" %ord(vxlan[j])\n" + \
+                    "                first = False\n" + \
+                    "            else:\n" + \
+                    "                vxlan_str += \" %02X\" %ord(vxlan[j])\n" + \
+                    "        vxlan_str += \"\')\"\n" + \
+                    "        command = re.sub(r\"Vxlan(.*)\", vxlan_str, i.command())\n" + \
+                    "    else:\n" + \
+                    "        command = i.command()\n" + \
+                    "    cmds.append(command)\n" + \
+                    "print cmds\n" + \
+                    "exit()"
+
+        f = open("dumppcap.py", "w")
+        f.write(dump_str1)
+        f.write(dump_str2)
+        f.write(dump_str3)
+        f.close()
+
+        self.session.copy_file_to("dumppcap.py")
         out = self.send_expect("scapy -c dumppcap.py 2>/dev/null", "% ", 120)
         flows = eval(out)
         return flows
@@ -254,7 +277,15 @@ class IxiaPacketGenerator(SSHConnection):
         self.add_tcl_cmd("udp config -sourcePort %d" % sport)
         self.add_tcl_cmd("udp config -destPort %d" % dport)
         self.add_tcl_cmd("udp config -length %d" % len)
-        self.add_tcl_cmd("udp set %d %d %d" % (self.chasId, port['card'], port['port']))
+        self.add_tcl_cmd("udp set %d %d %d" %
+                         (self.chasId, port['card'], port['port']))
+
+    def vxlan(self, port, hexval):
+        self.add_tcl_cmd("protocolPad setDefault")
+        self.add_tcl_cmd("protocol config -enableProtocolPad true")
+        self.add_tcl_cmd("protocolPad config -dataBytes \"%s\"" % hexval)
+        self.add_tcl_cmd("protocolPad set %d %d %d" %
+                         (self.chasId, port['card'], port['port']))
 
     def tcp(self, port, sport, dport, seq, ack, dataofs, reserved, flags, window, chksum, urgptr, options=None):
         """
@@ -297,6 +328,10 @@ class IxiaPacketGenerator(SSHConnection):
                 match = pat.match(header)
                 params = eval('dict(%s)' % match.group(2))
                 method_name = match.group(1)
+                if method_name == 'Vxlan':
+                    method = getattr(self, method_name.lower())
+                    method(txport, **params)
+                    break
                 if method_name in SCAPY2IXIA:
                     method = getattr(self, method_name.lower())
                     method(txport, **params)
@@ -571,6 +606,9 @@ class IxiaPacketGenerator(SSHConnection):
         for port in rxPortlist:
             self.start_pktGroup(self.pci_to_port(self.tester.get_pci(port)))
 
+    def hook_transmissoin_func(self):
+        pass
+
     def get_transmission_results(self, rx_port_list, tx_port_list, delay=5):
         """
         Override this method if you want to change the way of getting results
@@ -592,6 +630,8 @@ class IxiaPacketGenerator(SSHConnection):
 
         self.logger.info("Rate: %f Mpps" % (rate * 1.0 / 1000000))
         self.logger.info("Mbps rate: %f Mbps" % (bpsRate * 1.0 / 1000000))
+
+        self.hook_transmissoin_func()
 
         self.send_expect("ixStopTransmit portList", "%", 30)
 

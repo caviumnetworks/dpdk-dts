@@ -37,7 +37,6 @@ Test HelloWorld example.
 import dts
 from test_case import TestCase
 
-
 class TestHelloWorld(TestCase):
 
     def set_up_all(self):
@@ -68,8 +67,7 @@ class TestHelloWorld(TestCase):
         cores = self.dut.get_core_list('1S/1C/1T')
         coreMask = dts.create_mask(cores)
         cmdline = "./examples/helloworld/build/app/helloworld -n 1 -c " + coreMask
-        out = self.dut.send_expect(cmdline, "# ", 3)
-
+        out = self.dut.send_expect(cmdline, "# ", 30)
         self.verify("hello from core %s" % cores[0] in out, "EAL not started on core%s" % cores[0])
 
     def test_hello_world_all_cores(self):
@@ -83,8 +81,7 @@ class TestHelloWorld(TestCase):
         coreMask = dts.create_mask(cores)
 
         cmdline = "./examples/helloworld/build/app/helloworld -n 1 -c " + coreMask
-        out = self.dut.send_expect(cmdline, "# ", 5)
-
+        out = self.dut.send_expect(cmdline, "# ", 50)
         for i in range(len(cores)):
             self.verify("hello from core %s" % cores[i] in out, "EAL not started on core%s" % cores[i])
 

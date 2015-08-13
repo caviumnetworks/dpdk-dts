@@ -42,9 +42,9 @@ from plotting import Plotting
 from time import sleep
 from settings import HEADER_SIZE
 from pmd_output import PmdOutput
+from etgen import IxiaPacketGenerator
 
-
-class TestPmd(TestCase):
+class TestPmd(TestCase,IxiaPacketGenerator):
 
     def plot_results(self, number_ports):
 
@@ -76,15 +76,17 @@ class TestPmd(TestCase):
 
         PMD prerequisites.
         """
+        self.tester.extend_external_packet_generator(TestPmd, self)
+
         self.frame_sizes = [64, 65, 128, 256, 512, 1024, 1280, 1518]
 
         self.rxfreet_values = [0, 8, 16, 32, 64, 128]
 
         self.test_cycles = [{'cores': '1S/1C/1T', 'Mpps': {}, 'pct': {}},
-                            {'cores': '1S/1C/2T', 'Mpps': {}, 'pct': {}},
                             {'cores': '1S/2C/1T', 'Mpps': {}, 'pct': {}},
                             {'cores': '1S/2C/2T', 'Mpps': {}, 'pct': {}},
-                            {'cores': '1S/4C/2T', 'Mpps': {}, 'pct': {}}
+                            {'cores': '1S/4C/1T', 'Mpps': {}, 'pct': {}},
+                            {'cores': '1S/8C/1T', 'Mpps': {}, 'pct': {}}
                             ]
 
         self.table_header = ['Frame Size']
@@ -151,7 +153,7 @@ class TestPmd(TestCase):
             core_mask = dts.create_mask(core_list)
             port_mask = dts.create_mask(self.dut.get_ports())
 
-            self.pmdout.start_testpmd("all", "--coremask=%s --rxq=%d --txq=%d --portmask=%s" % (core_mask, queues, queues, port_mask))
+            self.pmdout.start_testpmd("all", "--coremask=%s --rxq=%d --txq=%d --portmask=%s --rss-ip" % (core_mask, queues, queues, port_mask))
 
             info = "Executing PMD (mac fwd) using %s\n" % test_cycle['cores']
             dts.report(info, annex=True)
@@ -167,9 +169,9 @@ class TestPmd(TestCase):
 
                 # create pcap file
                 self.logger.info("Running with frame size %d " % frame_size)
-                payload_size = frame_size - self.headers_size
+                payload_size = frame_size - HEADER_SIZE['eth'] - HEADER_SIZE['ip']
                 self.tester.scapy_append(
-                    'wrpcap("test.pcap", [Ether(src="52:00:00:00:00:00")/IP()/UDP()/("X"*%d)])' % payload_size)
+                    'wrpcap("test.pcap", [Ether(src="52:00:00:00:00:00")/IP(src="1.2.3.4",dst="1.1.1.1")/("X"*%d)])' % payload_size)
                 self.tester.scapy_execute()
 
                 # run traffic generator
@@ -410,7 +412,22 @@ class TestPmd(TestCase):
                     "packet pass assert error, expected %d TX bytes, actual %d" % (frame_size, p0tx_bytes))
 
         return out
+    
+    def ip(self, port, frag, src, proto, tos, dst, chksum, len, options, version, flags, ihl, ttl, id):
+        self.add_tcl_cmd("protocol config -name ip")
+        self.add_tcl_cmd('ip config -sourceIpAddr "%s"' % src)
+        self.add_tcl_cmd("ip config -sourceIpAddrMode ipRandom")
+        self.add_tcl_cmd('ip config -destIpAddr "%s"' % dst)
+        self.add_tcl_cmd("ip config -destIpAddrMode ipIdle")
+        self.add_tcl_cmd("ip config -ttl %d" % ttl)
+        self.add_tcl_cmd("ip config -totalLength %d" % len)
+        self.add_tcl_cmd("ip config -fragment %d" % frag)
+        self.add_tcl_cmd("ip config -ipProtocol ipV4ProtocolReserved255")
+        self.add_tcl_cmd("ip config -identifier %d" % id)
+        self.add_tcl_cmd("stream config -framesize %d" % (len + 18))
+        self.add_tcl_cmd("ip set %d %d %d" % (self.chasId, port['card'], port['port']))
 
+    
     def tear_down(self):
         """
         Run after each test case.

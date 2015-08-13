@@ -38,6 +38,7 @@ from time import sleep
 from settings import NICS
 from ssh_connection import SSHConnection
 from crb import Crb
+from net_device import NetDevice
 from etgen import IxiaPacketGenerator, SoftwarePacketGenerator
 from logger import getLogger
 from settings import IXIA
@@ -64,7 +65,8 @@ class Tester(Crb):
                                      self.NAME, self.get_password())
         self.session.init_log(self.logger)
         self.alt_session = SSHConnection(self.get_ip_address(),
-                                         self.NAME + '_alt', self.get_password())
+                                         self.NAME + '_alt',
+                                         self.get_password())
         self.alt_session.init_log(self.logger)
 
         self.bgProcIsRunning = False
@@ -152,6 +154,7 @@ class Tester(Crb):
             index += 1
             if pci == port['pci']:
                 return index
+        return -1
 
     def get_pci(self, localPort):
         """
@@ -163,6 +166,9 @@ class Tester(Crb):
         """
         Return tester local port interface name.
         """
+        if 'intf' not in self.ports_info[localPort]:
+            return 'N/A'
+
         return self.ports_info[localPort]['intf']
 
     def get_mac(self, localPort):
@@ -194,6 +200,9 @@ class Tester(Crb):
         """
         Restore Linux interfaces.
         """
+        if self.skip_setup:
+            return
+
         self.send_expect("modprobe igb", "# ", 20)
         self.send_expect("modprobe ixgbe", "# ", 20)
         self.send_expect("modprobe e1000e", "# ", 20)
@@ -202,26 +211,66 @@ class Tester(Crb):
         try:
             for (pci_bus, pci_id) in self.pci_devices_info:
                 addr_array = pci_bus.split(':')
-                itf = self.get_interface_name(addr_array[0], addr_array[1])
+                port = NetDevice(self, addr_array[0], addr_array[1])
+                itf = port.get_interface_name()
+                self.enable_ipv6(itf)
                 self.send_expect("ifconfig %s up" % itf, "# ")
 
         except Exception as e:
             self.logger.error("   !!! Restore ITF: " + e.message)
+
+        sleep(2)
+
+    def load_serializer_ports(self):
+        cached_ports_info = self.serializer.load(self.PORT_INFO_CACHE_KEY)
+        if cached_ports_info is None:
+            return
+
+        # now not save netdev object, will implemented later
+        self.ports_info = cached_ports_info
+
+    def save_serializer_ports(self):
+        cached_ports_info = []
+        for port in self.ports_info:
+            port_info = {}
+            for key in port.keys():
+                if type(port[key]) is str:
+                    port_info[key] = port[key]
+                # need save netdev objects
+            cached_ports_info.append(port_info)
+        self.serializer.save(self.PORT_INFO_CACHE_KEY, cached_ports_info)
 
     def scan_ports(self):
         """
         Scan all ports on tester and save port's pci/mac/interface.
         """
         if self.read_cache:
-            self.ports_info = self.serializer.load(self.PORT_INFO_CACHE_KEY)
+            self.load_serializer_ports()
+            self.scan_ports_cached()
 
         if not self.read_cache or self.ports_info is None:
             self.scan_ports_uncached()
             if self.it_uses_external_generator():
                 self.ports_info.extend(self.ixia_packet_gen.get_ports())
-            self.serializer.save(self.PORT_INFO_CACHE_KEY, self.ports_info)
+            self.save_serializer_ports()
 
-        self.logger.info(self.ports_info)
+        for port_info in self.ports_info:
+            self.logger.info(port_info)
+
+    def scan_ports_cached(self):
+        if self.ports_info is None:
+            return
+
+        for port_info in self.ports_info:
+            if port_info['type'] == 'ixia':
+                continue
+
+            port = NetDevice(self, port_info['pci'], port_info['type'])
+            intf = port.get_interface_name()
+
+            self.logger.info("Tester cached: [000:%s %s] %s" % (
+                             port_info['pci'], port_info['type'], intf))
+            port_info['port'] = port
 
     def scan_ports_uncached(self):
         """
@@ -240,7 +289,8 @@ class Tester(Crb):
             bus_id = addr_array[0]
             devfun_id = addr_array[1]
 
-            intf = self.get_interface_name(bus_id, devfun_id)
+            port = NetDevice(self, bus_id, devfun_id)
+            intf = port.get_interface_name()
 
             if "No such file" in intf:
                 self.logger.info("Tester: [000:%s %s] %s" % (pci_bus, pci_id,
@@ -248,13 +298,17 @@ class Tester(Crb):
                 continue
 
             self.logger.info("Tester: [000:%s %s] %s" % (pci_bus, pci_id, intf))
-            macaddr = self.get_mac_addr(intf, bus_id, devfun_id)
+            macaddr = port.get_mac_addr()
+
+            ipv6 = port.get_ipv6_addr()
 
             # store the port info to port mapping
-            self.ports_info.append({'pci': pci_bus,
+            self.ports_info.append({'port': port,
+                                    'pci': pci_bus,
                                     'type': pci_id,
                                     'intf': intf,
-                                    'mac': macaddr})
+                                    'mac': macaddr,
+                                    'ipv6': ipv6})
 
     def send_ping6(self, localPort, ipv6, mac):
         """
@@ -413,6 +467,18 @@ class Tester(Crb):
         """
         Close ssh session and IXIA tcl session.
         """
-        super(Tester, self).close()
+        if self.session:
+            self.session.close()
+            self.session = None
+        if self.alt_session:
+            self.alt_session.close()
+            self.alt_session = None
         if self.it_uses_external_generator():
             self.ixia_packet_gen.close()
+
+    def crb_exit(self):
+        """
+        Close all resource before crb exit
+        """
+        self.logger.logger_exit()
+        self.close()

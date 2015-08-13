@@ -32,6 +32,7 @@
 import os
 import re
 import dts
+from settings import TIMEOUT
 
 
 class PmdOutput():
@@ -42,6 +43,7 @@ class PmdOutput():
 
     def __init__(self, dut):
         self.dut = dut
+        self.dut.testpmd = self
         self.rx_pkts_prefix = "RX-packets:"
         self.rx_missed_prefix = "RX-missed:"
         self.rx_bytes_prefix = "RX-bytes:"
@@ -63,17 +65,16 @@ class PmdOutput():
             return None
         else:
             return int(m.group(2))
-    
+
     def set_default_corelist(self):
         """
         set default cores for start testpmd
-        """        
+        """
         core_number = len(self.dut.cores)
         if core_number < 2:
             raise
         else:
             self.default_cores = "1S/2C/1T"
-             
 
     def get_pmd_stats(self, portid):
         stats = {}
@@ -103,7 +104,9 @@ class PmdOutput():
         if "--txqflags" not in param:
             param += " --txqflags=0"
 
-        if cores == "Default":
+        if type(cores) == list:
+            core_list = cores
+        elif cores == "Default":
             core_list = self.dut.get_core_list(self.default_cores)
         else:
             core_list = self.dut.get_core_list(cores, socket)
@@ -113,3 +116,93 @@ class PmdOutput():
         out = self.dut.send_expect(command, "testpmd> ", 120)
         self.command = command
         return out
+
+    def execute_cmd(self, pmd_cmd, expected='testpmd> ', timeout=TIMEOUT,
+                    alt_session=False):
+        return self.dut.send_expect('%s' % pmd_cmd, expected, timeout=timeout,
+                                    alt_session=alt_session)
+
+    def get_value_from_string(self, key_str, regx_str, string):
+        """
+        Get some values from the given string by the regular expression.
+        """
+        pattern = r"(?<=%s)%s" % (key_str, regx_str)
+        s = re.compile(pattern)
+        res = s.search(string)
+        if type(res).__name__ == 'NoneType':
+            return ' '
+        else:
+            return res.group(0)
+
+    def get_detail_from_port_info(self, key_str, regx_str, port):
+        """
+        Get the detail info from the output of pmd cmd 'show port info <port num>'.
+        """
+        out = self.dut.send_expect("show port info %d" % port, "testpmd> ")
+        find_value = self.get_value_from_string(key_str, regx_str, out)
+        return find_value
+
+    def get_port_mac(self, port_id):
+        """
+        Get the specified port MAC.
+        """
+        return self.get_detail_from_port_info("MAC address: ", "([0-9A-F]{2}:){5}[0-9A-F]{2}", port_id)
+
+    def get_port_connect_socket(self, port_id):
+        """
+        Get the socket id which the specified port is connectting with.
+        """
+        return self.get_detail_from_port_info("Connect to socket: ", "\d+", port_id)
+
+    def get_port_memory_socket(self, port_id):
+        """
+        Get the socket id which the specified port memory is allocated on.
+        """
+        return self.get_detail_from_port_info("memory allocation on the socket: ", "\d+", port_id)
+
+    def get_port_link_status(self, port_id):
+        """
+        Get the specified port link status now.
+        """
+        return self.get_detail_from_port_info("Link status: ", "\d+", port_id)
+
+    def get_port_link_speed(self, port_id):
+        """
+        Get the specified port link speed now.
+        """
+        return self.get_detail_from_port_info("Link speed: ", "\d+", port_id)
+
+    def get_port_link_duplex(self, port_id):
+        """
+        Get the specified port link mode, duplex or siplex.
+        """
+        return self.get_detail_from_port_info("Link duplex: ", "\S+", port_id)
+
+    def get_port_promiscuous_mode(self, port_id):
+        """
+        Get the promiscuous mode of port.
+        """
+        return self.get_detail_from_port_info("Promiscuous mode: ", "\S+", port_id)
+
+    def get_port_allmulticast_mode(self, port_id):
+        """
+        Get the allmulticast mode of port.
+        """
+        return self.get_detail_from_port_info("Allmulticast mode: ", "\S+", port_id)
+
+    def get_port_vlan_offload(self, port_id):
+        """
+        Function: get the port vlan settting info.
+        return value:
+            'strip':'on'
+            'filter':'on'
+            'qinq':'off'
+        """
+        vlan_info = {}
+        vlan_info['strip'] = self.get_detail_from_port_info(
+            "strip ", '\S+', port_id)
+        vlan_info['filter'] = self.get_detail_from_port_info(
+            'filter', '\S+', port_id)
+        vlan_info['qinq'] = self.get_detail_from_port_info(
+            'qinq\(extend\) ', '\S+', port_id)
+        return vlan_info

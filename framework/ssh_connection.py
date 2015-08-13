@@ -53,7 +53,6 @@ class SSHConnection(object):
 
     def init_log(self, logger):
         self.logger = logger
-        self.logger.config_execution(self.name)
         self.session.init_log(logger, self.name)
 
     def send_expect(self, cmds, expected, timeout=15, verify=False):
@@ -62,8 +61,19 @@ class SSHConnection(object):
         self.logger.debug(out)
         return out
 
+    def get_session_before(self, timeout=15):
+        out = self.session.get_session_before(timeout)
+        self.logger.debug(out)
+        return out
+
     def close(self):
         self.session.close()
+        connection = {}
+        connection[self.name] = self.session
+        try:
+            CONNECTIONS.remove(connection)
+        except:
+            pass
 
     def isalive(self):
         return self.session.isalive()

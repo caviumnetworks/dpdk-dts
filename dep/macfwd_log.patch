@@ -1,0 +1,10 @@
+--- app/test-pmd/macfwd.c.org	2015-07-02 10:51:12.821246109 +0800
++++ app/test-pmd/macfwd.c	2015-07-02 10:50:11.343243319 +0800
+@@ -102,6 +102,7 @@
+ 				 nb_pkt_per_burst);
+ 	if (unlikely(nb_rx == 0))
+ 		return;
++	printf("ports %u queue %u receive %u packages\n", fs->rx_port, fs->rx_queue, nb_rx);
+ 
+ #ifdef RTE_TEST_PMD_RECORD_BURST_STATS
+ 	fs->rx_burst_stats.pkt_burst_spread[nb_rx]++;

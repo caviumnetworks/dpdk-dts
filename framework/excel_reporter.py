@@ -85,13 +85,15 @@ class ExcelReporter(object):
         self.sheet.write(0, 7, 'Pass', self.header_style)
         self.sheet.write(0, 8, 'Fail', self.header_style)
         self.sheet.write(0, 9, 'Blocked', self.header_style)
-        self.sheet.write(0, 10, 'Not Run', self.header_style)
-        self.sheet.write(0, 11, 'Total', self.header_style)
+        self.sheet.write(0, 10, 'N/A', self.header_style)
+        self.sheet.write(0, 11, 'Not Run', self.header_style)
+        self.sheet.write(0, 12, 'Total', self.header_style)
 
         self.sheet.write(1, 7, Formula('COUNTIF(F2:F2000,"PASSED")'))
         self.sheet.write(1, 8, Formula('COUNTIF(F2:F2000,"FAILED*") + COUNTIF(F2:F2000,"IXA*")'))
         self.sheet.write(1, 9, Formula('COUNTIF(F2:F2000,"BLOCKED*")'))
-        self.sheet.write(1, 11, Formula('H2+I2+J2+K2'))
+        self.sheet.write(1, 10, Formula('COUNTIF(F2:F2000,"N/A*")'))
+        self.sheet.write(1, 12, Formula('H2+I2+J2+K2+L2'))
 
         self.sheet.col(0).width = 4000
         self.sheet.col(1).width = 7500
@@ -105,6 +107,7 @@ class ExcelReporter(object):
         self.sheet.col(9).width = 3000
         self.sheet.col(10).width = 3000
         self.sheet.col(11).width = 3000
+        self.sheet.col(12).width = 3000
 
     def __styles(self):
         header_pattern = xlwt.Pattern()

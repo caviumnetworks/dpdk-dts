@@ -40,15 +40,19 @@ from settings import DRIVERS, NICS, nic_name_from_type
 
 class TestCase(object):
 
-    def __init__(self, dut, tester, target):
+    def __init__(self, dut, tester, target, suite):
         self.dut = dut
         self.tester = tester
         self.target = target
+        self.suite = suite
         self.nics = []
         for portid in range(len(self.dut.ports_info)):
             nic_type = self.dut.ports_info[portid]['type']
             self.nics.append(nic_name_from_type(nic_type))
-        self.nic = self.nics[0]
+        if len(self.nics):
+            self.nic = self.nics[0]
+        else:
+            self.nic = ''
 
     def set_up_all(self):
         pass

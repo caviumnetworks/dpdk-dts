@@ -157,6 +157,12 @@ class Result(object):
         """
         self.__set_test_case_result(result='PASSED', message='')
 
+    def test_case_skip(self,message):
+        """
+        set last test case add as N/A
+        """
+        self.__set_test_case_result(result='N/A', message=message)
+
     def test_case_failed(self, message):
         """
         Set last test case added as FAILED
