@@ -331,25 +331,27 @@ class Crb(object):
         """
         Kill all dpdk applications on CRB.
         """
-        cmd = "for i in `lsof /var/run/.rte_config /var/run/dpdk_config \
-                | awk '/config/ {print $2}'` ; do kill -9 $i; done"
-        self.alt_session.session.send_expect(cmd, "# ", 10)
-        proce_cmd = "lsof /var/run/.rte_config /var/run/dpdk_config | awk '{print $2}'"
-        hugepage_cmd = "lsof /var/run/.rte_hugepage_info | awk {print $2}"
-        out = self.alt_session.session.send_expect(proce_cmd, "# ",10)
-        if "PID" in out:
-            self.logger.warning("There are some dpdk process not killed")
-            self.logger.warning("**************************************")
-            self.logger.warning(out)
-            self.logger.warning("**************************************")
-           
-        out = self.alt_session.session.send_expect(hugepage_cmd, "# ",10)
-        if "PID" in out:
+        pids = []
+        pid_reg = r'p(\d+)'
+        cmd = 'lsof -Fp /var/run/.rte_config'
+        out = self.alt_session.session.send_expect(cmd, "# ", 10)
+        if len(out):
+            lines = out.split('\r\n')
+            for line in lines:
+                m = re.match(pid_reg, line)
+                if m:
+                    pids.append(m.group(1))
+        for pid in pids:
+            self.alt_session.session.send_expect('kill -9 %s' % pid, '# ')
+            self.get_session_output(timeout=2)
+
+        cmd = 'lsof -Fp /var/run/.rte_hugepage_info'
+        out = self.alt_session.session.send_expect(cmd, "# ", 10)
+        if len(out):
             self.logger.warning("There are some dpdk process not free hugepage")
             self.logger.warning("**************************************")
             self.logger.warning(out)
             self.logger.warning("**************************************")
-        time.sleep(.7)
 
     def close(self):
         """
