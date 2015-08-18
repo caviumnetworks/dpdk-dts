@@ -36,12 +36,13 @@ Generic port and crbs configuration file load function
 import re
 import ConfigParser  # config parse module
 import argparse      # prase arguments module
-
+from settings import IXIA
 from exception import ConfigParseException, VirtConfigParseException
 
 PORTCONF = "conf/ports.cfg"
 CRBCONF = "conf/crbs.cfg"
 VIRTCONF = "conf/virt_global.cfg"
+IXIACONF = "conf/ixia.cfg"
 
 
 class UserConf():
@@ -185,12 +186,124 @@ class PortConf(UserConf):
             return False
 
 
+class CrbsConf(UserConf):
+    DEF_CRB = {'IP': '', 'name': 'CrownPassCRB1', 'user': '',
+               'pass': '', 'tester IP': '', 'tester pass': '',
+               IXIA: None, 'memory channels': 4,
+               'bypass core0': True}
+
+    def __init__(self, crbs_conf=CRBCONF):
+        self.config_file = crbs_conf
+        self.crbs_cfg = []
+        try:
+            self.crbs_conf = UserConf(self.config_file)
+        except ConfigParseException:
+            self.crbs_conf = None
+            raise ConfigParseException
+
+    def load_crbs_config(self):
+        sections = self.crbs_conf.get_sections()
+        if not sections:
+            return self.crbs_cfg
+
+        for name in sections:
+            crb = self.DEF_CRB.copy()
+            crb_confs = self.crbs_conf.load_section(name)
+            if not crb_confs:
+                continue
+
+            # covert file configuration to dts crbs
+            for conf in crb_confs:
+                key, value = conf
+                if key == 'dut_ip':
+                    crb['IP'] = value
+                elif key == 'dut_user':
+                    crb['user'] = value
+                elif key == 'dut_passwd':
+                    crb['pass'] = value
+                elif key == 'os':
+                    crb['OS'] = value
+                elif key == 'tester_ip':
+                    crb['tester IP'] = value
+                elif key == 'tester_passwd':
+                    crb['tester pass'] = value
+                elif key == 'ixia_group':
+                    crb[IXIA] = value
+                elif key == 'channels':
+                    crb['memory channels'] = int(value)
+                elif key == 'bypass_core0':
+                    if value == 'True':
+                        crb['bypass core0'] = True
+                    else:
+                        crb['bypass core0'] = False
+
+            self.crbs_cfg.append(crb)
+        return self.crbs_cfg
+
+
+class IxiaConf(UserConf):
+
+    def __init__(self, ixia_conf=IXIACONF):
+        self.config_file = ixia_conf
+        self.ixia_cfg = {}
+        try:
+            self.ixia_conf = UserConf(self.config_file)
+        except ConfigParseException:
+            self.ixia_conf = None
+            raise ConfigParseException
+
+    def load_ixia_config(self):
+        port_reg = r'card=(\d+),port=(\d+)'
+        groups = self.ixia_conf.get_sections()
+        if not groups:
+            return self.ixia_cfg
+
+        for group in groups:
+            ixia_group = {}
+            ixia_confs = self.ixia_conf.load_section(group)
+            if not ixia_confs:
+                continue
+
+            # convert file configuration to dts ixiacfg
+            for conf in ixia_confs:
+                key, value = conf
+                if key == 'ixia_version':
+                    ixia_group['Version'] = value
+                elif key == 'ixia_ip':
+                    ixia_group['IP'] = value
+                elif key == 'ixia_ports':
+                    ports = self.ixia_conf.load_config(value)
+                    ixia_ports = []
+                    for port in ports:
+                        m = re.match(port_reg, port)
+                        if m:
+                            ixia_port = {}
+                            ixia_port["card"] = int(m.group(1))
+                            ixia_port["port"] = int(m.group(2))
+                            ixia_ports.append(ixia_port)
+                    ixia_group['Ports'] = ixia_ports
+
+            if 'Version' not in ixia_group:
+                print 'ixia configuration file request ixia_version option!!!'
+                continue
+            if 'IP' not in ixia_group:
+                print 'ixia configuration file request ixia_ip option!!!'
+                continue
+            if 'Ports' not in ixia_group:
+                print 'ixia configuration file request ixia_ports option!!!'
+                continue
+
+            self.ixia_cfg[group] = ixia_group
+
+        return self.ixia_cfg
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description="Load DTS configuration files")
     parser.add_argument("-p", "--portconf", default=PORTCONF)
     parser.add_argument("-c", "--crbconf", default=CRBCONF)
     parser.add_argument("-v", "--virtconf", default=VIRTCONF)
+    parser.add_argument("-i", "--ixiaconf", default=IXIACONF)
     args = parser.parse_args()
 
     # not existed configuration file
@@ -218,3 +331,11 @@ if __name__ == '__main__':
     virtconf = VirtConf(VIRTCONF)
     virtconf.load_virt_config('LIBVIRT')
     print virtconf.get_virt_config()
+
+    # example for crbs configuration file
+    crbsconf = CrbsConf(CRBCONF)
+    print crbsconf.load_crbs_config()
+
+    # example for ixia configuration file
+    ixiaconf = IxiaConf(IXIACONF)
+    print ixiaconf.load_ixia_config()

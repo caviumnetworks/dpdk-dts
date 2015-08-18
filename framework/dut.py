@@ -322,7 +322,7 @@ class Dut(Crb):
 
         current_nic = 0
         for (pci_bus, pci_id) in self.pci_devices_info:
-            if settings.accepted_nic(pci_id):
+            if dts.accepted_nic(pci_id):
                 if self.is_ssh_session_port(pci_bus):
                     continue
 
@@ -345,7 +345,7 @@ class Dut(Crb):
 
         current_nic = 0
         for (pci_bus, pci_id) in self.pci_devices_info:
-            if settings.accepted_nic(pci_id):
+            if dts.accepted_nic(pci_id):
                 if self.is_ssh_session_port(pci_bus):
                     continue
 
@@ -671,7 +671,7 @@ class Dut(Crb):
 
         for (pci_bus, pci_id) in self.pci_devices_info:
 
-            if not settings.accepted_nic(pci_id):
+            if not dts.accepted_nic(pci_id):
                 self.logger.info("DUT: [%s %s] %s" % (pci_bus, pci_id,
                                                       skipped))
                 continue

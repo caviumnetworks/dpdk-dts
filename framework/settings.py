@@ -33,7 +33,6 @@ Folders for framework running enviornment.
 """
 import re
 import socket
-import dts
 
 FOLDERS = {
     'Framework': 'framework',
@@ -178,23 +177,6 @@ def get_nic_driver(pci_id):
         driver = None
     return driver
 
-
-def accepted_nic(pci_id):
-    """
-    Return True if the pci_id is a known NIC card in the settings file and if
-    it is selected in the execution file, otherwise it returns False.
-    """
-    if pci_id not in NICS.values():
-        return False
-
-    if dts.nic is 'any':
-        return True
-
-    else:
-        if pci_id == NICS[dts.nic]:
-            return True
-
-    return False
 
 def get_netdev(crb, pci):
     for port in crb.ports_info:

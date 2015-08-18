@@ -39,7 +39,7 @@ from crb import Crb
 from dut import Dut
 from tester import Tester
 from logger import getLogger
-from settings import IXIA, accepted_nic
+from settings import IXIA
 
 
 class DPDKdut(Dut):
@@ -112,7 +112,7 @@ class DPDKdut(Dut):
         binding_list = ''
 
         for (pci_bus, pci_id) in self.pci_devices_info:
-            if accepted_nic(pci_id):
+            if dts.accepted_nic(pci_id):
                 binding_list += '%s,' % (pci_bus)
 
         self.send_expect("kldunload if_ixgbe.ko", "#")
