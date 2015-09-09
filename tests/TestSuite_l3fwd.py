@@ -41,55 +41,29 @@ from plotting import Plotting
 from test_case import TestCase
 from exception import VerifyFailure
 from settings import HEADER_SIZE
+from etgen import IxiaPacketGenerator
 
-
-class TestL3fwd(TestCase):
+class TestL3fwd(TestCase,IxiaPacketGenerator):
 
     path = "./examples/l3fwd/build/"
 
-    test_cases_2_ports = {"1S/1C/1T": "%s -c %s -n %d -- -p %s -P --config '(P0,0,C{1.1.0}), (P1,0,C{1.1.0})'",
-                          "1S/1C/2T": "%s -c %s -n %d -- -p %s -P --config '(P0,0,C{1.1.0}), (P1,0,C{1.1.1})'",
-                          "1S/2C/1T": "%s -c %s -n %d -- -p %s -P --config '(P0,0,C{1.1.0}), (P1,0,C{1.2.0})'"
+    test_cases_2_ports = {"1S/1C/1T": "%s -c %s -n %d -- -p %s  --config '(P0,0,C{1.1.0}), (P1,0,C{1.1.0})'",
+                          "1S/1C/2T": "%s -c %s -n %d -- -p %s  --config '(P0,0,C{1.1.0}), (P1,0,C{1.1.1})'",
+                          "1S/2C/1T": "%s -c %s -n %d -- -p %s  --config '(P0,0,C{1.1.0}), (P1,0,C{1.2.0})'",
+                          "1S/4C/1T": "%s -c %s -n %d -- -p %s  --config '(P0,0,C{1.1.0}), (P1,0,C{1.2.0}),(P0,1,C{1.3.0}), (P1,1,C{1.4.0})'",
+                          "2S/2C/1T": "%s -c %s -n %d -- -p %s  --config '(P0,0,C{0.1.0}), (P1,0,C{0.2.0}),(P0,1,C{1.3.0}), (P1,1,C{1.4.0})'",
                           }
 
     test_cases_4_ports = [(1, "1S/1C/1T",
-                           "%s -c %s -n %d -- -p %s -P --config '(P0,0,C{1.1.0}),(P1,0,C{1.1.0}),(P2,0,C{1.1.0}),(P3,0,C{1.1.0})'"),
-                          (1, "1S/1C/2T",
-                           "%s -c %s -n %d -- -p %s -P --config '(P0,0,C{1.1.0}),(P1,0,C{1.1.0}),(P2,0,C{1.1.1}),(P3,0,C{1.1.1})'"),
-                          (1, "1S/2C/1T",
-                           "%s -c %s -n %d -- -p %s -P --config '(P0,0,C{1.1.0}),(P1,0,C{1.1.0}),(P2,0,C{1.2.0}),(P3,0,C{1.2.0})'"),
+                           "%s -c %s -n %d -- -p %s  --config '(P0,0,C{1.1.0}),(P1,0,C{1.1.0}),(P2,0,C{1.1.0}),(P3,0,C{1.1.0})'"),
                           (1, "1S/2C/2T",
-                           "%s -c %s -n %d -- -p %s -P --config '(P0,0,C{1.1.0}),(P1,0,C{1.1.1}),(P2,0,C{1.2.0}),(P3,0,C{1.2.1})'"),
+                           "%s -c %s -n %d -- -p %s  --config '(P0,0,C{1.1.0}),(P1,0,C{1.1.1}),(P2,0,C{1.2.0}),(P3,0,C{1.2.1})'"),
                           (1, "1S/4C/1T",
-                           "%s -c %s -n %d -- -p %s -P --config '(P0,0,C{1.1.0}),(P1,0,C{1.2.0}),(P2,0,C{1.3.0}),(P3,0,C{1.4.0})'"),
-                          (1, "2S/1C/1T",
-                           "%s -c %s -n %d -- -p %s -P --config '(P0,0,C{0.1.0}),(P1,0,C{0.1.0}),(P2,0,C{1.1.0}),(P3,0,C{1.1.0})'"),
-                          (1, "2S/1C/2T",
-                           "%s -c %s -n %d -- -p %s -P --config '(P0,0,C{0.1.0}),(P1,0,C{0.1.1}),(P2,0,C{1.1.0}),(P3,0,C{1.1.1})'"),
-                          (1, "2S/2C/1T",
-                           "%s -c %s -n %d -- -p %s -P --config '(P0,0,C{0.1.0}),(P1,0,C{0.2.0}),(P2,0,C{1.1.0}),(P3,0,C{1.2.0})'"),
-                          (2, "1S/1C/1T",
-                           "%s -c %s -n %d -- -p %s -P --config '(P0,0,C{1.1.0}),(P0,1,C{1.1.0}),(P1,0,C{1.1.0}),(P1,1,C{1.1.0}),(P2,0,C{1.1.0}),(P2,1,C{1.1.0}),(P3,0,C{1.1.0}),(P3,1,C{1.1.0})'"),
-                          (2, "1S/1C/2T",
-                           "%s -c %s -n %d -- -p %s -P --config '(P0,0,C{1.1.0}),(P0,1,C{1.1.0}),(P1,0,C{1.1.0}),(P1,1,C{1.1.0}),(P2,0,C{1.1.1}),(P2,1,C{1.1.1}),(P3,0,C{1.1.1}),(P3,1,C{1.1.1})'"),
-                          (2, "1S/2C/1T",
-                           "%s -c %s -n %d -- -p %s -P --config '(P0,0,C{1.1.0}),(P0,1,C{1.1.0}),(P1,0,C{1.1.0}),(P1,1,C{1.1.0}),(P2,0,C{1.2.0}),(P2,1,C{1.2.0}),(P3,0,C{1.2.0}),(P3,1,C{1.2.0})'"),
-                          (2, "1S/2C/2T",
-                           "%s -c %s -n %d -- -p %s -P --config '(P0,0,C{1.1.0}),(P0,1,C{1.1.0}),(P1,0,C{1.1.1}),(P1,1,C{1.1.1}),(P2,0,C{1.2.0}),(P2,1,C{1.2.0}),(P3,0,C{1.2.1}),(P3,1,C{1.2.1})'"),
-                          (2, "1S/4C/1T",
-                           "%s -c %s -n %d -- -p %s -P --config '(P0,0,C{1.1.0}),(P0,1,C{1.1.0}),(P1,0,C{1.2.0}),(P1,1,C{1.2.0}),(P2,0,C{1.3.0}),(P2,1,C{1.3.0}),(P3,0,C{1.4.0}),(P3,1,C{1.4.0})'"),
-                          (2, "1S/4C/2T",
-                           "%s -c %s -n %d -- -p %s -P --config '(P0,0,C{1.1.0}),(P0,1,C{1.1.1}),(P1,0,C{1.2.0}),(P1,1,C{1.2.1}),(P2,0,C{1.3.0}),(P2,1,C{1.3.1}),(P3,0,C{1.4.0}),(P3,1,C{1.4.1})'"),
-                          (2, "2S/1C/1T",
-                           "%s -c %s -n %d -- -p %s -P --config '(P0,0,C{0.1.0}),(P0,1,C{0.1.0}),(P1,0,C{0.1.0}),(P1,1,C{0.1.0}),(P2,0,C{1.1.0}),(P2,1,C{1.1.0}),(P3,0,C{1.1.0}),(P3,1,C{1.1.0})'"),
-                          (2, "2S/1C/2T",
-                           "%s -c %s -n %d -- -p %s -P --config '(P0,0,C{0.1.0}),(P0,1,C{0.1.0}),(P1,0,C{0.1.1}),(P1,1,C{0.1.1}),(P2,0,C{1.1.0}),(P2,1,C{1.1.0}),(P3,0,C{1.1.1}),(P3,1,C{1.1.1})'"),
+                           "%s -c %s -n %d -- -p %s  --config '(P0,0,C{1.1.0}),(P1,0,C{1.2.0}),(P2,0,C{1.3.0}),(P3,0,C{1.4.0})'"),
+                          (2, "1S/8C/1T",
+                           "%s -c %s -n %d -- -p %s  --config '(P0,0,C{1.1.0}),(P0,1,C{1.2.0}),(P1,0,C{1.3.0}),(P1,1,C{1.4.0}),(P2,0,C{1.5.0}),(P2,1,C{1.6.0}),(P3,0,C{1.7.0}),(P3,1,C{1.8.0})'"),
                           (2, "2S/2C/1T",
-                           "%s -c %s -n %d -- -p %s -P --config '(P0,0,C{0.1.0}),(P0,1,C{0.1.0}),(P1,0,C{0.2.0}),(P1,1,C{0.2.0}),(P2,0,C{1.1.0}),(P2,1,C{1.1.0}),(P3,0,C{1.2.0}),(P3,1,C{1.2.0})'"),
-                          (2, "2S/2C/2T",
-                           "%s -c %s -n %d -- -p %s -P --config '(P0,0,C{0.1.0}),(P0,1,C{0.1.1}),(P1,0,C{0.2.0}),(P1,1,C{0.2.1}),(P2,0,C{1.1.0}),(P2,1,C{1.1.1}),(P3,0,C{1.2.0}),(P3,1,C{1.2.1})'"),
-                          (2, "2S/4C/1T",
-                           "%s -c %s -n %d -- -p %s -P --config '(P0,0,C{0.1.0}),(P0,1,C{0.2.0}),(P1,0,C{0.3.0}),(P1,1,C{0.4.0}),(P2,0,C{1.1.0}),(P2,1,C{1.2.0}),(P3,0,C{1.3.0}),(P3,1,C{1.4.0})'")
+                           "%s -c %s -n %d -- -p %s  --config '(P0,0,C{1.1.0}),(P1,0,C{1.2.0}),(P2,0,C{0.3.0}),(P3,0,C{0.4.0})'"),
                           ]
 
     queues_4_ports = []
@@ -120,8 +94,7 @@ class TestL3fwd(TestCase):
         "{IPv4(13,101,0,0), 24, P3}",
     ]
 
-    frame_sizes = [64]  # 65, 128
-
+    frame_sizes = [64,128]  # 65, 128
     methods = ['lpm', 'exact']
 
     #
@@ -313,18 +286,30 @@ class TestL3fwd(TestCase):
         if not ports:
             ports = self.dut.get_ports(socket=0)
 
+        self.tester.extend_external_packet_generator(TestL3fwd, self)
         # Verify that enough ports are available
         self.verify(len(ports) >= 2, "Insufficient ports for speed testing")
+        
+        netdev = self.dut.ports_info[ports[0]]['port']
+        
+        self.port_socket = netdev.socket
+        
 
         # Verify that enough threads are available
-        cores = self.dut.get_core_list("2S/4C/2T")
+        cores = self.dut.get_core_list("2S/8C/2T")
         self.verify(cores is not None, "Insufficient cores for speed testing")
 
         global valports
         valports = [_ for _ in ports if self.tester.get_local_port(_) != -1]
+        
         self.verify(len(valports) >= 2, "Insufficient active ports for speed testing")
 
         pat = re.compile("P([0123])")
+        # Update config file and rebuild to get best perf on FVL
+        self.dut.send_expect("sed -i -e 's/CONFIG_RTE_PCI_CONFIG=n/CONFIG_RTE_PCI_CONFIG=y/' ./config/common_linuxapp", "#", 20)
+        self.dut.send_expect("sed -i -e 's/CONFIG_RTE_PCI_EXTENDED_TAG=.*$/CONFIG_RTE_PCI_EXTENDED_TAG=\"on\"/' ./config/common_linuxapp", "#", 20)
+        self.dut.build_install_dpdk(self.target)
+
 
         # Prepare long prefix match table, replace P(x) port pattern
         lpmStr = "static struct ipv4_l3fwd_route ipv4_l3fwd_route_array[] = {\\\n"
@@ -372,16 +357,16 @@ class TestL3fwd(TestCase):
         Return a list of packets that implements the flows described in the
         l3fwd test plan.
 
-        """
+        """   
         return [
-            'IP(src="1.2.3.4",dst="10.100.0.1")/UDP(sport=10,dport=1)',
-            'IP(src="1.2.3.4",dst="10.101.0.1")/UDP(sport=10,dport=1)',
-            'IP(src="1.2.3.4",dst="11.100.0.1")/UDP(sport=11,dport=1)',
-            'IP(src="1.2.3.4",dst="11.101.0.1")/UDP(sport=11,dport=1)',
-            'IP(src="1.2.3.4",dst="12.100.0.1")/UDP(sport=12,dport=1)',
-            'IP(src="1.2.3.4",dst="12.101.0.1")/UDP(sport=12,dport=1)',
-            'IP(src="1.2.3.4",dst="13.100.0.1")/UDP(sport=13,dport=1)',
-            'IP(src="1.2.3.4",dst="13.101.0.1")/UDP(sport=13,dport=1)']
+            'IP(src="1.2.3.4",dst="11.100.0.1")',
+            'IP(src="1.2.3.4",dst="11.101.0.1")',
+            'IP(src="1.2.3.4",dst="10.100.0.1")',
+            'IP(src="1.2.3.4",dst="10.101.0.1")',
+            'IP(src="1.2.3.4",dst="13.100.0.1")',
+            'IP(src="1.2.3.4",dst="13.101.0.1")',
+            'IP(src="1.2.3.4",dst="12.100.0.1")',
+            'IP(src="1.2.3.4",dst="12.101.0.1")']
 
     def repl(self, match):
         pid = match.group(1)
@@ -404,6 +389,9 @@ class TestL3fwd(TestCase):
         """
 
         output_pattern = re.compile("P([0123]),([0123]),(C\{\d.\d.\d\})")
+        pat2 = re.compile("C\{\d")
+        repl1 = "C{" + str(self.port_socket)
+ 
 
         bps = dict()
         pps = dict()
@@ -411,9 +399,14 @@ class TestL3fwd(TestCase):
 
         global corelist
         corelist = []
-
+        
+        
         while output_pattern.search(command_line):
+        # If one socket case, we update the socket to ensure the core used by l3fwd is on the same socket of the NIC.
+            if cores_config.find('1S')>=0:
+                command_line = pat2.sub(repl1,command_line)
             command_line = output_pattern.sub(self.repl, command_line)
+            
 
         self.logger.debug("%s\n" % str(corelist))
         core_mask = dts.create_mask(set(corelist))
@@ -439,7 +432,11 @@ class TestL3fwd(TestCase):
                     tx_interface = self.tester.get_local_port(valports[rxPort - 1])
 
                 rx_interface = self.tester.get_local_port(valports[rxPort])
-                tgen_input.append((tx_interface, rx_interface, "dst%d.pcap" % valports[rxPort]))
+                # Make sure the traffic send to the correct MAC address
+                if rxPort % 2 == 0: 
+                    tgen_input.append((tx_interface, rx_interface, "dst%d.pcap" % valports[rxPort+1]))
+                else:
+                    tgen_input.append((tx_interface, rx_interface, "dst%d.pcap" % valports[rxPort-1]))
 
             # FIX ME
             bps[method], pps[method] = self.tester.traffic_generator_throughput(tgen_input)
@@ -490,7 +487,7 @@ class TestL3fwd(TestCase):
         for frame_size in TestL3fwd.frame_sizes:
 
             # Prepare traffic flow
-            payload_size = frame_size - HEADER_SIZE['udp'] - \
+            payload_size = frame_size - \
                 HEADER_SIZE['ip'] - HEADER_SIZE['eth']
 
             for _port in range(4):
@@ -532,28 +529,37 @@ class TestL3fwd(TestCase):
         for frame_size in TestL3fwd.frame_sizes:
 
             # Prepare traffic flow
-            payload_size = frame_size - HEADER_SIZE['udp'] - \
+            payload_size = frame_size -  \
                 HEADER_SIZE['ip'] - HEADER_SIZE['eth']
-
-            flows = ['Ether()/%s/("X"*%d)' % (flow, payload_size) for flow in self.flows()[:4]]
+            for _port in range(2):
+                dmac = self.dut.get_mac_address(valports[_port])
+                flows = ['Ether(dst=%s)/%s/("X"*%d)' % (dmac, flow, payload_size) for flow in self.flows()[_port *2:(_port +1)*2]]
+                self.tester.scapy_append('wrpcap("dst%d.pcap", [%s])' %(valports[_port],string.join(flows,',')))
+            self.tester.scapy_execute() 
 
             dts.report("Flows for 2 ports, %d frame size.\n" % (frame_size),
                        annex=True)
             dts.report("%s" % string.join(flows, '\n'),
                        frame=True, annex=True)
 
-            self.tester.scapy_append('wrpcap("test2ports.pcap", [%s])' % string.join(flows, ','))
-            self.tester.scapy_execute()
 
             # Prepare the command line
             global corelist
             pat = re.compile("P([0123]),([0123]),(C\{\d.\d.\d\})")
+            
+            pat2 = re.compile("C\{\d")
+            repl1 = "C{" + str(self.port_socket)
+
             coreMask = {}
             rtCmdLines = dict(TestL3fwd.test_cases_2_ports)
             for key in rtCmdLines.keys():
                 corelist = []
                 while pat.search(rtCmdLines[key]):
+                    # Change the socket to the NIC's socket
+                    if key.find('1S')>=0:
+                        rtCmdLines[key] = pat2.sub(repl1, rtCmdLines[key])
                     rtCmdLines[key] = pat.sub(self.repl, rtCmdLines[key])
+
                 self.logger.info("%s\n" % str(corelist))
                 coreMask[key] = dts.create_mask(set(corelist))
 
@@ -589,8 +595,10 @@ class TestL3fwd(TestCase):
                             txIntf = self.tester.get_local_port(valports[rxPort - 1])
 
                         rxIntf = self.tester.get_local_port(valports[rxPort])
-
-                        tgenInput.append((txIntf, rxIntf, "test2ports.pcap"))
+                        if rxPort % 2 == 0: 
+                            tgenInput.append((txIntf, rxIntf, "dst%d.pcap" %valports[rxPort+1]))
+                        else: 
+                            tgenInput.append((txIntf, rxIntf, "dst%d.pcap" %valports[rxPort-1]))
 
                     _, pps = self.tester.traffic_generator_throughput(tgenInput)
                     self.verify(pps > 0, "No traffic detected")
