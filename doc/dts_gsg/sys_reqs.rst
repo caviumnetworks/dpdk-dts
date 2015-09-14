@@ -30,8 +30,8 @@ Since DPDK Test Suite Tester communicates with DUT via SSH, please install and s
 
 .. code-block:: console
 
-   yum install sshd                            # download / install ssh software    
-   systemctl enable sshd.service   # start ssh service 
+   yum install sshd                # download / install ssh software
+   systemctl enable sshd.service   # start ssh service
 
 For create authorized login session, user needs to generate RSA authentication keys to ssh connection.
 
@@ -47,12 +47,12 @@ Since some third party tools required TCL (Tool Command Language) supports, plea
 
 .. code-block:: console
 
-   yum install tcl                            # download / install ssh software 
+   yum install tcl                 # download / install ssh software
 
 Install Third Party python modules
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-With third party module, DPDK Test Suite is able to export test result as MS Excel file or graphs. To support this feature, please install the following modules in the tester. 
+With third party module, DPDK Test Suite is able to export test result as MS Excel file or graphs. To support this feature, please install the following modules in the tester.
 Python Module “xlwt”: this module is used to generate spreadsheet files which compatible with MS Excel 97/2000/XP/2003 XLS files.
 Python Module “numpy”: this module provides method to deal with array-processing test results.
 Python Module “matplotlib”: this module is used to produce quality 2D test result summary as graphics
@@ -75,7 +75,7 @@ Please see installation instruction as the following:
 
 Setup and configure Scapy
 ~~~~~~~~~~~~~~~~~~~~~~~~~
-Scapy is a powerful interactive packet manipulation program. It is able to forge or decode packets of a wide number of protocols, send them on the wire, capture them, match requests and replies, and much more. It can easily handle most classical tasks like scanning, tracerouting, probing, unit tests, attacks or network discovery. 
+Scapy is a powerful interactive packet manipulation program. It is able to forge or decode packets of a wide number of protocols, send them on the wire, capture them, match requests and replies, and much more. It can easily handle most classical tasks like scanning, tracerouting, probing, unit tests, attacks or network discovery.
 
 DTCS uses python module scapy to forge or decode packets of a wide number of protocols, send them over the wire, capture them, and analyse the packets.
 
@@ -97,10 +97,10 @@ After configure environment, we need to install DPDK Test Suite into tester. Fir
 
 .. code-block:: console
 
-   [root@tester ~]#  git clone http://dpdk.org/git/tools/dcts
-   [root@tester ~]#  cd dcts
+   [root@tester ~]#  git clone http://dpdk.org/git/tools/dts
+   [root@tester ~]#  cd dts
    [root@tester dcts]#  ls
-   [root@tester dcts]#  dts  execution.cfg framework output test_plans tests 
+   [root@tester dcts]# conf  dep  doc  dts  executions  framework  output  test_plans  tests  tools
 
 High Precision Timer (HPET) must be enabled in the platform BIOS if the HPET is to be used. Otherwise, the Time Stamp Counter (TSC) is used by default. The user can then navigate to the HPET option. On the Crystal Forest platform BIOS, the path is:
 **Advanced -> PCH-IO Configuration -> High Precision Timer**
@@ -123,7 +123,7 @@ This section describes how to deploy DPDK Test Suite packages into DUT target.So
 *   Ubuntu12.04/14.04
 *   WindRiver 6.0
 *   FreeBSD 10
-*   RedHat 6.5/7.0 
+*   RedHat 6.5/7.0
 *   SUSE 11
 
 Before run DPDK Test Suite on target, we need to configure target environment, it includes BIOS setting, Network configure, compiler environment, etc.
@@ -134,20 +134,21 @@ BIOS setting Prerequisite
 In general, enter BIOS Menu by pressing F2 while the platform is starting up.
 
 .. note::
-   strongly recommend to install DPDK on Intel latest platform and processor.
+   It is strongly recommended to use DPDK with the latest generation of Intel platforms and processors.
 
 The High Precision Timer (HPET) must be enabled in the platform BIOS if the HPET is to be used. Otherwise, the Time Stamp Counter (TSC) is used by default. The user can then navigate to the HPET option. On the Crystal Forest platform BIOS, the path is:
 
 **Advanced -> PCH-IO Configuration -> High Precision Timer**
 
-Enhanced Intel SpeedStep® Technology must be disabled in the platform BIOS. Thus we will disable dynamically adjust processor voltage and core frequency which may cause unstable performance data. On the Crystal Forest platform BIOS, the path is:
+Enhanced Intel SpeedStep® Technology must be disabled in the platform BIOS, to ensure the processor voltage and core frequency do not change. This is necessary for consistency of data. On the Crystal Forest platform BIOS the path is:
+
 
 **Advanced -> Processor Configuration -> Enhanced Intel SpeedStep**
 
-Processor sate C3 and C6 must be disabled for performance measure too. On the Crystal Forest platform BIOS, the path is:
+Processor state C3 and C6 must be disabled for performance measure too. On the Crystal Forest platform BIOS, the path is:
 
-**Advanced -> Processor Configuration -> Processor C3
-Advanced -> Processor Configuration -> Processor C6**
+**Advanced -> Processor Configuration -> Processor C3**
+**Advanced -> Processor Configuration -> Processor C6**
 
 Hyper-Threading Technology must be enabled. On the Crystal Forest platform BIOS, the path is:
 
@@ -165,7 +166,7 @@ Kernel must support the allocation of hugepages. Hugepage support is required fo
 The  DPDK igb_uio kernel module depends on traditional Linux kernel ``uio`` support to operate. Linux traditional ``uio`` support may be compiled as a module, so this module should be loaded using the ``modprobe`` program.
 Kernel must support the allocation of hugepages. Hugepage support is required for the large memory pool allocation used for packet buffers. By using hugepage allocations, performance will be improved  since only fewer pages are needed, and therefore less Translation Lookaside Buffers (TLBs, high speed translation caches), which reduce the time it takes to translate a virtual page address to a physical page address. Without hugepages, high TLB miss rates would occur, slowing performance.
 
-For more detail information of system requirements, also refer to `Data Plane Development Kit Getting Started Guide <http://dpdk.org/doc/intel/dpdk-start-linux-1.7.0.pdf>`_.
+For more detail information of system requirements, also refer to `Data Plane Development Kit Getting Started Guide <http://dpdk.org/doc/guides>`_.
 
 Authorized login session
 ------------------------
@@ -177,8 +178,8 @@ In tester, you can use tool ssh-copy-id to save local available keys on DUT, thu
 
    ssh-copy-id -i “IP of DUT”
    ssh-copy-id -i “IP of tester”
-    
-In DUT, You also can use tool ssh-copy-id to save local available keys in tester, thus create authorise login session between DUT and tester. 
+
+In DUT, You also can use tool ssh-copy-id to save local available keys in tester, thus create authorise login session between DUT and tester.
 
 .. code-block:: console
 

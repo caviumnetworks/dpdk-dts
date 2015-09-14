@@ -194,8 +194,8 @@ DPDK Test Suite will create communication sessions first.
    DTS_TESTER_CMD: ssh root@10.239.128.116
    DCS_TESTER_CMD: ssh root@10.239.128.116
 
-
 Then copy snapshot zipped dpdk source code to DUT.
+
 .. code-block:: console
 
    DTS_DUT_CMD: scp ../dpdk.tar.gz root@10.239.128.117:
@@ -233,7 +233,6 @@ Begin the validation process of test suite.
        SUITE_DUT_CMD: make -j -C examples/cmdline
        SUITE_DUT_CMD: ./examples/cmdline/build/app/cmdline -n 1 -c 0x2
                                INFO: Test Case test_cmdline_sample_commands Begin
-
 
 Clean-up DUT and tester after all validation finished.
 
