@@ -51,7 +51,7 @@ from test_result import Result
 from stats_reporter import StatsReporter
 from excel_reporter import ExcelReporter
 from utils import *
-from exception import TimeoutException
+from exception import TimeoutException, ConfigParseException
 from logger import getLogger
 import logger
 import debugger
@@ -441,7 +441,9 @@ def run_all(config_file, pkgName, git, patch, skip_setup,
 
     # Read config file
     config = ConfigParser.SafeConfigParser()
-    config.read(config_file)
+    load_cfg = config.read(config_file)
+    if len(load_cfg) == 0:
+        raise ConfigParseException(config_file)
 
     # register exit action
     atexit.register(close_crb_sessions)
