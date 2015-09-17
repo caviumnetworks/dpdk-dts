@@ -40,3 +40,4 @@ Getting Started Guide
     config
     review
     virtualization
+    scenario
