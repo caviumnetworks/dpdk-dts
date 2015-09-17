@@ -375,7 +375,7 @@ class TestPmd(TestCase,IxiaPacketGenerator):
 
         checksum = ''
         if checksum_test:
-            checksum = 'chksum=0x0'
+            checksum = 'chksum=0x1'
 
         self.tester.scapy_foreground()
         self.tester.scapy_append('nutmac="%s"' % mac)
@@ -402,8 +402,12 @@ class TestPmd(TestCase,IxiaPacketGenerator):
                     "packet pass assert error, %d RX packets, %d TX packets" % (p1rx_pkts, p0tx_pkts))
 
         if checksum_test:
-            self.verify(p1rx_bytes == frame_size - 4,
-                        "packet pass assert error, expected %d RX bytes, actual %d" % (frame_size - 4, p1rx_bytes))
+            if self.nic in ["powerville", "springville", "kawela_4"]:
+            	self.verify(p1rx_bytes == frame_size,
+                        	"packet pass assert error, expected %d RX bytes, actual %d" % (frame_size, p1rx_bytes))
+            else:
+            	self.verify(p1rx_bytes == frame_size - 4,
+                        	"packet pass assert error, expected %d RX bytes, actual %d" % (frame_size - 4, p1rx_bytes))
         else:
             self.verify(p1rx_bytes == frame_size,
                         "packet pass assert error, expected %d RX bytes, actual %d" % (frame_size, p1rx_bytes))
