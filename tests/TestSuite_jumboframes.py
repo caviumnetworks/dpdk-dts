@@ -208,8 +208,14 @@ class TestJumboframes(TestCase):
             self.dut.send_expect("set promisc all off", "testpmd> ")
             self.dut.send_expect("set fwd mac", "testpmd> ")
         self.dut.send_expect("start", "testpmd> ")
-
-        self.jumboframes_send_packet(ETHER_JUMBO_FRAME_MTU + 1, False)
+        
+        """
+        On 1G NICs, when the jubmo frame MTU set as 9000, the software adjust it to 9004.
+        """
+        if self.nic in ["powerville", "springville", "kawela_4"]:
+            self.jumboframes_send_packet(ETHER_JUMBO_FRAME_MTU + 4 + 1, False)
+        else:
+            self.jumboframes_send_packet(ETHER_JUMBO_FRAME_MTU + 1, False)
 
         self.dut.send_expect("quit", "# ", 30)
 
