@@ -1,5 +1,5 @@
 #   BSD LICENSE
-#   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+#   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
 #   All rights reserved.
 #
 #   Redistribution and use in source and binary forms, with or without
@@ -32,7 +32,7 @@ import subprocess
 
 project = 'DPDK Test Suite'
 
-copyright = '2014, dpdk.org'
+copyright = '2015, dpdk.org'
 
 #version = subprocess.check_output(["make","-sRrC","../../", "showversion"])
 
