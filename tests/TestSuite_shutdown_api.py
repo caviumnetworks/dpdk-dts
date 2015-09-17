@@ -152,6 +152,9 @@ class TestShutdownApi(TestCase):
                                 "powerville", "springville", "hartwell"]:
                     self.verify(p1rx_bytes - 4 == pktSize,
                                 "Wrong RX bytes CRC strip: p1_rx=%d, pktSize=%d" % (p1rx_bytes, pktSize))
+                elif self.nic in ["powerville", "springville", "kawela_4"]:
+                    self.verify(p1rx_bytes == pktSize,
+                                "Wrong RX bytes CRC strip: p1_rx=%d, pktSize=%d" % (p1rx_bytes, pktSize))                  
                 else:
                     self.verify(p1rx_bytes == pktSize - 4,
                                 "Wrong RX bytes CRC strip: p1_rx=%d, pktSize=%d" % (p1rx_bytes, pktSize))
