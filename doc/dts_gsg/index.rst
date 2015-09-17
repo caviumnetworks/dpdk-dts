@@ -39,4 +39,4 @@ Getting Started Guide
     sys_reqs
     config
     review
-
+    virtualization
