@@ -347,7 +347,7 @@ class Crb(object):
 
         cmd = 'lsof -Fp /var/run/.rte_hugepage_info'
         out = self.alt_session.session.send_expect(cmd, "# ", 10)
-        if len(out):
+        if len(out) and "No such file or directory" not in out:
             self.logger.warning("There are some dpdk process not free hugepage")
             self.logger.warning("**************************************")
             self.logger.warning(out)
