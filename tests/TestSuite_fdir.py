@@ -597,7 +597,7 @@ class TestFdir(TestCase, IxiaPacketGenerator):
             self.dut.send_expect("flow_director_filter %s add flow ipv4-sctp src 192.168.0.1 32 dst 192.168.0.2 32 verify_tag 1 vlan 0 flexbytes (%s) fwd queue %d fd_id %d "%(self.dut_ports[0],self.flexbytes, 1, 1), "testpmd>")
             self.dut.send_expect("flow_director_filter %s update flow ipv4-sctp src 192.168.0.1 32 dst 192.168.0.2 32 verify_tag 1 vlan 0 flexbytes (%s) fwd queue %d fd_id %d "%(self.dut_ports[0],self.flexbytes, 2, 1), "testpmd>")
             self.send_and_verify(True, 'sendp([Ether(src=get_if_hwaddr("%s"), dst="00:1B:21:8E:B2:30")/IP(src="192.168.0.1", dst="192.168.0.2")/SCTP(sport=32, dport=32, tag=1)/SCTPChunkData(data="%s")], iface="%s")' % (self.dut_rx_interface, self.payload, self.dut_rx_interface))
-            self.dut.send_expect("flow_director_filter 0 del flow ipv4-sctp src 192.168.0.1 32 dst 192.168.0.2 32 verify_tag 1 vlan 0 flexbytes (%s) fwd queue %d fd_id %d "%(self.dut_ports[0],self.flexbytes, 2, 1), "testpmd>")
+            self.dut.send_expect("flow_director_filter %s del flow ipv4-sctp src 192.168.0.1 32 dst 192.168.0.2 32 verify_tag 1 vlan 0 flexbytes (%s) fwd queue %d fd_id %d "%(self.dut_ports[0],self.flexbytes, 2, 1), "testpmd>")
         self.fdir_get_flexbytes()
 
         self.dut.send_expect("quit", "# ", 30)
