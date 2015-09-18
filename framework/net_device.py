@@ -198,6 +198,24 @@ class NetDevice(object):
         return match[0]
 
     @nic_has_driver
+    def set_vf_mac_addr(self, vf_idx=0, mac="00:00:00:00:00:01"):
+        """
+        Set mac address of specified vf device.
+        """
+        set_vf_mac_addr = getattr(self, 'set_vf_mac_addr_%s' % self.__get_os_type())
+        out = set_vf_mac_addr(self.intf_name, vf_idx, mac)
+
+    def set_vf_mac_addr_linux(self, intf, vf_idx, mac):
+        """
+        Set mac address of specified vf device on linux.
+        """
+        if self.current_driver != self.default_driver:
+            print "Only support when PF bound to default driver"
+            return
+
+        self.__send_expect("ip link set %s vf %d mac %s" % (intf, vf_idx, mac), "# ")
+
+    @nic_has_driver
     def get_mac_addr(self):
         """
         Get mac address of specified pci device.
