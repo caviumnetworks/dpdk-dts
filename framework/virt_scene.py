@@ -259,6 +259,7 @@ class VirtScene(object):
         # strip vf pci id
         if 'pf_dev' in param.keys():
             pf = int(param['pf_dev'])
+            pf_net = self.host_dut.ports_info[pf]['port']
             vfs = self.host_dut.ports_info[pf]['vfs_port']
             vf_idx = int(param['vf_idx'])
             if vf_idx >= len(vfs):
@@ -268,6 +269,8 @@ class VirtScene(object):
             vf_param['opt_host'] = vf_pci
             if param['guestpci'] != 'auto':
                 vf_param['opt_addr'] = param['guestpci']
+            if 'mac' in param.keys():
+                pf_net.set_vf_mac_addr(vf_idx, param['mac'])
         else:
             print dts.RED("Invalid vf device config, request pf_dev")
 
