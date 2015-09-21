@@ -224,7 +224,7 @@ class VirtBase(object):
         self.load_global_config()
         self.load_local_config(self.suite)
 
-    def start(self, load_config=True, set_target=True, auto_portmap=True, bind_dev=True):
+    def start(self, load_config=True, set_target=True, cpu_topo='', auto_portmap=True, bind_dev=True):
         """
         Start VM and instantiate the VM with VirtDut.
         """
@@ -238,7 +238,7 @@ class VirtBase(object):
             self._start_vm()
 
             # connect vm dut and init running environment
-            vm_dut = self.instantiate_vm_dut(set_target, auto_portmap)
+            vm_dut = self.instantiate_vm_dut(set_target, cpu_topo, auto_portmap)
         except Exception as vm_except:
             if self.handle_exception(vm_except):
                 print dts.RED("Handled expection " + str(type(vm_except)))
@@ -293,7 +293,7 @@ class VirtBase(object):
         """
         NotImplemented
 
-    def instantiate_vm_dut(self, set_target=True, auto_portmap=True, bind_dev=True):
+    def instantiate_vm_dut(self, set_target=True, cpu_topo='', auto_portmap=True, bind_dev=True):
         """
         Instantiate the Dut class for VM.
         """
@@ -317,7 +317,8 @@ class VirtBase(object):
                 serializer,
                 self.virt_type,
                 self.vm_name,
-                self.suite)
+                self.suite,
+                cpu_topo)
         except:
             raise exception.VirtDutConnectException
             return None

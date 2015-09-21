@@ -193,8 +193,19 @@ class VirtScene(object):
         else:
             model = 'host'
 
-        cores = self.host_dut.virt_pool.alloc_cpu(vm=vm_name, number=num,
-                                                  socket=numa)
+        cpu_topo = ''
+        if 'cpu_topo' in cpu_conf.keys():
+            cpu_topo = cpu_conf['cpu_topo']
+
+        pin_cores = []
+        if 'cpu_pin' in cpu_conf.keys():
+            pin_cores = cpu_conf['cpu_pin'].split()
+
+        if len(pin_cores):
+            cores = self.host_dut.virt_pool.alloc_cpu(vm=vm_name, corelist=pin_cores)
+        else:
+            cores = self.host_dut.virt_pool.alloc_cpu(vm=vm_name, number=num,
+                                                      socket=numa)
         core_cfg = ''
         for core in cores:
             core_cfg += '%s ' % core
@@ -203,6 +214,7 @@ class VirtScene(object):
         cpu_param['number'] = num
         cpu_param['model'] = model
         cpu_param['cpupin'] = core_cfg
+        cpu_param['cputopo'] = cpu_topo
 
         # replace with allocated cpus
         params['cpu'] = [cpu_param]
@@ -419,6 +431,12 @@ class VirtScene(object):
         # update vm name
         vm.params[index]['name'][0]['name'] = vm.vm_name
 
+    def get_cputopo(self, params):
+        for param in params:
+            if 'cpu' in param.keys():
+                cpu_topo = param['cpu'][0]['cputopo']
+                return cpu_topo
+
     def start_vms(self):
         self.vms = []
         if self.vm_type == 'kvm':
@@ -434,9 +452,12 @@ class VirtScene(object):
                 scene_params = self.vm_confs[vm_name]
                 # reload merged configurations
                 self.merge_params(vm, scene_params)
+                # get cpu topo
+                topo = self.get_cputopo(scene_params)
                 try:
                     vm_dut = vm.start(load_config=False, set_target=False,
-                                      auto_portmap=self.auto_portmap)
+                                      auto_portmap=self.auto_portmap,
+                                      cpu_topo=topo)
                     if vm_dut is None:
                         raise Exception("Set up VM ENV failed!")
 
