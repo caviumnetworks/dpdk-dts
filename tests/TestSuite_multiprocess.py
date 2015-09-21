@@ -53,7 +53,7 @@ class TestMultiprocess(TestCase, IxiaPacketGenerator):
             DUT core number >= 4
             multi_process build pass
         """
-        self.verify('bsdapp' not in self.target, "Multiprocess not support freebsd")
+        #self.verify('bsdapp' not in self.target, "Multiprocess not support freebsd")
 
         self.verify(len(self.dut.get_all_cores()) >= 4, "Not enough Cores")
         self.tester.extend_external_packet_generator(TestMultiprocess, self)

@@ -150,12 +150,12 @@ class TestFdir(TestCase, IxiaPacketGenerator):
         PMD prerequisites.
         """
         self.tester.extend_external_packet_generator(TestFdir, self)
-        self.verify('bsdapp' not in self.target, "FDIR not support freebsd")
+        #self.verify('bsdapp' not in self.target, "FDIR not support freebsd")
         # this feature support Fortville, Niantic
-        self.verify(self.nic in ["kawela_2", "niantic", "bartonhills", "82545EM",
-                                 "82540EM", "springfountain", "fortville_eagle",
-                                 "fortville_spirit", "fortville_spirit_single"],
-                    "NIC Unsupported: " + str(self.nic))
+        #self.verify(self.nic in ["kawela_2", "niantic", "bartonhills", "82545EM",
+        #                         "82540EM", "springfountain", "fortville_eagle",
+        #                         "fortville_spirit", "fortville_spirit_single"],
+        #            "NIC Unsupported: " + str(self.nic))
 
         # Based on h/w type, choose how many ports to use
         self.dut_ports = self.dut.get_ports(self.nic)

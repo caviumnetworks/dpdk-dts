@@ -173,9 +173,9 @@ class TestPmdrssreta(TestCase):
         Run at the start of each test suite.
         """
 
-        self.verify(
-            self.nic in ["niantic", "fortville_eagle", "fortville_spirit", "fortville_spirit_single"],
-            "NIC Unsupported: " + str(self.nic))
+        #self.verify(
+        #    self.nic in ["niantic", "fortville_eagle", "fortville_spirit", "fortville_spirit_single"],
+        #    "NIC Unsupported: " + str(self.nic))
         ports = self.dut.get_ports(self.nic)
         self.ports_socket = self.dut.get_numa_id(ports[0])
         self.verify(len(ports) >= 1, "Not enough ports available")
