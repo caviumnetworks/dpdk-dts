@@ -54,9 +54,10 @@ class VirtDut(DPDKdut):
     or CRBBareMetal.
     """
 
-    def __init__(self, hyper, crb, serializer, virttype, vm_name, suite):
+    def __init__(self, hyper, crb, serializer, virttype, vm_name, suite, cpu_topo):
         self.vm_name = vm_name
         self.hyper = hyper
+        self.cpu_topo = cpu_topo
         super(Dut, self).__init__(crb, serializer)
         self.vm_ip = self.get_ip_address()
         self.NAME = 'virtdut' + LOG_NAME_SEP + '%s' % self.vm_ip
@@ -167,6 +168,10 @@ class VirtDut(DPDKdut):
 
         # scan ports before restore interface
         self.scan_ports()
+
+        # update with real numa id
+        self.update_ports()
+
         # restore dut ports to kernel
         if self.virttype != 'XEN':
             self.restore_interfaces()
@@ -202,6 +207,38 @@ class VirtDut(DPDKdut):
         cpuinfo = self.send_expect("grep --color=never \"processor\""
                                    " /proc/cpuinfo", "#", alt_session=False)
         cpuinfo = cpuinfo.split('\r\n')
+        if self.cpu_topo != '':
+            topo_reg = r"(\d)S/(\d)C/(\d)T"
+            m = re.match(topo_reg, self.cpu_topo)
+            if m:
+                socks = int(m.group(1))
+                cores = int(m.group(2))
+                threads = int(m.group(3))
+                total = socks * cores * threads
+                cores_persock = cores * threads
+                total_phycores = socks * cores
+                # cores should match cpu_topo
+                if total != len(cpuinfo):
+                    print dts.RED("Core number not matched!!!")
+                else:
+                    for core in range(total):
+                        thread = core / total_phycores
+                        phy_core = core % total_phycores
+                        # if this core is hyper core
+                        if thread:
+                            idx = core % total_phycores
+                            socket = idx / cores
+                        else:
+                            socket = core / cores
+
+                        # tricky here, socket must be string
+                        self.cores.append({'thread': core,
+                                           'socket': str(socket),
+                                           'core': phy_core})
+                    self.number_of_cores = len(self.cores)
+                    return
+
+        # default core map
         for line in cpuinfo:
             m = re.search("processor\t: (\d+)", line)
             if m:
@@ -267,6 +304,26 @@ class VirtDut(DPDKdut):
         scan_ports_uncached = getattr(
             self, 'scan_ports_uncached_%s' % self.get_os_type())
         return scan_ports_uncached()
+
+    def update_ports(self):
+        """
+        Update ports information, according to host pci
+        """
+        for port in self.ports_info:
+            vmpci = port['pci']
+            for pci_map in self.hyper.pci_maps:
+                # search pci mapping strucutre
+                if vmpci == pci_map['guestpci']:
+                    hostpci = pci_map['hostpci']
+                    # search host port info structure
+                    for hostport in self.host_dut.ports_info:
+                        # update port numa
+                        if hostpci == hostport['pci'] or \
+                           hostpci in hostport['sriov_vfs_pci']:
+                            port['numa'] = hostport['numa']
+                            port['port'].socket = hostport['numa']
+                            break
+                    break
 
     def map_available_ports(self):
         """
