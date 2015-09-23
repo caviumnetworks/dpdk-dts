@@ -68,14 +68,14 @@ Send time sync packet from tester::
 
 Check below message dumped by testpmd::
     (outer) L2 type: ETHER_Timesync
-    
+
 Send ARP packet from tester::
     sendp([Ether(dst='FF:FF:FF:FF:FF:FF')/ARP()],
         iface=txItf)
 
 Check below message dumped by testpmd::
     (outer) L2 type: ETHER_ARP
-        
+
 Send LLDP packet from tester::
     sendp([Ether()/LLDP()/LLDPManagementAddress()], iface=txItf)
 
@@ -85,13 +85,12 @@ Check below message dumped by testpmd::
 Test Case: IPv4&L4 packet type detect
 =====================================
 This case checked that whether L3 and L4 packet can be normally detected.
-Niantic and i350 will shown that L2 type is MAC.
 Only Fortville can detect icmp packet.
 Only niantic and i350 can detect ipv4 extension packet.
-Fortville did not detect whether packet contian ipv4 header options, so L3
+Fortville did not detect whether packet contain ipv4 header options, so L3
 type will be shown as IPV4_EXT_UNKNOWN.
 Fortville will identify all unrecognized L4 packet as L4_NONFRAG.
-Only Fortville can inentify L4 fragement packet.
+Only Fortville can identify L4 fragment packet.
 
 Send IP only packet and verify L2/L3/L4 corrected::
     sendp([Ether()/IP()/Raw('\0'*60)], iface=txItf)
@@ -142,11 +141,10 @@ Send IP extension+SCTP packet and verify L2/L3/L4 corrected(Niantic,i350)::
 Test Case: IPv6&L4 packet type detect
 =====================================
 This case checked that whether IPv6 and L4 packet can be normally detected.
-Niantic and i350 will shown that L2 type is MAC.
-Fortville did not detect whether packet contian ipv6 extension options, so L3
+Fortville did not detect whether packet contain ipv6 extension options, so L3
 type will be shown as IPV6_EXT_UNKNOWN.
 Fortville will identify all unrecognized L4 packet as L4_NONFRAG.
-Only Fortville can inentify L4 fragement packet.
+Only Fortville can identify L4 fragment packet.
 
 Send IPv6 only packet and verify L2/L3/L4 corrected::
     sendp([Ether()/IPv6()/Raw('\0'*60)], iface=txItf)
@@ -214,7 +212,7 @@ Send IPv4+IPv4+SCTP packet and verify inner and outer L2/L3/L4 corrected::
     Inner L4 type: SCTP
 
 Send IPv4+IPv4+ICMP packet and verify inner and outer L2/L3/L4 corrected::
-    sendp([Ether()/IP()/IP()/SCTP()/Raw('\0'*40)],iface=txItf)
+    sendp([Ether()/IP()/IP()/ICMP()/Raw('\0'*40)],iface=txItf)
 
     Inner L4 type: ICMP
     
@@ -257,7 +255,7 @@ detected by Niantic and i350.
 Send IPv4+IPv6 packet and verify inner and outer L2/L3/L4 corrected::
     sendp([Ether()/IP()/IPv6()/Raw('\0'*40)], iface=txItf)
 
-    (outer) L2 type: MAC
+    (outer) L2 type: ETHER
     (outer) L3 type: IPV4
     (outer) L4 type: Unknown
     Tunnel type: IP
@@ -332,7 +330,7 @@ Send IPv4+IPv4+SCTP packet and verify inner and outer L2/L3/L4 corrected::
     Inner L4 type: SCTP
 
 Send IPv4+IPv4+ICMP packet and verify inner and outer L2/L3/L4 corrected::
-    sendp([Ether()/IP()/IP()/SCTP()/Raw('\0'*40)],iface=txItf)
+    sendp([Ether()/IP()/IP()/ICMP()/Raw('\0'*40)],iface=txItf)
     
     Inner L4 type: ICMP
     
@@ -501,7 +499,7 @@ Send IPV6+NVGRE+MAC packet and verify inner and outer L2/L3/L4 corrected::
     (outer) L4 type: Unknown
     Tunnel type: GRENAT
     Inner L2 type: ETHER
-    Inner L3 type: Unkown
+    Inner L3 type: Unknown
     Inner L4 type: Unknown
     
 Send IPV6+NVGRE+MAC+IPv4 fragment packet and verify inner and outer L2/L3/L4
@@ -722,7 +720,7 @@ Send IPv4+GRE+IPv4+ICMP packet and verify inner and outer L2/L3/L4 corrected::
 Send IPv4+GRE packet and verify inner and outer L2/L3/L4 corrected::
     sendp([Ether()/IP()/GRE()/Raw('x'*40)], iface=txItf)
 
-    Inner L3 type: Unkown
+    Inner L3 type: Unknown
     Inner L4 type: Unknown
 
 Test Case: Vxlan tunnel packet type detect
@@ -732,7 +730,7 @@ Fortville.
 Fortville did not distinguish GRE/Teredo/Vxlan packets, all those types
 will be displayed as GRENAT.
 
-Add vxlan tunnle port filter on receive port::
+Add vxlan tunnel port filter on receive port::
     rx_vxlan_port add 4789 0
 Send IPv4+Vxlan+MAC+IPv4 fragment packet and verify inner and outer L2/L3/L4
 corrected::
@@ -820,7 +818,7 @@ corrected::
     
 Send IPv4+Vxlan+MAC+IPv6+ICMP packet and verify inner and outer L2/L3/L4
 corrected::
-    sendp([Ether()/IP()/UDP()/Vxlan()/Ether()/IPv6(nh=28)/ICMP()/
+    sendp([Ether()/IP()/UDP()/Vxlan()/Ether()/IPv6(nh=58)/ICMP()/
     Raw('\0'*40)], iface=txItf)
 
     Inner L4 type: ICMP
@@ -828,5 +826,5 @@ corrected::
 Send IPv4+Vxlan+MAC packet and verify inner and outer L2/L3/L4 corrected::
     sendp([Ether()/IP()/UDP()/Vxlan()/Ether()/Raw('\0'*40)], iface=txItf)
     
-    Inner L3 type: Unkown
+    Inner L3 type: Unknown
     Inner L4 type: Unknown
