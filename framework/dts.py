@@ -291,8 +291,6 @@ def dts_run_target(crbInst, targets, test_suites, nic, scenario):
     """
     Run each target in execution targets.
     """
-    global skip_case_mode
-    skip_case_mode = check_case_skip(dut)
     if scenario != '':
         scene = VirtScene(dut, tester, scenario)
     else:
@@ -405,11 +403,13 @@ def run_all(config_file, pkgName, git, patch, skip_setup,
     global Patches
     global scenario
     global check_case_inst
+    global support_case_inst
     # save global variable
     Package = pkgName
     Patches = patch
     check_case = parse_file()
     check_case.set_filter_case()
+    check_case.set_support_case()
     # prepare the output folder
     if output_dir == '':
         output_dir = FOLDERS['Output']
@@ -487,6 +487,8 @@ def run_all(config_file, pkgName, git, patch, skip_setup,
         dts_crbs_init(crbInst, skip_setup, read_cache, project, base_dir, nics, virttype)
 
         check_case_inst = check_case_skip(dut)
+        support_case_inst = check_case_support(dut)
+
         # Run DUT prerequisites
         if dts_run_prerequisties(pkgName, patch) is False:
             dts_crbs_exit()
@@ -601,11 +603,18 @@ def execute_test_case(test_suite, test_case):
     result.test_case = test_case.__name__
     rst.write_title("Test Case: " + test_case.__name__)
     if check_case_inst.case_skip(test_case.__name__[len("test_"):]):
-       log_handler.info('Test Case %s Result SKIPED:' % test_case.__name__)
-       rst.write_result("N/A")
-       result.test_case_skip(skip_case_mode.comments)
-       save_all_results()
-       return
+        log_handler.info('Test Case %s Result SKIPED:' % test_case.__name__)
+        rst.write_result("N/A")
+        result.test_case_skip(check_case_inst.comments)
+        save_all_results()
+        return
+
+    if not support_case_inst.case_support(test_case.__name__[len("test_"):]):
+        log_handler.info('Test Case %s Result SKIPED:' % test_case.__name__)
+        rst.write_result("N/A")
+        result.test_case_skip(support_case_inst.comments)
+        save_all_results()
+        return
 
     if performance_only:
         rst.write_annex_title("Annex: " + test_case.__name__)
