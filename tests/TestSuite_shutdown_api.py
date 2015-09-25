@@ -149,7 +149,7 @@ class TestShutdownApi(TestCase):
             if crcStrip:
                 if self.nic in ["fortville_eagle", "fortville_spirit",
                                 "fortville_spirit_single", "bartonhills",
-                                "powerville", "springville", "hartwell"]:
+                                "hartwell"]:
                     self.verify(p1rx_bytes - 4 == pktSize,
                                 "Wrong RX bytes CRC strip: p1_rx=%d, pktSize=%d" % (p1rx_bytes, pktSize))
                 elif self.nic in ["powerville", "springville", "kawela_4"]:
