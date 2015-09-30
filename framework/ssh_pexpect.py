@@ -46,7 +46,7 @@ class SSHPexpect(object):
 
     def send_expect_base(self, command, expected, timeout):
         ignore_keyintr()
-        self.__flush() # clear buffer
+        self.clean_session()
         self.session.PROMPT = expected
         self.__sendline(command)
         self.__prompt(command, timeout)
@@ -67,6 +67,16 @@ class SSHPexpect(object):
                 return int(ret_status)
         else:
             return ret
+
+    def send_command(self, command, timeout=1):
+        ignore_keyintr()
+        self.clean_session()
+        self.__sendline(command)
+        aware_keyintr()
+        return self.get_session_before(timeout)
+
+    def clean_session(self):
+        self.get_session_before(timeout=0.01)
 
     def get_session_before(self, timeout=15):
         """

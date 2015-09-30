@@ -69,6 +69,16 @@ class Crb(object):
 
         return self.session.send_expect(cmds, expected, timeout, verify)
 
+    def send_command(self, cmds, timeout=TIMEOUT, alt_session=False):
+        """
+        Send commands to crb and return string before timeout.
+        """
+
+        if alt_session:
+            return self.alt_session.session.send_command(cmds, timeout)
+
+        return self.session.send_command(cmds, timeout)
+
     def get_session_output(self, timeout=TIMEOUT):
         """
         Get session output message before timeout

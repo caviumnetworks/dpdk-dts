@@ -61,6 +61,12 @@ class SSHConnection(object):
         self.logger.debug(out)
         return out
 
+    def send_command(self, cmds, timeout=1):
+        self.logger.info(cmds)
+        out = self.session.send_command(cmds)
+        self.logger.debug(out)
+        return out
+
     def get_session_before(self, timeout=15):
         out = self.session.get_session_before(timeout)
         self.logger.debug(out)
