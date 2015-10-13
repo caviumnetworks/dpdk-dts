@@ -62,42 +62,42 @@ class TestPmdrssreta(TestCase):
         # send packet with different source and dest ip
         if tran_type == "IPV4":
             for i in range(16):
-                packet = r'sendp([Ether(dst="%s")/IP(src="192.168.0.%d", dst="192.168.0.%d")], iface="%s")' % (
+                packet = r'sendp([Ether(dst="%s", src="02:00:00:00:00:00")/IP(src="192.168.0.%d", dst="192.168.0.%d")], iface="%s")' % (
                     mac, i + 1, i + 2, itf)
                 self.tester.scapy_append(packet)
                 self.tester.scapy_execute()
                 time.sleep(.5)
         elif tran_type == "IPV4&TCP":
             for i in range(16):
-                packet = r'sendp([Ether(dst="%s")/IP(src="192.168.0.%d", dst="192.168.0.%d")/TCP(sport=1024,dport=1024)], iface="%s")' % (
+                packet = r'sendp([Ether(dst="%s", src="02:00:00:00:00:00")/IP(src="192.168.0.%d", dst="192.168.0.%d")/TCP(sport=1024,dport=1024)], iface="%s")' % (
                     mac, i + 1, i + 2, itf)
                 self.tester.scapy_append(packet)
                 self.tester.scapy_execute()
                 time.sleep(.5)
         elif tran_type == "IPV4&UDP":
             for i in range(16):
-                packet = r'sendp([Ether(dst="%s")/IP(src="192.168.0.%d", dst="192.168.0.%d")/UDP(sport=1024,dport=1024)], iface="%s")' % (
+                packet = r'sendp([Ether(dst="%s", src="02:00:00:00:00:00")/IP(src="192.168.0.%d", dst="192.168.0.%d")/UDP(sport=1024,dport=1024)], iface="%s")' % (
                     mac, i + 1, i + 2, itf)
                 self.tester.scapy_append(packet)
                 self.tester.scapy_execute()
                 time.sleep(.5)
         elif tran_type == "IPV6":
             for i in range(16):
-                packet = r'sendp([Ether(dst="%s")/IPv6(src="3ffe:2501:200:1fff::%d", dst="3ffe:2501:200:3::%d")], iface="%s")' % (
+                packet = r'sendp([Ether(dst="%s", src="02:00:00:00:00:00")/IPv6(src="3ffe:2501:200:1fff::%d", dst="3ffe:2501:200:3::%d")], iface="%s")' % (
                     mac, i + 1, i + 2, itf)
                 self.tester.scapy_append(packet)
                 self.tester.scapy_execute()
                 time.sleep(.5)
         elif tran_type == "IPV6&TCP":
             for i in range(16):
-                packet = r'sendp([Ether(dst="%s")/IPv6(src="3ffe:2501:200:1fff::%d", dst="3ffe:2501:200:3::%d")/TCP(sport=1024,dport=1024)], iface="%s")' % (
+                packet = r'sendp([Ether(dst="%s", src="02:00:00:00:00:00")/IPv6(src="3ffe:2501:200:1fff::%d", dst="3ffe:2501:200:3::%d")/TCP(sport=1024,dport=1024)], iface="%s")' % (
                     mac, i + 1, i + 2, itf)
                 self.tester.scapy_append(packet)
                 self.tester.scapy_execute()
                 time.sleep(.5)
         elif tran_type == "IPV6&UDP":
             for i in range(16):
-                packet = r'sendp([Ether(dst="%s")/IPv6(src="3ffe:2501:200:1fff::%d", dst="3ffe:2501:200:3::%d")/UDP(sport=1024,dport=1024)], iface="%s")' % (
+                packet = r'sendp([Ether(dst="%s", src="02:00:00:00:00:00")/IPv6(src="3ffe:2501:200:1fff::%d", dst="3ffe:2501:200:3::%d")/UDP(sport=1024,dport=1024)], iface="%s")' % (
                     mac, i + 1, i + 2, itf)
                 self.tester.scapy_append(packet)
                 self.tester.scapy_execute()
@@ -148,7 +148,7 @@ class TestPmdrssreta(TestCase):
         i = 0
         for tmp_reta_line in reta_lines:
             status = "false"
-            if(self.nic == "niantic"):
+            if(self.nic in ["niantic", "redrockcanyou"]):
                 # compute the hash result of five tuple into the 7 LSBs value.
                 hash_index = int(tmp_reta_line["RSS hash"], 16) % 128
             else:
@@ -212,7 +212,7 @@ class TestPmdrssreta(TestCase):
                     "set nbcore %d" % (queue + 1), "testpmd> ")
 
                 # configure the reta with specific mappings.
-                if(self.nic == "niantic"):
+                if(self.nic in ["niantic", "redrockcanyou"]):
                     for i in range(128):
                         reta_entries.insert(i, random.randint(0, queue - 1))
                         self.dut.send_expect(
@@ -228,7 +228,7 @@ class TestPmdrssreta(TestCase):
             self.dut.send_expect("quit", "# ", 30)
 
     def test_rss_key_size(self):
-        nic_rss_key_size = {"fortville_eagle": 52, "fortville_spirit": 52, "fortville_spirit_single": 52, "niantic": 40, "e1000": 40}
+        nic_rss_key_size = {"fortville_eagle": 52, "fortville_spirit": 52, "fortville_spirit_single": 52, "niantic": 40, "e1000": 40, "redrockcanyou":40}
         self.verify(self.nic in nic_rss_key_size.keys(), "Not supporte rss key on %s" % self.nic)
 
         dutPorts = self.dut.get_ports(self.nic)
