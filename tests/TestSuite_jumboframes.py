@@ -93,7 +93,9 @@ class TestJumboframes(TestCase):
         p1rx_err -= gp1rx_err
 
         if received:
-            self.verify(p0tx_pkts == p1rx_pkts and p0tx_bytes == pktsize and p1rx_bytes == pktsize,
+            #some nic like RRC always strip CRC, so it should be pktsize - 4
+            size_equal = p0tx_bytes == p1rx_bytes and (p1rx_bytes == pktsize or  p1rx_bytes == pktsize - 4)
+            self.verify(p0tx_pkts == p1rx_pkts and size_equal,
                         "packet pass assert error")
         else:
             #self.verify(p0tx_pkts == p1rx_pkts and (p1rx_err == 1 or p1rx_pkts == 0),
@@ -152,10 +154,12 @@ class TestJumboframes(TestCase):
         This case aims to test transmitting jumbo frame packet on testpmd without
         jumbo frame support.
         """
-        self.pmdout.start_testpmd("Default", "--max-pkt-len=%d" % (ETHER_STANDARD_MTU))
+        # RRC has no ability to set the max pkt len to hardware
         if self.nic == "redrockcanyou":
-            self.dut.send_expect("set promisc all off", "testpmd> ")
-            self.dut.send_expect("set fwd mac", "testpmd> ")
+            print dts.RED("fm10k not support this case\n")
+            return
+        self.pmdout.start_testpmd("Default", "--max-pkt-len=%d" % (ETHER_STANDARD_MTU))
+        self.dut.send_expect("set fwd mac", "testpmd> ")
         self.dut.send_expect("start", "testpmd> ")
 
         self.jumboframes_send_packet(ETHER_STANDARD_MTU + 1, False)
