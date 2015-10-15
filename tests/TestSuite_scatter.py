@@ -55,7 +55,7 @@ class TestScatter(TestCase):
         # Verify that enough ports are available
         self.verify(len(dutPorts) >= 2, "Insufficient ports")
         self.pmdout = PmdOutput(self.dut)
-        if self.nic in ["niantic", "fortville_eagle", "fortville_spirit", "fortville_spirit_single", "redrockcanyou"]:
+        if self.nic in ["niantic", "fortville_eagle", "fortville_spirit", "fortville_spirit_single", "redrockcanyou", "ironpond", "twinpond", "springfountain"]:
             self.mbsize = 2048
         else:
             self.mbsize = 1024
