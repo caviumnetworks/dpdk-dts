@@ -72,7 +72,7 @@ class TestUnitTestsIvshmem(TestCase):
         """
         Run Inter-VM share memory test.
         """
-        self.dut.send_expect("./%s/app/test -n 1 -c ffff" % (self.target), "R.*T.*E.*>.*>", 10)
+        self.dut.send_expect("./%s/app/test -n 1 -c ffff" % (self.target), "R.*T.*E.*>.*>", 20)
         out = self.dut.send_expect("ivshmem_autotest", "RTE>>", 120)
         self.dut.send_expect("quit", "# ")
         self.verify("Test OK" in out, "Test failed")
