@@ -111,7 +111,7 @@ class TestUnitTestsEal(TestCase):
         """
 
         self.dut.send_expect("./app/test/test -n 1 -c ffff", "R.*T.*E.*>.*>", 10)
-        out = self.dut.send_expect("hash_autotest", "RTE>>", 30)
+        out = self.dut.send_expect("hash_autotest", "RTE>>", 40)
         self.dut.send_expect("quit", "# ")
         self.verify("Test OK" in out, "Test failed")
 
