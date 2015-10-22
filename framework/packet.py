@@ -77,7 +77,7 @@ PACKETGEN = "scapy"
 LayersTypes = {
     "L2": ['ether', 'dot1q', '1588', 'arp', 'lldp'],
     # ipv4_ext_unknown, ipv6_ext_unknown
-    "L3": ['ipv4','ipv4ihl', 'ipv6', 'ipv4_ext', 'ipv6_ext','ipv6_ext2', 'ipv6_frag'],
+    "L3": ['ipv4', 'ipv4ihl', 'ipv6', 'ipv4_ext', 'ipv6_ext', 'ipv6_ext2', 'ipv6_frag'],
     "L4": ['tcp', 'udp', 'frag', 'sctp', 'icmp', 'nofrag'],
     "TUNNEL": ['ip', 'gre', 'vxlan', 'nvgre', 'geneve', 'grenat'],
     "INNER L2": ['inner_mac', 'inner_mac&vlan'],
@@ -105,8 +105,8 @@ class scapy(object):
         'ipv4ihl': IP(ihl=10),
         'ipv4_ext': IP(frag=5),
         'ipv6': IPv6(src="::1"),
-        'ipv6_ext': IPv6(src="::1", nh=43)/IPv6ExtHdrRouting(),
-        'ipv6_ext2': IPv6()/IPv6ExtHdrRouting(),
+        'ipv6_ext': IPv6(src="::1", nh=43) / IPv6ExtHdrRouting(),
+        'ipv6_ext2': IPv6() / IPv6ExtHdrRouting(),
         'udp': UDP(),
         'tcp': TCP(),
         'sctp': SCTP(),
@@ -127,13 +127,13 @@ class scapy(object):
         'inner_sctp': SCTP(),
         'inner_icmp': ICMP(),
 
-        'lldp': LLDP()/LLDPManagementAddress(),
+        'lldp': LLDP() / LLDPManagementAddress(),
         'ip_frag': IP(frag=5),
-        'ipv6_frag': IPv6(src="::1")/IPv6ExtHdrFragment(),
-        'ip_in_ip': IP()/IP(),
-        'ip_in_ip_frag': IP()/IP(frag=5),
-        'ipv6_in_ip': IP()/IPv6(src="::1"),
-        'ipv6_frag_in_ip': IP()/IPv6(src="::1", nh=44)/IPv6ExtHdrFragment(),
+        'ipv6_frag': IPv6(src="::1") / IPv6ExtHdrFragment(),
+        'ip_in_ip': IP() / IP(),
+        'ip_in_ip_frag': IP() / IP(frag=5),
+        'ipv6_in_ip': IP() / IPv6(src="::1"),
+        'ipv6_frag_in_ip': IP() / IPv6(src="::1", nh=44) / IPv6ExtHdrFragment(),
         'nvgre': NVGRE(),
         'geneve': "Not Implement",
     }
@@ -173,6 +173,32 @@ class scapy(object):
 
         if element == 'vlan':
             value = int(str(self.pkt[Dot1Q].vlan))
+        return value
+
+    def strip_layer2(self, element):
+        value = None
+        layer = self.pkt.getlayer(0)
+        if layer is None:
+            return None
+
+        if element == 'src':
+            value = layer.src
+        elif element == 'dst':
+            value = layer.dst
+
+        return value
+
+    def strip_layer4(self, element):
+        value = None
+        layer = self.pkt.getlayer(2)
+        if layer is None:
+            return None
+
+        if element == 'src':
+            value = layer.sport
+        elif element == 'dst':
+            valude = layer.dport
+
         return value
 
     def ipv4(self, frag=0, src="127.0.0.1", proto=None, tos=0, dst="127.0.0.1", chksum=None, len=None, version=4, flags=None, ihl=None, ttl=64, id=1, options=None):
@@ -223,6 +249,14 @@ class scapy(object):
             self.pkt[IPv6][Ether][IPv6].nh = nh
         self.pkt[IPv6][Ether][IPv6].src = src
         self.pkt[IPv6][Ether][IPv6].dst = dst
+
+    def tcp(self, src=53, dst=53, len=None, chksum=None):
+        self.pkt[TCP].sport = src
+        self.pkt[TCP].dport = dst
+        if len is not None:
+            self.pkt[TCP].len = len
+        if chksum is not None:
+            self.pkt[TCP].chksum = chksum
 
     def udp(self, src=53, dst=53, len=None, chksum=None):
         self.pkt[UDP].sport = src
@@ -277,6 +311,7 @@ class scapy(object):
 
 
 class Packet(object):
+
     """
     Module for config/create packet
     Based on scapy module
@@ -323,7 +358,7 @@ class Packet(object):
                 self.pkt_len = 128
         else:
             self._load_pkt_layers()
-            
+
         if 'pkt_len' in self.pkt_opts.keys():
             self.pkt_len = self.pkt_opts['pkt_len']
 
@@ -340,19 +375,14 @@ class Packet(object):
         else:
             self.pktgen = scapy()
 
-    def send_pkt(self, crb=None, tx_port='', auto_cfg=True):
-        if tx_port == '':
-            print "Invalid Tx interface"
-            return
+        self._load_assign_layers()
 
-        self.tx_port = tx_port
-
+    def _load_assign_layers(self):
         # assign layer
         self.assign_layers()
 
         # config special layer
-        if auto_cfg is True:
-            self.config_def_layers()
+        self.config_def_layers()
 
         # handle packet options
         payload_len = self.pkt_len - len(self.pktgen.pkt) - 4
@@ -371,6 +401,13 @@ class Packet(object):
             raw_confs['payload'] = payload
             self._config_layer_raw(raw_confs)
 
+    def send_pkt(self, crb=None, tx_port='', auto_cfg=True):
+        if tx_port == '':
+            print "Invalid Tx interface"
+            return
+
+        self.tx_port = tx_port
+
         # check with port type
         if 'ixia' in self.tx_port:
             print "Not Support Yet"
@@ -379,7 +416,8 @@ class Packet(object):
             self.pktgen.write_pcap(self.uni_name)
             crb.session.copy_file_to(self.uni_name)
             pcap_file = self.uni_name.split('/')[2]
-            self.pktgen.send_pcap_pkt(crb=crb, file=pcap_file, intf=self.tx_port)
+            self.pktgen.send_pcap_pkt(
+                crb=crb, file=pcap_file, intf=self.tx_port)
         else:
             self.pktgen.send_pkt(intf=self.tx_port)
 
@@ -440,7 +478,7 @@ class Packet(object):
         for layer in layers:
             if layer in name2type.keys():
                 self.pkt_layers.append(name2type[layer])
-        
+
     def config_def_layers(self):
         """
         Handel config packet layers by default
@@ -478,7 +516,7 @@ class Packet(object):
                 self.config_layer('raw', {'payload': ['00'] * 40})
             else:
                 self.config_layer('raw', {'payload': ['00'] * 18})
-        
+
     def config_layer(self, layer, config={}):
         """
         Configure packet assgined layer
@@ -522,6 +560,9 @@ class Packet(object):
     def _config_layer_udp(self, config):
         return self.pktgen.udp(**config)
 
+    def _config_layer_tcp(self, config):
+        return self.pktgen.tcp(**config)
+
     def _config_layer_raw(self, config):
         return self.pktgen.raw(**config)
 
@@ -539,6 +580,9 @@ class Packet(object):
 
     def strip_element_dot1q(self, element):
         return self.pktgen.strip_dot1q(element)
+
+    def strip_element_layer4(self, element):
+        return self.pktgen.strip_layer4(element)
 
 
 def increment_ip_address(self, addr):
@@ -567,6 +611,27 @@ def increment_ipv6_address(self, addr):
     return ipv6
 
 
+def send_packets(intf, pkts=None, interval=0.01):
+    send_pkts = []
+    try:
+        for pkt in pkts:
+            send_pkts.append(pkt.pktgen.pkt)
+        sendp(send_pkts, iface=intf, inter=interval, verbose=False)
+    except:
+        pass
+
+
+def save_packets(pkts=None, filename=None):
+    save_pkts = []
+    try:
+        for pkt in pkts:
+            save_pkts.append(pkt.pktgen.pkt)
+        if filename:
+            wrpcap(filename, save_pkts)
+    except:
+        pass
+
+
 def sniff_packets(intf, count=0, timeout=5):
     """
     sniff all packets for certain port in certain seconds
@@ -584,6 +649,7 @@ def sniff_packets(intf, count=0, timeout=5):
     pipe = subprocess.Popen(args)
     index = str(time.time())
     SNIFF_PIDS[index] = (pipe, intf, timeout)
+    time.sleep(0.5)
     return index
 
 
@@ -605,7 +671,7 @@ def load_sniff_packets(index=''):
             pipe.kill()
 
         # wait pcap file ready
-        time.sleep(0.5)
+        time.sleep(1)
         try:
             cap_pkts = rdpcap("/tmp/sniff_%s.pcap" % intf)
             for pkt in cap_pkts:
@@ -618,8 +684,29 @@ def load_sniff_packets(index=''):
 
     return pkts
 
-############################################################################################################
-############################################################################################################
+
+def compare_pktload(pkt1=None, pkt2=None, layer="L2"):
+    l_idx = 0
+    if layer == "L2":
+        l_idx = 0
+    elif layer == "L3":
+        l_idx = 1
+    elif layer == "L4":
+        l_idx = 2
+    try:
+        load1 = hexstr(str(pkt1.pktgen.pkt.getlayer(l_idx)))
+        load2 = hexstr(str(pkt2.pktgen.pkt.getlayer(l_idx)))
+    except:
+        # return pass when scapy failed to extract packet
+        return True
+
+    if load1 == load2:
+        return True
+    else:
+        return False
+
+###############################################################################
+###############################################################################
 if __name__ == "__main__":
     inst = sniff_packets("lo", timeout=5)
     time.sleep(3)
@@ -633,10 +720,11 @@ if __name__ == "__main__":
     pkt.send_pkt(tx_port='lo')
 
     pkt = Packet()
-    pkt.assign_layers(['ether', 'dot1q', 'ipv4', 'udp', 'vxlan', 'inner_mac', 'inner_ipv4', 'inner_udp', 'raw'])
+    pkt.assign_layers(['ether', 'dot1q', 'ipv4', 'udp',
+                       'vxlan', 'inner_mac', 'inner_ipv4', 'inner_udp', 'raw'])
     pkt.config_layer('ether', {'dst': '00:11:22:33:44:55'})
     pkt.config_layer('dot1q', {'vlan': 2})
     pkt.config_layer('ipv4', {'dst': '1.1.1.1'})
     pkt.config_layer('udp', {'src': 4789, 'dst': 4789, 'chksum': 0x1111})
     pkt.config_layer('vxlan', {'vni': 2})
-    pkt.config_layer('raw', {'payload': ['58']*18})
+    pkt.config_layer('raw', {'payload': ['58'] * 18})
