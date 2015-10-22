@@ -113,7 +113,7 @@ class TestL2fwd(TestCase):
         self.dut.send_expect("fg", "l2fwd ", 5)
         self.dut.send_expect("^C", "# ", 5)
 
-    def test_port_testing(self):
+    def notest_port_testing(self):
         """
         Check port forwarding.
         """
@@ -142,6 +142,33 @@ class TestL2fwd(TestCase):
             self.verify(number_packets == "1", "Failed to switch L2 frame")
 
         self.quit_l2fwd()
+
+    def test_l2fwd_integrity(self):
+        """
+        Check port forwarding.
+        """
+        # the cases use the first two ports
+        port_mask = dts.create_mask([self.dut_ports[0], self.dut_ports[1]])
+
+        core_mask = dts.create_mask(self.dut.get_core_list(self.core_config,
+                                                           socket=self.ports_socket))
+        for queues in self.test_queues:
+
+            command_line = "./examples/l2fwd/build/app/l2fwd -n %d -c %s -- -q %s -p %s &" % \
+                (self.dut.get_memory_channels(), core_mask,
+                 str(queues['queues']), port_mask)
+
+            self.dut.send_expect(command_line, "memory mapped", 60)
+
+            tgen_input = []
+            tx_port = self.tester.get_local_port(self.dut_ports[0])
+            rx_port = self.tester.get_local_port(self.dut_ports[1])
+            tgen_input.append((tx_port, rx_port))
+
+            result = self.tester.check_random_pkts(tgen_input, allow_miss=False)
+            self.verify(result != False, "Packet integrity check failed")
+
+            self.quit_l2fwd()
 
     def test_perf_l2fwd_performance(self):
         """
