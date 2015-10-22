@@ -153,7 +153,7 @@ l3fwd_ipv4_route_array[] = {\\\n"
             # set wait packet
             self.tester.scapy_background()
             self.tester.scapy_append('import string')
-            self.tester.scapy_append('p = sniff(iface="%s", count=%d, timeout=5)' % (rxItf, expPkts))
+            self.tester.scapy_append('p = sniff(iface="%s", count=%d, timeout=10)' % (rxItf, expPkts))
             self.tester.scapy_append('nr_packets=len(p)')
             self.tester.scapy_append('reslist = [p[i].sprintf("%IP.len%;%IP.id%;%IP.flags%;%IP.frag%") for i in range(nr_packets)]')
             self.tester.scapy_append('RESULT = string.join(reslist, ",")')
@@ -211,7 +211,7 @@ l3fwd_ipv4_route_array[] = {\\\n"
             # set wait packet
             self.tester.scapy_background()
             self.tester.scapy_append('import string')
-            self.tester.scapy_append('p = sniff(iface="%s", count=%d)' % (rxItf, expPkts))
+            self.tester.scapy_append('p = sniff(iface="%s", count=%d, timeout=15)' % (rxItf, expPkts))
             self.tester.scapy_append('nr_packets=len(p)')
             self.tester.scapy_append('reslist = [p[i].sprintf("%IPv6.plen%;%IPv6.id%;%IPv6ExtHdrFragment.m%;%IPv6ExtHdrFragment.offset%") for i in range(nr_packets)]')
             self.tester.scapy_append('RESULT = string.join(reslist, ",")')
