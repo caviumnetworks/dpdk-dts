@@ -164,7 +164,7 @@ class TestQueueStartStop(TestCase):
             self.dut.send_expect("port 1 txq 0 stop", "testpmd>")
             self.dut.send_expect("start", "testpmd>")
             self.check_forwarding([0, 1], self.nic, received=False)
-            out = self.dut.send_expect("\n", "testpmd>")
+            out = self.dut.get_session_output()
         except Exception, e:
             raise IOError("queue start/stop forward failure: %s" % e)
 
