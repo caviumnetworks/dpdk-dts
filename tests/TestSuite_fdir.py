@@ -99,7 +99,8 @@ class TestFdir(TestCase, IxiaPacketGenerator):
         self.dut.send_expect("start", "testpmd>")
         self.tester.scapy_execute()
         time.sleep(.5)
-        out = self.dut.send_expect("stop", "testpmd>")
+        out = self.dut.get_session_output()
+        self.dut.send_expect("stop", "testpmd>")
 
         if(self.nic in ["kawela", "niantic", "fortville_eagle", "fortville_spirit", "fortville_spirit_single"]):
             if ("fwd" == self.fdir_type):
