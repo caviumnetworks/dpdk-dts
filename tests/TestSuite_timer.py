@@ -76,7 +76,8 @@ class TestTimer(TestCase):
 
         self.dut.send_expect(cmdline, "# ", 1)
         time.sleep(15)
-        out = self.dut.send_expect("killall timer", "# ", 5)
+        out = self.dut.get_session_output()
+        self.dut.send_expect("killall timer", "# ", 5)
 
         # verify timer0
         dts.regexp(out, r'timer0_cb\(\) on lcore (\d+)')
