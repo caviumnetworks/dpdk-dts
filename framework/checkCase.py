@@ -162,6 +162,8 @@ class check_case_support(check_case_skip):
                         break
 
                 if support_flag is False:
+                    # empty last skip case comments
+                    self.comments = ''
                     if 'message' in support_function_dict:
                         for i in support_function_dict['message']:
                             self.comments += '%s,' % rule[i]
