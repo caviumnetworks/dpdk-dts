@@ -99,7 +99,8 @@ class TestIeee1588(TestCase):
         # self.verify("\\x00\\x02" in out, "Payload wrong in PTP")
 
         time.sleep(1)
-        out = self.dut.send_expect("stop", "testpmd> ")
+        out = self.dut.get_session_output()
+        self.dut.send_expect("stop", "testpmd> ")
 
         text = dts.regexp(out, "(.*) by hardware")
         self.verify("IEEE1588 PTP V2 SYNC" in text, "Not filtered " + text)
