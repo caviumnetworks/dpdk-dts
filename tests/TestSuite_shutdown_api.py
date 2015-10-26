@@ -101,7 +101,7 @@ class TestShutdownApi(TestCase):
             itf = self.tester.get_interface(self.tester.get_local_port(rxPort))
         else:
             itf = testerports
-        mac = self.dut.get_mac_address(txPort)
+        mac = self.dut.get_mac_address(rxPort)
 
         self.tester.scapy_foreground()
         if self.nic in ["fortville_eagle", "fortville_spirit",
