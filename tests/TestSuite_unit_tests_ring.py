@@ -70,7 +70,7 @@ class TestUnitTestsRing(TestCase):
         Run ring autotest.
         """
 
-        self.dut.send_expect("./app/test/test -n 1 -c ffff", "R.*T.*E.*>.*>", 10)
+        self.dut.send_expect("./app/test/test -n 1 -c ffff", "R.*T.*E.*>.*>", 60)
         out = self.dut.send_expect("ring_autotest", "RTE>>", 36000)
         self.verify("Test OK" in out, "Test failed")
         self.dut.send_expect("set_watermark test 100", "RTE>>")
@@ -83,7 +83,7 @@ class TestUnitTestsRing(TestCase):
         Run ring performance autotest.
         """
 
-        self.dut.send_expect("./app/test/test -n 1 -c fffe", "R.*T.*E.*>.*>", 30)
+        self.dut.send_expect("./app/test/test -n 1 -c fffe", "R.*T.*E.*>.*>", 60)
         out = self.dut.send_expect("ring_perf_autotest", "RTE>>", 210)
         self.dut.send_expect("quit", "# ")
         self.verify("Test OK" in out, "Test failed")
