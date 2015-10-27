@@ -62,6 +62,8 @@ class TestUnitTestsDump(TestCase):
         # Based on h/w type, choose how many ports to use
         self.dut_ports = self.dut.get_ports(self.nic)
         self.verify(len(self.dut_ports) >= 1, "Insufficient ports for testing")
+        self.start_test_time = 60
+        self.run_cmd_time = 60
 
     def set_up(self):
         """
@@ -74,8 +76,8 @@ class TestUnitTestsDump(TestCase):
         """
         Run history log dump test case.
         """
-        self.dut.send_expect("./%s/app/test -n 1 -c ffff" % (self.target), "R.*T.*E.*>.*>", 10)
-        out = self.dut.send_expect("dump_log_history", "RTE>>", 120)
+        self.dut.send_expect("./%s/app/test -n 1 -c ffff" % (self.target), "R.*T.*E.*>.*>", self.start_test_time)
+        out = self.dut.send_expect("dump_log_history", "RTE>>", self.run_cmd_time * 2)
         self.dut.send_expect("quit", "# ")
         self.verify("EAL" in out, "Test failed")
 
@@ -83,8 +85,8 @@ class TestUnitTestsDump(TestCase):
         """
         Run history log dump test case.
         """
-        self.dut.send_expect("./%s/app/test -n 1 -c ffff" % (self.target), "R.*T.*E.*>.*>", 10)
-        out = self.dut.send_expect("dump_ring", "RTE>>", 120)
+        self.dut.send_expect("./%s/app/test -n 1 -c ffff" % (self.target), "R.*T.*E.*>.*>", self.start_test_time)
+        out = self.dut.send_expect("dump_ring", "RTE>>", self.run_cmd_time)
         self.dut.send_expect("quit", "# ")
         elements = ['ring', 'address', 'flags', 'size', 'ct', 'ch', 'pt', 'ph', 'used', 'avail', 'watermark']
         match_regex = "ring <(.*?)>@0x(.*)\r\n"
@@ -100,8 +102,8 @@ class TestUnitTestsDump(TestCase):
         """
         Run mempool dump test case.
         """
-        self.dut.send_expect("./%s/app/test -n 1 -c ffff" % (self.target), "R.*T.*E.*>.*>", 10)
-        out = self.dut.send_expect("dump_mempool", "RTE>>", 120)
+        self.dut.send_expect("./%s/app/test -n 1 -c ffff" % (self.target), "R.*T.*E.*>.*>", self.start_test_time)
+        out = self.dut.send_expect("dump_mempool", "RTE>>", self.run_cmd_time * 2)
         self.dut.send_expect("quit", "# ")
         elements = ['mempool', 'address', 'flags', 'ring', 'phys_addr', 'size', 'header_size', 'elt_size',
                     'trailer_size', 'total_obj_size', 'private_data_size', 'pg_num', 'pg_shift', 'pg_mask',
@@ -120,8 +122,8 @@ class TestUnitTestsDump(TestCase):
         """
         Run physical memory dump test case.
         """
-        self.dut.send_expect("./%s/app/test -n 1 -c ffff" % (self.target), "R.*T.*E.*>.*>", 10)
-        out = self.dut.send_expect("dump_physmem", "RTE>>", 120)
+        self.dut.send_expect("./%s/app/test -n 1 -c ffff" % (self.target), "R.*T.*E.*>.*>", self.start_test_time)
+        out = self.dut.send_expect("dump_physmem", "RTE>>", self.run_cmd_time * 2)
         self.dut.send_expect("quit", "# ")
         elements = ['Segment', 'phys', 'len', 'virt', 'socket_id', 'hugepage_sz', 'nchannel', 'nrank']
         match_regex = "Segment (\d)+:"
@@ -140,8 +142,8 @@ class TestUnitTestsDump(TestCase):
         """
         Run memzone dump test case.
         """
-        self.dut.send_expect("./%s/app/test -n 1 -c ffff" % (self.target), "R.*T.*E.*>.*>", 10)
-        out = self.dut.send_expect("dump_memzone", "RTE>>", 120)
+        self.dut.send_expect("./%s/app/test -n 1 -c ffff" % (self.target), "R.*T.*E.*>.*>", self.start_test_time)
+        out = self.dut.send_expect("dump_memzone", "RTE>>", self.run_cmd_time * 2)
         self.dut.send_expect("quit", "# ")
 
         elements = ['Zone', 'name', 'phys', 'len', 'virt', 'socket_id', 'flags']
@@ -162,8 +164,8 @@ class TestUnitTestsDump(TestCase):
         """
         Run struct size dump test case.
         """
-        self.dut.send_expect("./%s/app/test -n 1 -c ffff" % (self.target), "R.*T.*E.*>.*>", 10)
-        out = self.dut.send_expect("dump_struct_sizes", "RTE>>", 120)
+        self.dut.send_expect("./%s/app/test -n 1 -c ffff" % (self.target), "R.*T.*E.*>.*>", self.start_test_time)
+        out = self.dut.send_expect("dump_struct_sizes", "RTE>>", self.run_cmd_time * 2)
         self.dut.send_expect("quit", "# ")
 
         elements = ['struct rte_mbuf', 'struct rte_mempool', 'struct rte_ring']
@@ -181,15 +183,15 @@ class TestUnitTestsDump(TestCase):
         """
         test_port = self.dut_ports[0]
         self.dut.send_expect("./%s/app/test -n 1 -c ffff -b 0000:%s"
-                             % (self.target, self.dut.ports_info[test_port]['pci']), "R.*T.*E.*>.*>", 10)
-        out = self.dut.send_expect("dump_devargs", "RTE>>", 120)
+                             % (self.target, self.dut.ports_info[test_port]['pci']), "R.*T.*E.*>.*>", self.start_test_time)
+        out = self.dut.send_expect("dump_devargs", "RTE>>", self.run_cmd_time * 2)
         self.dut.send_expect("quit", "# ")
         black_str = "PCI blacklist 0000:%s" % self.dut.ports_info[test_port]['pci']
         self.verify(black_str in out, "Dump black list failed")
 
         self.dut.send_expect("./%s/app/test -n 1 -c ffff -w 0000:%s"
-                             % (self.target, self.dut.ports_info[test_port]['pci']), "R.*T.*E.*>.*>", 10)
-        out = self.dut.send_expect("dump_devargs", "RTE>>", 120)
+                             % (self.target, self.dut.ports_info[test_port]['pci']), "R.*T.*E.*>.*>", self.start_test_time)
+        out = self.dut.send_expect("dump_devargs", "RTE>>", self.run_cmd_time * 2)
         self.dut.send_expect("quit", "# ")
 
         white_str = "PCI whitelist 0000:%s" % self.dut.ports_info[test_port]['pci']
