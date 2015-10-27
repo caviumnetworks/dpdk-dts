@@ -90,10 +90,10 @@ class TestUnitTestsPmdPerf(TestCase):
         Run pmd stream control mode burst test case.
         """
 
-        self.dut.send_expect("./app/test/test -n 1 -c ffff", "R.*T.*E.*>.*>", 30)
+        self.dut.send_expect("./app/test/test -n 1 -c ffff", "R.*T.*E.*>.*>", 60)
         for mode in self.burst_ctlmodes:
-            self.dut.send_expect("set_rxtx_sc %s" % mode, "RTE>>", 5)
-            out = self.dut.send_expect("pmd_perf_autotest", "RTE>>", 60)
+            self.dut.send_expect("set_rxtx_sc %s" % mode, "RTE>>", 10)
+            out = self.dut.send_expect("pmd_perf_autotest", "RTE>>", 120)
             match_regex = "Result: (\d+) cycles per packet"
             m = re.compile(r"%s" % match_regex, re.S)
             result = m.search(out)
@@ -113,16 +113,16 @@ class TestUnitTestsPmdPerf(TestCase):
 
         for mode in self.rxtx_modes:
             if mode is "scalar":
-                self.dut.send_expect("./app/test/test_scalar -n 1 -c ffff", "R.*T.*E.*>.*>", 30)
+                self.dut.send_expect("./app/test/test_scalar -n 1 -c ffff", "R.*T.*E.*>.*>", 60)
             else:
-                self.dut.send_expect("./app/test/test -n 1 -c ffff", "R.*T.*E.*>.*>", 30)
+                self.dut.send_expect("./app/test/test -n 1 -c ffff", "R.*T.*E.*>.*>", 60)
 
             table_row = [mode]
-            self.dut.send_expect("set_rxtx_sc continuous", "RTE>>", 5)
-            self.dut.send_expect("set_rxtx_mode %s" % mode, "RTE>>", 5)
+            self.dut.send_expect("set_rxtx_sc continuous", "RTE>>", 10)
+            self.dut.send_expect("set_rxtx_mode %s" % mode, "RTE>>",10)
             for anchor in self.anchors:
-                self.dut.send_expect("set_rxtx_anchor %s" % anchor, "RTE>>", 5)
-                out = self.dut.send_expect("pmd_perf_autotest", "RTE>>", 60)
+                self.dut.send_expect("set_rxtx_anchor %s" % anchor, "RTE>>", 10)
+                out = self.dut.send_expect("pmd_perf_autotest", "RTE>>", 120)
                 match_regex = "Result: (\d+) cycles per packet"
                 m = re.compile(r"%s" % match_regex, re.S)
                 result = m.search(out)
