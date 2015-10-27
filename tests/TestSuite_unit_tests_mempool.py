@@ -70,7 +70,7 @@ class TestUnitTestsMempool(TestCase):
         Run memory pool autotest.
         """
 
-        self.dut.send_expect("./app/test/test -n 1 -c ffff", "R.*T.*E.*>.*>", 10)
+        self.dut.send_expect("./app/test/test -n 1 -c ffff", "R.*T.*E.*>.*>", 60)
         out = self.dut.send_expect("mempool_autotest", "RTE>>", 120)
         self.dut.send_expect("quit", "# ")
         self.verify("Test OK" in out, "Test failed")
@@ -79,7 +79,7 @@ class TestUnitTestsMempool(TestCase):
         """
         Run memory pool performance autotest.
         """
-        self.dut.send_expect("./app/test/test -n 1 -c fffe", "R.*T.*E.*>.*>", 10)
+        self.dut.send_expect("./app/test/test -n 1 -c fffe", "R.*T.*E.*>.*>", 60)
         out = self.dut.send_expect("mempool_perf_autotest", "RTE>>", 700)
         self.dut.send_expect("quit", "# ")
         self.verify("Test OK" in out, "Test failed")
