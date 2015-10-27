@@ -87,7 +87,7 @@ class TestUnitTestsKni(TestCase):
         """
         Run kni autotest.
         """
-        self.dut.send_expect("./app/test/test -n 1 -c fffe", "R.*T.*E.*>.*>", 30)
+        self.dut.send_expect("./app/test/test -n 1 -c fffe", "R.*T.*E.*>.*>", 60)
         out = self.dut.send_expect("kni_autotest", "RTE>>", 60)
         self.dut.send_expect("quit", "# ")
 
