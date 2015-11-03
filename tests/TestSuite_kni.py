@@ -220,15 +220,15 @@ stress_modes_output = [{'lo_mode': None, 'kthread_mode': None,
                        {'lo_mode': None, 'kthread_mode': 'multiple',
                         'output': 'loopback disabled.*DPDK kni module loaded.*Multiple kernel thread'},
                        {'lo_mode': None, 'kthread_mode': 'singlemulti',
-                        'output': 'KNI: Error: Invalid parameter for kthread_mode'},
+                        'output': 'KNI.* Invalid parameter for kthread_mode'},
                        {'lo_mode': 'lo_mode_fifo', 'kthread_mode': 'multiple',
                         'output': 'loopback mode=lo_mode_fifo enabled.*Multiple kernel thread'},
                        {'lo_mode': 'lo_mode_fifo_skb', 'kthread_mode': 'multiple',
                         'output': 'loopback mode=lo_mode_fifo_skb enabled.*Multiple kernel thread'},
                        {'lo_mode': 'lo_mode_fifo_skb', 'kthread_mode': 'singlemulti',
-                        'output': 'KNI: Error: Invalid parameter for kthread_mode'},
+                        'output': 'Invalid parameter for kthread_mode'},
                        {'lo_mode': 'lo_mode_random', 'kthread_mode': 'multiple',
-                        'output': 'KNI: Incognizant parameter, loopback disabled'}
+                        'output': 'KNI.* Incognizant parameter, loopback disabled'}
                        ]
 
 
@@ -262,7 +262,7 @@ class TestKni(TestCase):
         self.verify('Error' not in out, "Compilation failed")
 
         self.extract_ports_cores_config(default_1_port_cores_config)
-        self.start_kni()
+        out = self.start_kni()
         self.verify("Error" not in out, "Error found during kni start")
 
         self.dut.send_expect("service iptables stop", "# ")
@@ -307,8 +307,9 @@ class TestKni(TestCase):
         out_kni = self.dut.send_expect(
             './examples/kni/build/app/kni -c %s -n %d -- -P -p %s %s &' %
             (core_mask, self.dut.get_memory_channels(), port_mask, config_param),
-            "APP: Lcore [0-9]+ is reading from port [0-9]+", 10)
+            "APP: Lcore [0-9]+ is reading from port [0-9]+", 20)
 
+        time.sleep(5)
         if kthread_mode == 'single':
             kthread_mask = dts.create_mask(self.config['kernel_cores'])
             out = self.dut.send_expect(
@@ -523,6 +524,8 @@ class TestKni(TestCase):
 
         # Ports and cores configuration set in set_up_all function
         # Setup IP address on virtual interfaces and tester ports
+        self.dut.kill_all()
+        self.start_kni()
         for port in self.config['ports']:
             virtual_interface = self.virtual_interface_name(port)
 
@@ -530,12 +533,13 @@ class TestKni(TestCase):
             tx_interface = self.tester.get_interface(tx_port)
             out = self.dut.send_expect(
                 "ifconfig %s up" % virtual_interface, "# ")
+            time.sleep(5)
             self.dut.send_expect(
-                "ifconfig %s 192.168.%d.1" % (virtual_interface, port), "# ")
+                 "ifconfig %s 192.168.%d.1 netmask 255.255.255.192" % (virtual_interface, port), "# ")
             self.tester.send_expect(
-                "ifconfig %s 192.168.%d.2" % (tx_interface, port), "# ")
+                 "ifconfig %s 192.168.%d.2 netmask 255.255.255.192" % (tx_interface, port), "# ")
             self.tester.enable_ipv6(tx_interface)
-            time.sleep(1)
+            time.sleep(5)
         # Send ping requests and check for answers
         for port in self.config['ports']:
 
@@ -545,36 +549,36 @@ class TestKni(TestCase):
             virtual_interface = self.virtual_interface_name(port)
 
             out = self.dut.send_expect(
-                "ping -w 1 -I %s 192.168.%d.1" % (virtual_interface, port), "# ", 5)
+                "ping -w 2 -I %s 192.168.%d.1" % (virtual_interface, port), "# ", 10)
             self.verify("64 bytes from 192.168.%d.1:" %
                         port in out, "ping not supported")
 
             out = self.dut.send_expect(
-                "ping -w 1 -I %s 192.168.%d.2" % (virtual_interface, port), "# ", 5)
+                "ping -w 2 -I %s 192.168.%d.2" % (virtual_interface, port), "# ", 10)
             self.verify("64 bytes from 192.168.%d.2:" %
                         port in out, "ping not supported")
 
             out = self.tester.send_expect(
-                "ping -w 1 -I %s 192.168.%d.1" % (tx_interface, port), "# ", 5)
+                "ping -w 1 -I %s 192.168.%d.1" % (tx_interface, port), "# ", 10)
             self.verify("64 bytes from 192.168.%d.1:" %
                         port in out, "kni cannot reply ping packet")
 
             out = self.dut.send_expect(
-                "ping -w 1 -I %s 192.168.%d.123" % (virtual_interface, port), "# ", 5)
+                "ping -w 1 -I %s 192.168.%d.123" % (virtual_interface, port), "# ", 10)
             self.verify(
                 "0 received, 100% packet loss" in out, "ping not supported")
 
             out = self.dut.send_expect(
-                "ip -family inet6 address show dev %s | awk '/inet6/ { print $2 }'| cut -d'/' -f1" % virtual_interface, "# ", 5)
+                "ip -family inet6 address show dev %s | awk '/inet6/ { print $2 }'| cut -d'/' -f1" % virtual_interface, "# ", 10)
             ipv6_address = out.split('\r\n')[0]
 
             out = self.dut.send_expect("ping6 -w 1 -I %s %s" %
-                                       (virtual_interface, str(ipv6_address)), "# ", 5)
+                                       (virtual_interface, str(ipv6_address)), "# ", 10)
             self.verify("64 bytes from %s: icmp_seq=1 ttl=64" %
                         ipv6_address in out, "ping6 not supported")
 
             out = self.tester.send_expect(
-                "ping6 -w 1 -I %s %s" % (tx_interface, str(ipv6_address)), "# ", 5)
+                "ping6 -w 1 -I %s %s" % (tx_interface, str(ipv6_address)), "# ", 10)
             self.verify("64 bytes from %s: icmp_seq=1 ttl=64" %
                         ipv6_address in out, "kni cannot reply ping6 packet")
 
@@ -587,7 +591,7 @@ class TestKni(TestCase):
                     break
 
             out = self.dut.send_expect("ping6 -w 1 -I %s %s" %
-                                       (virtual_interface, ''.join(ipv6list)), "# ", 5)
+                                       (virtual_interface, ''.join(ipv6list)), "# ", 10)
             self.verify(
                 "0 received, 100% packet loss" in out, "ping6 not supported")
           
@@ -603,6 +607,8 @@ class TestKni(TestCase):
         """
 
         # Ports and cores configuration set in set_up_all function
+        self.dut.kill_all()
+        self.start_kni()
         for port in self.config['ports']:
 
             virtual_interface = self.virtual_interface_name(port)
@@ -613,6 +619,7 @@ class TestKni(TestCase):
             tx_interface = self.tester.get_interface(tx_port)
 
             self.dut.send_expect("ifconfig %s up" % virtual_interface, "# ")
+            time.sleep(5)
 
             # Start tcpdump with filters for src and dst MAC address, this avoids
             # unwanted broadcast, ICPM6... packets
@@ -711,8 +718,8 @@ class TestKni(TestCase):
             # Request register dump
             out = self.dut.send_expect("ethtool -d %s" % virtual_interface,
                                        "# ")
-            self.verify("Link Status register" in out,
-                        "'ethtool -d' not supported")
+            expectstring = "0x00000: CTRL.*0x00008: STATUS"
+            self.verify(len(re.findall(expectstring, out , re.DOTALL)) > 0, "'ethtool -d' not supported")
             self.verify("Operation not supported" not in out,
                         "'ethtool -d' not supported")
 
