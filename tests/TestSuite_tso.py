@@ -306,14 +306,7 @@ class TestTSO(TestCase):
 
         # prepare traffic generator input
         tgen_input = []
-        tgen_input.append((self.tester.get_local_port(self.dut_ports[0]),
-                           self.tester.get_local_port(self.dut_ports[1]),
-                           "test.pcap"))
-        tgen_input.append((self.tester.get_local_port(self.dut_ports[1]),
-                           self.tester.get_local_port(self.dut_ports[0]),
-                           "test.pcap"))
 
-        mac = self.dut.get_mac_address(self.dut_ports[0])
         # run testpmd for each core config
         for test_cycle in self.test_cycles:
             core_config = test_cycle['cores']
@@ -331,8 +324,7 @@ class TestTSO(TestCase):
             dts.report(info, annex=True)
             dts.report(command_line + "\n\n", frame=True, annex=True)
 
-            self.dut.send_expect(cmd, "testpmd> ", 120)
-            self.dut.send_expect("set verbose 1", "testpmd> ", 120)
+            self.dut.send_expect(command_line, "testpmd> ", 120)
             self.dut.send_expect("csum set ip hw %d" % self.dut_ports[0], "testpmd> ", 120)
             self.dut.send_expect("csum set udp hw %d" % self.dut_ports[0], "testpmd> ", 120)
             self.dut.send_expect("csum set tcp hw %d" % self.dut_ports[0], "testpmd> ", 120)
@@ -354,7 +346,11 @@ class TestTSO(TestCase):
                 # create pcap file
                 self.logger.info("Running with frame size %d " % frame_size)
                 payload_size = frame_size - self.headers_size
-                self.tester.scapy_append('wrpcap("test.pcap", [Ether(dst="%s",src="52:00:00:00:00:01")/IP(src="192.168.1.1",dst="192.168.1.2")/TCP(sport=1021,dport=1021)/("X"*%d)])' % (mac, payload_size))
+		for _port in range(2):
+			mac = self.dut.get_mac_address(self.dut_ports[_port])
+                	self.tester.scapy_append('wrpcap("dst%d.pcap", [Ether(dst="%s",src="52:00:00:00:00:01")/IP(src="192.168.1.1",dst="192.168.1.2")/TCP(sport=1021,dport=1021)/("X"*%d)])' % (_port, mac, payload_size))
+        		tgen_input.append((self.tester.get_local_port(self.dut_ports[_port]),
+                           self.tester.get_local_port(self.dut_ports[1-_port]), "dst%d.pcap") % _port)
                 self.tester.scapy_execute()
 
                 # run traffic generator
