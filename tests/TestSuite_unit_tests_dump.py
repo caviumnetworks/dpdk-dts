@@ -129,7 +129,7 @@ class TestUnitTestsDump(TestCase):
         match_regex = "Segment (\d)+:"
         for element in elements[1:-1]:
             match_regex += " %s:(.*?)," % element
-        match_regex += " %s:(.*?)\n" % elements[-1]
+        match_regex += " %s:(.*?)" % elements[-1]
         m = re.compile(r"%s" % match_regex, re.DOTALL)
         results = m.findall(out)
         phy_info = []
