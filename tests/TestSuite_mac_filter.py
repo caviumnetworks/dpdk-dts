@@ -90,7 +90,7 @@ class TestWhitelist(TestCase):
         self.tester.scapy_execute()
         time.sleep(5)
 
-    def test_whitelist_add_remove_mac_address(self):
+    def test_add_remove_mac_address(self):
         """
         Add mac address and check packet can received
         Remove mac address and check packet can't received
@@ -151,7 +151,7 @@ class TestWhitelist(TestCase):
                     "Packet has been received on a new MAC address that has been removed from the port")
         self.dut.send_expect("stop", "testpmd> ")
 
-    def test_whitelist_invalid_addresses(self):
+    def test_invalid_addresses(self):
         """
         Invalid operation:
             Add NULL MAC should not be added
