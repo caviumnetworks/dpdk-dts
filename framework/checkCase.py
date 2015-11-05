@@ -112,6 +112,7 @@ class check_case_skip():
 
     def case_skip(self, case_name):
         skip_flage = False
+        self.comments = ""
         for rule in filter_case[1:]:
             # check case name
             if case_name == rule[0]:
