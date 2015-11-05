@@ -36,6 +36,7 @@ Test Scattered Packets.
 import dts
 from test_case import TestCase
 from pmd_output import PmdOutput
+import time
 #
 #
 # Test class.
@@ -85,6 +86,7 @@ class TestScatter(TestCase):
         self.tester.scapy_append(
             'sendp([Ether(src="%s",dst="%s")/IP(len=%s)/Raw(load="\x50"*%s)], iface="%s")' % (smac, dmac,pktlen, padding, sintf))
         self.tester.scapy_execute()
+        time.sleep(5) #wait for scapy capture subprocess exit
         res = self.tester.scapy_get_result()
         self.tester.send_expect("ifconfig %s mtu 1500" % sintf, "#")
         self.tester.send_expect("ifconfig %s mtu 1500" % sintf, "#")
