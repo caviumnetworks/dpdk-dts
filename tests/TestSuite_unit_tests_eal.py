@@ -103,7 +103,7 @@ class TestUnitTestsEal(TestCase):
         """
         self.dut.send_expect("%s ./app/test/test -n 1 -c ffff" % self.dut.taskset(1),
                              "R.*T.*E.*>.*>", self.start_test_time)
-        out = self.dut.send_expect("memcpy_perf_autotest", "RTE>>", self.run_cmd_time * 4)
+        out = self.dut.send_expect("memcpy_perf_autotest", "RTE>>", self.run_cmd_time * 15)
         self.dut.send_expect("quit", "# ")
         self.verify("Test OK" in out, "Test failed")
 
@@ -179,7 +179,7 @@ class TestUnitTestsEal(TestCase):
         """
 
         self.dut.send_expect("./app/test/test -n 1 -c ffff", "R.*T.*E.*>.*>", self.start_test_time)
-        out = self.dut.send_expect('memory_autotest', "RTE>>", self.run_cmd_time)
+        out = self.dut.send_expect('memory_autotest', "RTE>>", self.run_cmd_time * 5)
         regexp = "phys:0x[0-9a-f]*, len:([0-9a-f]*), virt:0x[0-9a-f]*, socket_id:[0-9]*"
         match = dts.regexp(out, regexp)
         size = int(match, 16)
