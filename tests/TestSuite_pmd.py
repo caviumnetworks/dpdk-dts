@@ -154,12 +154,13 @@ class TestPmd(TestCase,IxiaPacketGenerator):
             port_mask = dts.create_mask(self.dut.get_ports())
 
             self.pmdout.start_testpmd("all", "--coremask=%s --rxq=%d --txq=%d --portmask=%s --rss-ip" % (core_mask, queues, queues, port_mask))
+	    command_line = self.pmdout.get_pmd_cmd()
 
             info = "Executing PMD (mac fwd) using %s\n" % test_cycle['cores']
             dts.report(info, annex=True)
             self.logger.info(info)
 
-            dts.report(commandLine + "\n\n", frame=True, annex=True)
+            dts.report(command_line + "\n\n", frame=True, annex=True)
 
             # self.dut.send_expect("set fwd mac", "testpmd> ", 100)
             self.dut.send_expect("start", "testpmd> ")
