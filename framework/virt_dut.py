@@ -318,11 +318,14 @@ class VirtDut(DPDKdut):
                     # search host port info structure
                     for hostport in self.host_dut.ports_info:
                         # update port numa
-                        if hostpci == hostport['pci'] or \
-                           hostpci in hostport['sriov_vfs_pci']:
+                        if hostpci == hostport['pci']:
                             port['numa'] = hostport['numa']
                             port['port'].socket = hostport['numa']
                             break
+                        if 'sriov_vfs_pci' in hostport and \
+                            hostpci in hostport['sriov_vfs_pci']:
+                            port['numa'] = hostport['numa']
+                            port['port'].socket = hostport['numa']
                     break
 
     def map_available_ports(self):
