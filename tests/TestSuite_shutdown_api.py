@@ -62,9 +62,9 @@ class TestShutdownApi(TestCase):
         """
         Run at the start of each test suite.
         """
-        self.ports = self.dut.get_ports()
-        print self.nic, self.ports
-        self.verify(len(self.ports) >= 2, "Insufficient number of ports.")
+        ports = self.dut.get_ports()
+        self.verify(len(ports) >= 2, "Insufficient number of ports.")
+        self.ports = ports[:2]
         self.ports_socket = self.dut.get_numa_id(self.ports[0])
 
         for port in self.ports:
@@ -82,17 +82,19 @@ class TestShutdownApi(TestCase):
         stats = output.get_pmd_stats(portid)
         return stats
 
-    def check_forwarding(self, ports, nic, testerports=[None, None], pktSize=64, received=True, crcStrip=True, vlan=False, softpkg=True, promisc=False):
+    def check_forwarding(self, ports=None, pktSize=68, received=True, vlan=False, promisc=False, crcStrip=False):
+        if ports is None:
+            ports = self.ports
         if len(ports) == 1:
-            self.send_packet(ports[0], ports[0], self.nic, testerports[0], pktSize, received, crcStrip, vlan, softpkg, promisc)
+            self.send_packet(ports[0], ports[0], pktSize, received, vlan, promisc, crcStrip)
             return
 
         for i in range(len(ports)):
             if i % 2 == 0:
-                self.send_packet(ports[i], ports[i + 1], self.nic, testerports[1], pktSize, received, crcStrip, vlan, softpkg, promisc)
-                self.send_packet(ports[i + 1], ports[i], self.nic, testerports[0], pktSize, received, crcStrip, vlan, softpkg, promisc)
+                self.send_packet(ports[i], ports[i + 1], pktSize, received, vlan, promisc, crcStrip)
+                self.send_packet(ports[i + 1], ports[i], pktSize, received, vlan, promisc, crcStrip)
 
-    def send_packet(self, txPort, rxPort, nic, testerports=None, pktSize=64, received=True, crcStrip=True, vlan=False, softpkg=True, promisc=False):
+    def send_packet(self, txPort, rxPort, pktSize=68, received=True, vlan=False, promisc=False, crcStrip=False):
         """
         Send packages according to parameters.
         """
@@ -102,44 +104,24 @@ class TestShutdownApi(TestCase):
         gp1rx_pkts, gp1rx_err, gp1rx_bytes = [port1_stats['RX-packets'], port1_stats['RX-errors'], port1_stats['RX-bytes']]
         time.sleep(5)
 
-        if testerports is None:
-            itf = self.tester.get_interface(self.tester.get_local_port(rxPort))
-        else:
-            itf = testerports
+        itf = self.tester.get_interface(self.tester.get_local_port(rxPort))
         smac = self.tester.get_mac(self.tester.get_local_port(rxPort))
         dmac = self.dut.get_mac_address(rxPort)
+
+        # when promisc is true, destination mac should be fake
         if promisc:
             dmac = "00:00:00:00:00:01"
 
-        self.tester.scapy_foreground()
-
-        if self.nic in ["fortville_eagle", "fortville_spirit",
-                        "fortville_spirit_single", "bartonhills",
-                        "powerville", "springville", "hartwell", "redrockcanyou"]:
-            pktlen = pktSize - HEADER_SIZE['eth'] -4 
-        else:
-            pktlen = pktSize - HEADER_SIZE['eth']
-        padding = pktlen - HEADER_SIZE['ip']
-
-        pkg = ''
-
         if vlan:
-            if pktSize <= 64:
-                pktSize=68
+            padding = pktSize - HEADER_SIZE['eth'] - HEADER_SIZE['ip'] -4
             pkg = 'Ether(src="%s", dst="%s")/Dot1Q(vlan=1)/IP()/Raw(load="P" * %d)' % (smac, dmac, padding)
         else:
+            padding = pktSize - HEADER_SIZE['eth'] - HEADER_SIZE['ip']
             pkg = 'Ether(src="%s", dst="%s")/IP()/Raw(load="P" * %d)' % (smac, dmac, padding)
 
-        if softpkg == True:
-            self.tester.scapy_append('sendp(%s, iface="%s")' % (pkg,itf))
-            self.tester.scapy_execute()
-        else:
-            tgenInput = []
-            self.tester.scapy_append('wrpcap("test%d.pcap", %s' % (rxPort, pkg))
-            tgenInput.append((self.tester.get_local_port(
-                rxPort), self.tester.get_local_port(txPort), "test%d.pcap" % rxPort))
-            self.tester.traffic_generator_throughput(tgenInput)
-
+        self.tester.scapy_foreground()
+        self.tester.scapy_append('sendp(%s, iface="%s")' % (pkg, itf))
+        self.tester.scapy_execute()
         time.sleep(3)
 
         port0_stats = self.get_stats(txPort)
@@ -152,53 +134,47 @@ class TestShutdownApi(TestCase):
         p0tx_bytes -= gp0tx_bytes
         p1rx_pkts -= gp1rx_pkts
         p1rx_bytes -= gp1rx_bytes
-        p1rx_err -= gp1rx_err
-        if received:
 
-            self.verify(p0tx_pkts == p1rx_pkts,
-                        "Wrong TX pkts p0_tx=%d, p1_rx=%d" % (p0tx_pkts, p1rx_pkts))
-            if vlan == False:
-                # RRC and FVL always strip crc
-                if self.nic in ["redrockcanyou", "fortville_eagle", "fortville_spirit",
-                                "fortville_spirit_single", "bartonhills",
-                                "powerville", "springville", "hartwell"]:
-                    self.verify(p0tx_bytes == pktSize -4,
-                                "Wrong TX bytes p0_tx=%d, pktSize=%d" % (p0tx_bytes, pktSize))
-                else:
-                    if crcStrip:
-                        self.verify(p1rx_bytes == pktSize -4,
-                                    "Wrong RX bytes CRC strip: p1_rx=%d, pktSize=%d" % (p1rx_bytes, pktSize))
-                    else:
-                        self.verify(p1rx_bytes == pktSize,
-                                    "Wrong RX bytes NO CRC strip: p1_rx=%d, pktSize=%d" % (p0tx_bytes, pktSize))
-            else:
-                # RRC always strip vlan and crc
-                if self.nic in ["redrockcanyou"]:
-                    self.verify(p1rx_bytes == pktSize - 8,
-                                "Wrong TX bytes p0_tx=%d, pktSize=%d" % (p0tx_bytes, pktSize))
-                elif self.nic in ["fortville_eagle", "fortville_spirit",
-                                "fortville_spirit_single", "bartonhills",
-                                "powerville", "springville", "hartwell"]:
-                    self.verify(p1rx_bytes == pktSize - 4,
-                                "Wrong TX bytes p0_tx=%d, pktSize=%d" % (p0tx_bytes, pktSize))
-                else:
-                    if crcStrip:
-                        self.verify(p1rx_bytes == pktSize -4,
-                                    "Wrong RX bytes CRC strip: p1_rx=%d, pktSize=%d" % (p1rx_bytes, pktSize))
-                    else:
-                        self.verify(p1rx_bytes == pktSize,
-                                    "Wrong RX bytes NO CRC strip: p1_rx=%d, pktSize=%d" % (p0tx_bytes, pktSize))
+        rx_bytes_exp = pktSize
+        tx_bytes_exp = pktSize
+
+        if self.nic in ['redrockcanyou']:
+            # RRC will always strip rx/tx crc
+            rx_bytes_exp -= 4
+            tx_bytes_exp -= 4
+            if vlan is True:
+                # RRC will always strip rx/tx vlan
+                rx_bytes_exp -= 4
+                tx_bytes_exp -= 4
+        elif self.nic in ["fortville_eagle", "fortville_spirit",
+                        "fortville_spirit_single", "bartonhills",
+                        "powerville", "springville", "hartwell"]:
+            # some NIC will always strip tx crc
+            tx_bytes_exp -= 4
+            if vlan is True:
+                # vlan strip default is on
+                tx_bytes_exp -= 4
         else:
-            self.verify(
-                p0tx_pkts == 0, "Packet not dropped p0tx_pkts=%d" % p0tx_pkts)
-            self.verify(
-                p0tx_bytes == 0, "Packet not dropped p0tx_bytes=%d" % p0tx_bytes)
+            # some NIC will always include tx crc
+            if crcStrip is True:
+                rx_bytes_exp -= 4
+            if vlan is True:
+                # vlan strip default is on
+                tx_bytes_exp -= 4
 
-    def check_ports(self, ports, status):
+        if received:
+            self.verify(p0tx_pkts == p1rx_pkts, "Wrong TX pkts p0_tx=%d, p1_rx=%d" % (p0tx_pkts, p1rx_pkts))
+            self.verify(p1rx_bytes == rx_bytes_exp, "Wrong Rx bytes p1_rx=%d, expect=%d" % (p1rx_bytes, rx_bytes_exp))
+            self.verify(p0tx_bytes == tx_bytes_exp, "Wrong Tx bytes p0_tx=%d, expect=%d" % (p0tx_bytes, tx_bytes_exp))
+        else:
+            self.verify(p0tx_pkts == 0, "Packet not dropped p0tx_pkts=%d" % p0tx_pkts)
+            self.verify(p0tx_bytes == 0, "Packet not dropped p0tx_bytes=%d" % p0tx_bytes)
+
+    def check_ports(self, status=True):
         """
-            Check link status of the ports.
+        Check link status of the ports.
         """
-        for port in ports:
+        for port in self.ports:
             out = self.tester.send_expect(
                 "ethtool %s" % self.tester.get_interface(self.tester.get_local_port(port)), "# ")
             if status:
@@ -221,16 +197,16 @@ class TestShutdownApi(TestCase):
         self.dut.send_expect("set fwd mac", "testpmd>")
         self.dut.send_expect("set promisc all off", "testpmd> ")
         self.dut.send_expect("start", "testpmd> ")
-        self.check_forwarding(self.ports, self.nic)
+        self.check_forwarding()
         self.dut.send_expect("stop", "testpmd> ")
-        self.check_forwarding(self.ports, self.nic, received=False)
+        self.check_forwarding(received=False)
         self.dut.send_expect("port stop all", "testpmd> ", 100)
-        self.check_ports(self.ports, False)
+        self.check_ports(status=False)
         self.dut.send_expect("port start all", "testpmd> ", 100)
         time.sleep(5)
-        self.check_ports(self.ports, True)
+        self.check_ports(status=True)
         self.dut.send_expect("start", "testpmd> ")
-        self.check_forwarding(self.ports, self.nic)
+        self.check_forwarding()
 
     def test_set_promiscuousmode(self):
         """
@@ -254,7 +230,7 @@ class TestShutdownApi(TestCase):
         self.dut.send_expect("start", "testpmd> ")
 
         try:
-            self.check_forwarding(ports, self.nic)
+            self.check_forwarding(ports)
         except dts.VerifyFailure as e:
             print 'promiscuous mode is working correctly'
         except Exception as e:
@@ -266,7 +242,7 @@ class TestShutdownApi(TestCase):
         self.dut.send_expect("port start all", "testpmd> ", 100)
         self.dut.send_expect("show config rxtx", "testpmd> ")
         self.dut.send_expect("start", "testpmd> ")
-        self.check_forwarding(ports, self.nic, promisc=True)
+        self.check_forwarding(ports, promisc=True)
         self.dut.send_expect("port stop all", "testpmd> ", 100)
         self.dut.send_expect("set promisc all off", "testpmd> ")
         self.dut.send_expect("start", "testpmd> ")
@@ -279,8 +255,6 @@ class TestShutdownApi(TestCase):
         testerports = [self.tester.get_interface(self.tester.get_local_port(self.ports[0])),
                        self.tester.get_interface(self.tester.get_local_port(self.ports[1]))
                        ]
-        #blackList = self.dut.create_blacklist_string(self.target, self.nic)
-
         testcorelist = self.dut.get_core_list("1S/8C/1T", socket=self.ports_socket)
 
         self.pmdout.start_testpmd(testcorelist, "--portmask=%s" % dts.create_mask([self.ports[0], self.ports[1]]), socket=self.ports_socket)
@@ -289,7 +263,6 @@ class TestShutdownApi(TestCase):
         self.dut.send_expect("port stop all", "testpmd> ", 100)
         self.dut.send_expect("port config all rxq 2", "testpmd> ")
         self.dut.send_expect("port config all txq 2", "testpmd> ")
-        #self.dut.send_expect("set coremask 0x1e", "testpmd> ")
         self.dut.send_expect("set coremask %s" % fwdcoremask, "testpmd> ")
         self.dut.send_expect("set fwd mac", "testpmd>")
         self.dut.send_expect("set promisc all off", "testpmd> ")
@@ -298,11 +271,8 @@ class TestShutdownApi(TestCase):
         self.verify("RX queues=2" in out, "RX queues not reconfigured properly")
         self.verify("TX queues=2" in out, "TX queues not reconfigured properly")
         self.dut.send_expect("start", "testpmd> ")
-        self.check_forwarding([0, 1], self.nic, testerports)
+        self.check_forwarding()
         self.dut.send_expect("quit", "# ", 30)
-        #self.dut.send_expect("rmmod igb_uio", "# ", 20)
-        #self.dut.send_expect("insmod ./%s/kmod/igb_uio.ko" % self.target, "#")
-        #self.dut.bind_interfaces_linux()
 
     def test_reconfigure_ports(self):
         """
@@ -319,11 +289,8 @@ class TestShutdownApi(TestCase):
         self.verify(
             "CRC stripping enabled" in out, "CRC stripping not enabled properly")
         self.dut.send_expect("start", "testpmd> ")
-        if self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single", "redrockcanyou"]:
-            self.check_forwarding(self.ports, self.nic, crcStrip=True)
-        else:
-            self.check_forwarding(self.ports, self.nic, crcStrip=False)
-             
+        self.check_forwarding(crcStrip=True)
+
 
     def test_change_linkspeed(self):
         """
@@ -365,10 +332,10 @@ class TestShutdownApi(TestCase):
                 self.verify("Duplex: %s" % config[1] in out,
                             "Wrong link type reported by the self.tester.")
             self.dut.send_expect("start", "testpmd> ")
-            self.check_forwarding(self.ports, self.nic)
+            self.check_forwarding()
             self.dut.send_expect("stop", "testpmd> ")
 
-    def failed_test_enable_disablejumbo(self):
+    def test_enable_disablejumbo(self):
         """
         Enable/Disable Jumbo Frames.
         """
@@ -376,19 +343,26 @@ class TestShutdownApi(TestCase):
             print dts.RED("RRC not support\n")
             return
 
+        jumbo_size = 2048
         self.pmdout.start_testpmd("Default", "--portmask=%s" % dts.create_mask(self.ports), socket=self.ports_socket)
         self.dut.send_expect("port stop all", "testpmd> ", 100)
         self.dut.send_expect("vlan set strip off all", "testpmd> ")
-        self.dut.send_expect("port config all max-pkt-len 2048", "testpmd> ")
+        self.dut.send_expect("port config all max-pkt-len %d" % jumbo_size, "testpmd> ")
         for port in self.ports:
             self.dut.send_expect("rx_vlan add 1 %d" % port, "testpmd> ")
         self.dut.send_expect("set fwd mac", "testpmd>")
         self.dut.send_expect("port start all", "testpmd> ", 100)
         self.dut.send_expect("start", "testpmd> ")
 
-        self.check_forwarding(self.ports, self.nic, pktSize=2047, vlan=True)
-        self.check_forwarding(self.ports, self.nic, pktSize=2048, vlan=True)
-        self.check_forwarding(self.ports, self.nic, pktSize=2049, received=False, vlan=True)
+        if self.nic in ['niantic']:
+            # nantic vlan length will not be calculated
+            vlan_jumbo_size = jumbo_size + 4
+        else:
+            vlan_jumbo_size = jumbo_size
+
+        self.check_forwarding(pktSize=vlan_jumbo_size - 1, vlan=True)
+        self.check_forwarding(pktSize=vlan_jumbo_size, vlan=True)
+        self.check_forwarding(pktSize=vlan_jumbo_size + 1, received=False, vlan=True)
 
         self.dut.send_expect("stop", "testpmd> ")
 
@@ -396,14 +370,15 @@ class TestShutdownApi(TestCase):
         self.dut.send_expect("port config all hw-vlan off", "testpmd> ")
         self.dut.send_expect("port start all", "testpmd> ", 100)
         self.dut.send_expect("start", "testpmd> ")
-        if ((self.nic == "bartonhills") or (self.nic == "powerville") or (self.nic == "springville") or (self.nic == "hartwell")):
-            self.check_forwarding(self.ports, self.nic, pktSize=2051)
-            self.check_forwarding(self.ports, self.nic, pktSize=2052)
-            self.check_forwarding(self.ports, self.nic, pktSize=2053, received=False)
+        if self.nic in ["bartonhills", "powerville", "springville", "hartwell"]:
+            jumbo_size = jumbo_size + 4
+            self.check_forwarding(pktSize=jumbo_size - 1)
+            self.check_forwarding(pktSize=jumbo_size)
+            self.check_forwarding(pktSize=jumbo_size + 1, received=False)
         else:
-            self.check_forwarding(self.ports, self.nic, pktSize=2047)
-            self.check_forwarding(self.ports, self.nic, pktSize=2048)
-            self.check_forwarding(self.ports, self.nic, pktSize=2049, received=False)
+            self.check_forwarding(pktSize=jumbo_size - 1)
+            self.check_forwarding(pktSize=jumbo_size)
+            self.check_forwarding(pktSize=jumbo_size + 1, received=False)
 
     def test_enable_disablerss(self):
         """
@@ -417,7 +392,7 @@ class TestShutdownApi(TestCase):
         self.dut.send_expect("set promisc all off", "testpmd>")
         self.dut.send_expect("port start all", "testpmd> ", 100)
         self.dut.send_expect("start", "testpmd> ")
-        self.check_forwarding(self.ports, self.nic)
+        self.check_forwarding()
 
     def test_change_numberrxdtxd(self):
         """
@@ -437,7 +412,7 @@ class TestShutdownApi(TestCase):
         self.verify(
             "TX desc=1024" in out, "TX descriptor not reconfigured properly")
         self.dut.send_expect("start", "testpmd> ")
-        self.check_forwarding(self.ports, self.nic)
+        self.check_forwarding()
 
     def test_change_numberrxdtxdaftercycle(self):
         """
@@ -457,7 +432,7 @@ class TestShutdownApi(TestCase):
         self.verify(
             "TX desc=1024" in out, "TX descriptor not reconfigured properly")
         self.dut.send_expect("start", "testpmd> ")
-        self.check_forwarding(self.ports, self.nic)
+        self.check_forwarding()
 
         self.dut.send_expect("stop", "testpmd> ")
         self.dut.send_expect("port stop all", "testpmd> ", 100)
@@ -468,7 +443,7 @@ class TestShutdownApi(TestCase):
         self.verify(
             "TX desc=1024" in out, "TX descriptor not reconfigured properly")
         self.dut.send_expect("start", "testpmd> ")
-        self.check_forwarding(self.ports, self.nic)
+        self.check_forwarding()
 
     def test_change_thresholds(self):
         """
@@ -503,7 +478,7 @@ class TestShutdownApi(TestCase):
         self.dut.send_expect("set fwd mac", "testpmd>")
         self.dut.send_expect("set promisc all off", "testpmd>")
         self.dut.send_expect("start", "testpmd> ")
-        self.check_forwarding(self.ports, self.nic)
+        self.check_forwarding()
 
     def test_stress_test(self):
         """
@@ -524,7 +499,7 @@ class TestShutdownApi(TestCase):
             self.dut.send_expect("set promisc all off", "testpmd>")
             self.dut.send_expect("port start all", "testpmd> ", 100)
             self.dut.send_expect("start", "testpmd> ")
-            self.check_forwarding(self.ports, self.nic)
+            self.check_forwarding()
             self.dut.send_expect("stop", "testpmd> ")
 
         self.dut.send_expect("quit", "# ")
@@ -542,23 +517,20 @@ class TestShutdownApi(TestCase):
         self.dut.send_expect("set promisc all off", "testpmd>")
         self.dut.send_expect("start", "testpmd>")
 
-        # default test
-        # self.check_forwarding([0,1], self.nic)
-
         ports_num = len(self.ports)
         # link down test
         for i in range(ports_num):
             self.dut.send_expect("set link-down port %d" % i, "testpmd>")
         # leep few seconds for NIC link status update
         time.sleep(5)
-        self.check_ports(self.ports, False)
+        self.check_ports(status=False)
 
         # link up test
         for j in range(ports_num):
             self.dut.send_expect("set link-up port %d" % j, "testpmd>")
         time.sleep(5)
-        self.check_ports(self.ports, True)
-        self.check_forwarding(self.ports, self.nic)
+        self.check_ports(status=True)
+        self.check_forwarding()
 
     def tear_down(self):
         """
