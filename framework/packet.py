@@ -36,7 +36,6 @@ Base on scapy(python program for packet manipulation)
 
 import os
 import time
-import signal
 import sys
 import re
 import signal
@@ -325,6 +324,7 @@ class Packet(object):
         'LLDP': {'layers': ['ether', 'lldp'], 'cfgload': False},
         'TCP': {'layers': ['ether', 'ipv4', 'tcp', 'raw'], 'cfgload': True},
         'UDP': {'layers': ['ether', 'ipv4', 'udp', 'raw'], 'cfgload': True},
+        'VLAN_UDP': {'layers': ['ether', 'dot1q', 'ipv4', 'udp', 'raw'], 'cfgload': True},
         'SCTP': {'layers': ['ether', 'ipv4', 'sctp', 'raw'], 'cfgload': True},
         'IPv6_TCP': {'layers': ['ether', 'ipv6', 'tcp', 'raw'], 'cfgload': True},
         'IPv6_UDP': {'layers': ['ether', 'ipv6', 'udp', 'raw'], 'cfgload': True},
@@ -578,6 +578,9 @@ class Packet(object):
 
         return strip_element(element)
 
+    def strip_element_layer2(self, element):
+        return self.pktgen.strip_layer2(element)
+
     def strip_element_dot1q(self, element):
         return self.pktgen.strip_dot1q(element)
 
@@ -668,7 +671,8 @@ def load_sniff_packets(index=''):
             time_elapse += 1
 
         if not child_exit:
-            pipe.kill()
+            pipe.send_signal(signal.SIGINT)
+            pipe.wait()
 
         # wait pcap file ready
         time.sleep(1)
@@ -709,7 +713,8 @@ def compare_pktload(pkt1=None, pkt2=None, layer="L2"):
 ###############################################################################
 if __name__ == "__main__":
     inst = sniff_packets("lo", timeout=5)
-    time.sleep(3)
+    pkt = Packet(pkt_type='UDP')
+    pkt.send_pkt(tx_port='lo')
     pkts = load_sniff_packets(inst)
 
     pkt = Packet(pkt_type='UDP', pkt_len=1500, ran_payload=True)
@@ -717,6 +722,9 @@ if __name__ == "__main__":
     pkt = Packet(pkt_type='IPv6_TCP')
     pkt.send_pkt(tx_port='lo')
     pkt = Packet(pkt_type='IPv6_SCTP')
+    pkt.send_pkt(tx_port='lo')
+    pkt = Packet(pkt_type='VLAN_UDP')
+    pkt.config_layer('dot1q', {'vlan': 2})
     pkt.send_pkt(tx_port='lo')
 
     pkt = Packet()
