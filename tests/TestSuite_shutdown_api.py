@@ -147,10 +147,13 @@ class TestShutdownApi(TestCase):
                 rx_bytes_exp -= 4
                 tx_bytes_exp -= 4
         elif self.nic in ["fortville_eagle", "fortville_spirit",
-                        "fortville_spirit_single", "bartonhills",
-                        "powerville", "springville", "hartwell"]:
+                        "fortville_spirit_single", "bartonhills"]:
             # some NIC will always strip tx crc
             tx_bytes_exp -= 4
+            if vlan is True:
+                # vlan strip default is on
+                tx_bytes_exp -= 4
+        elif self.nic in ["springville", "powerville"]:
             if vlan is True:
                 # vlan strip default is on
                 tx_bytes_exp -= 4
@@ -354,7 +357,7 @@ class TestShutdownApi(TestCase):
         self.dut.send_expect("port start all", "testpmd> ", 100)
         self.dut.send_expect("start", "testpmd> ")
 
-        if self.nic in ['niantic']:
+        if self.nic in ['niantic', 'twinpond', 'kawela_4', 'ironpond', 'springfountain', 'springville', 'powerville']:
             # nantic vlan length will not be calculated
             vlan_jumbo_size = jumbo_size + 4
         else:
