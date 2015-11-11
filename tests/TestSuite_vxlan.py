@@ -599,10 +599,10 @@ class TestVxlan(TestCase, IxiaPacketGenerator):
         out = self.dut.send_expect("start", "testpmd>", 10)
 
         queue = -1
-        pattern = re.compile("VNI = (\d) - Receive queue=0x(\d)")
+        pattern = re.compile("- Receive queue=0x(\d)")
         m = pattern.search(out)
         if m is not None:
-            queue = m.group(2)
+            queue = m.group(1)
 
         # verify received in expected queue
         self.verify(queue_id == int(queue), "invalid receive queue")
