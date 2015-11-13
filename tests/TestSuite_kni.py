@@ -594,6 +594,9 @@ class TestKni(TestCase):
                                        (virtual_interface, ''.join(ipv6list)), "# ", 10)
             self.verify(
                 "0 received, 100% packet loss" in out, "ping6 not supported")
+            # remove ip from tester
+            self.tester.send_expect(
+                 "ip addr del 192.168.%d.2 dev %s" % (port, tx_interface), "# ")
           
         for port in self.config['ports']:
             tx_port = self.tester.get_local_port(port)
