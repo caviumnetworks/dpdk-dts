@@ -61,6 +61,14 @@ class TestScatter(TestCase):
         else:
             self.mbsize = 1024
 
+    def start_tcpdump(self, tester_rx_intf):
+        self.tester.send_expect("rm -rf ./scatter.cap", "#")
+        self.tester.send_expect("tcpdump -i %s -x -w ./scatter.cap 2>/dev/null &" % tester_rx_intf, "#")
+
+    def get_tcpdump_packet(self):
+        self.tester.send_expect("killall tcpdump", "#")
+        return self.tester.send_expect("tcpdump -nn -x -r ./scatter.cap", "#")
+
     def scatter_pktgen_send_packet(self, sPortid, rPortid, pktsize, num=1):
         """
         Functional test for scatter packets.
@@ -74,20 +82,16 @@ class TestScatter(TestCase):
         self.tester.send_expect("ifconfig %s mtu 9000" % sintf, "#")
         self.tester.send_expect("ifconfig %s mtu 9000" % rintf, "#")
 
-        self.tester.scapy_background()
-        self.tester.scapy_append(
-            'p = sniff(filter="ip",iface="%s", count=%d)' % (rintf, num))
-        self.tester.scapy_append('RESULT = str(p)')
+		self.start_tcpdump(rintf)
 
         pktlen = pktsize - 18
         padding = pktlen - 20
 
-        self.tester.scapy_foreground()
         self.tester.scapy_append(
             'sendp([Ether(src="%s",dst="%s")/IP(len=%s)/Raw(load="\x50"*%s)], iface="%s")' % (smac, dmac,pktlen, padding, sintf))
         self.tester.scapy_execute()
         time.sleep(5) #wait for scapy capture subprocess exit
-        res = self.tester.scapy_get_result()
+		res = self.get_tcpdump_packet()
         self.tester.send_expect("ifconfig %s mtu 1500" % sintf, "#")
         self.tester.send_expect("ifconfig %s mtu 1500" % sintf, "#")
         return res
@@ -118,7 +122,7 @@ class TestScatter(TestCase):
         for offset in [-1, 0, 1, 4, 5]:
             ret = self.scatter_pktgen_send_packet(
                 dutPorts[0], dutPorts[1], self.mbsize + offset)
-            self.verify("load='P" in ret, "packet receive error")
+			self.verify("5050 5050 5050 5050 5050 5050 5050" in ret, "packet receive error")
 
         self.dut.send_expect("stop", "testpmd> ")
         self.dut.send_expect("quit", "# ", 30)
