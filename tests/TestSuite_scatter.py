@@ -82,16 +82,17 @@ class TestScatter(TestCase):
         self.tester.send_expect("ifconfig %s mtu 9000" % sintf, "#")
         self.tester.send_expect("ifconfig %s mtu 9000" % rintf, "#")
 
-		self.start_tcpdump(rintf)
+        self.start_tcpdump(rintf)
 
         pktlen = pktsize - 18
         padding = pktlen - 20
 
         self.tester.scapy_append(
             'sendp([Ether(src="%s",dst="%s")/IP(len=%s)/Raw(load="\x50"*%s)], iface="%s")' % (smac, dmac,pktlen, padding, sintf))
+        time.sleep(3)
         self.tester.scapy_execute()
         time.sleep(5) #wait for scapy capture subprocess exit
-		res = self.get_tcpdump_packet()
+        res = self.get_tcpdump_packet()
         self.tester.send_expect("ifconfig %s mtu 1500" % sintf, "#")
         self.tester.send_expect("ifconfig %s mtu 1500" % sintf, "#")
         return res
@@ -122,7 +123,7 @@ class TestScatter(TestCase):
         for offset in [-1, 0, 1, 4, 5]:
             ret = self.scatter_pktgen_send_packet(
                 dutPorts[0], dutPorts[1], self.mbsize + offset)
-			self.verify("5050 5050 5050 5050 5050 5050 5050" in ret, "packet receive error")
+            self.verify("5050 5050 5050 5050 5050 5050 5050" in ret, "packet receive error")
 
         self.dut.send_expect("stop", "testpmd> ")
         self.dut.send_expect("quit", "# ", 30)
