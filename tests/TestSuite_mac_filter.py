@@ -58,6 +58,7 @@ class TestWhitelist(TestCase):
         self.pmdout = PmdOutput(self.dut)
         self.pmdout.start_testpmd("Default", "--portmask=%s" % portMask)
         self.dut.send_expect("set verbose 1", "testpmd> ")
+        self.dut.send_expect("set fwd mac", "testpmd> ")
         self.dut.send_expect("start", "testpmd> ")
 
         # get dest address from self.target port
@@ -105,6 +106,7 @@ class TestWhitelist(TestCase):
         pre_rxpkt = dts.regexp(out, "TX-packets: ([0-9]+)")
 
         # send one packet with the portid MAC address
+        self.dut.send_expect("clear port stats all", "testpmd> ")
         self.whitelist_send_packet(portid, self.dest)
         out = self.dut.send_expect("show port stats %d" % txportid, "testpmd> ")
         cur_rxpkt = dts.regexp(out, "TX-packets: ([0-9]+)")
