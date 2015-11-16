@@ -319,6 +319,9 @@ class TestShutdownApi(TestCase):
             if self.nic in ["ironpond"]:
                 if config[0] != '1000' or '10000':
                     continue
+            elif self.nic in ["fortville_eagle"]:
+                if config[0] != '10000':
+                    continue
             self.dut.send_expect("port stop all", "testpmd> ", 100)
             for port in self.ports:
                 self.dut.send_expect("port config %d speed %s duplex %s" % (port,
