@@ -162,7 +162,7 @@ class DPDKdut(Dut):
         self.send_expect("rm -rf " + target, "#")
 
         # compile
-        out = self.send_expect("make -j install T=%s %s" % (target, extra_options), "# ", 120)
+        out = self.send_expect("make -j install T=%s %s" % (target, extra_options), "# ", 300)
 
         if("Error" in out or "No rule to make" in out):
             self.logger.error("ERROR - try without '-j'")
