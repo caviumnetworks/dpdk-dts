@@ -36,6 +36,7 @@ Test support of IEEE1588 Precise Time Protocol.
 
 import dts
 import time
+import re
 from test_case import TestCase
 from pmd_output import PmdOutput
 
@@ -105,8 +106,15 @@ class TestIeee1588(TestCase):
         text = dts.regexp(out, "(.*) by hardware")
         self.verify("IEEE1588 PTP V2 SYNC" in text, "Not filtered " + text)
         
-        rx_time = dts.regexp(out, "RX timestamp value (\d+)")
-        tx_time = dts.regexp(out, "TX timestamp value (\d+)")
+        pattern_rx = re.compile("RX timestamp value (\d+) s (\d+) ns")
+        pattern_tx = re.compile("TX timestamp value (\d+) s (\d+) ns")
+
+        m_rx = pattern_rx.search(out)
+        m_tx = pattern_tx.search(out)
+        if m_rx is not None:
+            rx_time = m_rx.group(2)
+        if m_tx is not None:
+            tx_time = m_tx.group(2)
 
         self.verify(rx_time is not None, "RX timestamp error ")
         self.verify(tx_time is not None, "TX timestamp error ")
