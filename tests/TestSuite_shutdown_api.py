@@ -224,7 +224,7 @@ class TestShutdownApi(TestCase):
             ports = [self.ports[0], self.ports[1]]
 
         portmask = dts.create_mask(ports)
-        self.pmdout.start_testpmd("Default", "--portmask=%s" % portmask, self.ports_socket)
+        self.pmdout.start_testpmd("Default", "--portmask=%s" % portmask, socket = self.ports_socket)
 
         self.dut.send_expect("port stop all", "testpmd> ", 100)
         self.dut.send_expect("set promisc all off", "testpmd> ")
