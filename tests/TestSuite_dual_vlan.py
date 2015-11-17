@@ -101,7 +101,7 @@ class TestDualVlan(TestCase):
         dutTxPortId = valports[1]
 
         self.pmdout = PmdOutput(self.dut)
-        self.pmdout.start_testpmd("all", "--portmask=%s" % portMask, socket=self.ports_socket)
+        self.pmdout.start_testpmd("Default", "--portmask=%s" % portMask, socket=self.ports_socket)
 
         if self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single"]:
             self.dut.send_expect("vlan set filter on all", "testpmd> ")
