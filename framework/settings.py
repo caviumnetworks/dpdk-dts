@@ -57,6 +57,7 @@ NICS = {
     'ironpond': '8086:151c',
     'twinpond': '8086:1528',
     'twinville': '8086:1512',
+    'sageville': '8086:1563',
     'hartwell': '8086:10d3',
     '82545EM': '8086:100f',
     '82540EM': '8086:100e',
@@ -73,6 +74,7 @@ NICS = {
     'fortville_spirit': '8086:1583',
     'fortville_spirit_single': '8086:1584',
     'redrockcanyou': '8086:15a4',
+    'fortpark':'8086:374c',
 }
 
 DRIVERS = {
@@ -87,6 +89,7 @@ DRIVERS = {
     'ironpond': 'ixgbe',
     'twinpond': 'ixgbe',
     'twinville': 'ixgbe',
+    'sageville': 'ixgbe',
     'hartwell': 'igb',
     '82545EM': 'igb',
     '82540EM': 'igb',
