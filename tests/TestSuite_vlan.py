@@ -69,7 +69,7 @@ class TestVlan(TestCase):
         portMask = dts.create_mask(valports[:2])
 
         self.pmdout = PmdOutput(self.dut)
-        self.pmdout.start_testpmd("all", "--portmask=%s" % portMask)
+        self.pmdout.start_testpmd("Default", "--portmask=%s" % portMask)
 
         self.dut.send_expect("set verbose 1", "testpmd> ")
         out = self.dut.send_expect("set fwd mac", "testpmd> ")
