@@ -187,7 +187,7 @@ class TestTSO(TestCase):
         self.tester.send_expect("ethtool -K %s rx off tx off tso off gso off gro off lro off" % tx_interface, "# ")
         self.tester.send_expect("ip l set %s up" % tx_interface, "# ")
 
-        cmd = "./%s/app/testpmd -c %s -n %d %s -- -i --coremask=%s --rxd=512 --txd=512 --burst=32 --rxfreet=64 --mbcache=128 --portmask=%s --txpt=36 --txht=0 --txwt=0 --txfreet=32 --txrst=32 --txqflags=0 " % (self.target, self.all_cores_mask, self.dut.get_memory_channels(), self.blacklist, self.coreMask, self.portMask)
+        cmd = "./%s/app/testpmd -c %s -n %d %s -- -i --rxd=512 --txd=512 --burst=32 --rxfreet=64 --mbcache=128 --portmask=%s --txpt=36 --txht=0 --txwt=0 --txfreet=32 --txrst=32 --txqflags=0 " % (self.target, self.coreMask, self.dut.get_memory_channels(), self.blacklist, self.portMask)
         self.dut.send_expect(cmd, "testpmd> ", 120)
         self.dut.send_expect("set verbose 1", "testpmd> ", 120)
         self.dut.send_expect("csum set ip hw %d" % self.dut_ports[0], "testpmd> ", 120)
@@ -253,7 +253,7 @@ class TestTSO(TestCase):
         self.tester.send_expect("ethtool -K %s rx off tx off tso off gso off gro off lro off" % tx_interface, "# ")
         self.tester.send_expect("ip l set %s up" % tx_interface, "# ")
 
-        cmd = "./%s/app/testpmd -c %s -n %d %s -- -i --coremask=%s --rxd=512 --txd=512 --burst=32 --rxfreet=64 --mbcache=128 --portmask=%s --txpt=36 --txht=0 --txwt=0 --txfreet=32 --txrst=32 --txqflags=0 " % (self.target, self.all_cores_mask, self.dut.get_memory_channels(), self.blacklist, self.coreMask, self.portMask)
+        cmd = "./%s/app/testpmd -c %s -n %d %s -- -i --rxd=512 --txd=512 --burst=32 --rxfreet=64 --mbcache=128 --portmask=%s --txpt=36 --txht=0 --txwt=0 --txfreet=32 --txrst=32 --txqflags=0 " % (self.target, self.coreMask, self.dut.get_memory_channels(), self.blacklist, self.portMask)
         self.dut.send_expect(cmd, "testpmd> ", 120)
         self.dut.send_expect("set verbose 1", "testpmd> ", 120)
         self.dut.send_expect("csum set ip hw %d" % self.dut_ports[0], "testpmd> ", 120)
