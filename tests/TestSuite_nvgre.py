@@ -452,9 +452,10 @@ class TestNvgre(TestCase):
         config.outer_mac_dst = self.dut_rx_port_mac
         config.create_pcap()
         # time.sleep(10)
+        self.dut.send_expect("start", "testpmd>", 10)
         config.send_pcap()
         # check whether detect nvgre type
-        out = self.dut.send_expect("start", "testpmd>", 10)
+        out = self.dut.get_session_output()
         print out
         self.verify(config.packet_type() in out, "Nvgre Packet not detected")
         out = self.dut.send_expect("show port stats all", "testpmd>", 10)
@@ -497,8 +498,9 @@ class TestNvgre(TestCase):
 
         # send nvgre packet
         config.create_pcap()
+        self.dut.send_expect("start", "testpmd>", 10)
         config.send_pcap()
-        out = self.dut.send_expect("start", "testpmd>", 10)
+        out = self.dut.get_session_output()
         print out
         queue = -1
         pattern = re.compile("- Receive queue=0x(\d)")

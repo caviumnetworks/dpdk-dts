@@ -391,10 +391,11 @@ class TestVxlan(TestCase, IxiaPacketGenerator):
         # be same
         config.outer_mac_dst = self.dut_port_mac
         config.create_pcap()
+        self.dut.send_expect("start", "testpmd>", 10)
         config.send_pcap(self.tester_iface)
 
         # check whether detect vxlan type
-        out = self.dut.send_expect("start", "testpmd>", 10)
+        out = self.dut.get_session_output()
         self.verify(config.packet_type() in out, "Vxlan Packet not detected")
         out = self.dut.send_expect("stop", "testpmd>", 10)
         self.dut.send_expect("quit", "#", 10)
@@ -595,8 +596,9 @@ class TestVxlan(TestCase, IxiaPacketGenerator):
 
         # send vxlan packet
         config.create_pcap()
+        self.dut.send_expect("start", "testpmd>", 10)
         config.send_pcap(self.tester_iface)
-        out = self.dut.send_expect("start", "testpmd>", 10)
+        out = self.dut.get_session_output()
 
         queue = -1
         pattern = re.compile("- Receive queue=0x(\d)")

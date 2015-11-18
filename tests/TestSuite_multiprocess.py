@@ -80,23 +80,23 @@ class TestMultiprocess(TestCase, IxiaPacketGenerator):
         Basic operation.
         """
         # Send message from secondary to primary
-        self.dut.alt_session.send_expect("./examples/multi_process/simple_mp/simple_mp/%s/simple_mp -n 1 -c 3 --proc-type=primary |tee out  " % self.target, "Finished Process Init", 100)
+        self.dut.send_expect("./examples/multi_process/simple_mp/simple_mp/%s/simple_mp -n 1 -c 3 --proc-type=primary" % self.target, "Finished Process Init", 100)
         time.sleep(20)
-        self.dut.send_expect("./examples/multi_process/simple_mp/simple_mp/%s/simple_mp -n 1 -c C --proc-type=secondary" % self.target, "Finished Process Init", 100)
+        self.dut.alt_session.send_expect("./examples/multi_process/simple_mp/simple_mp/%s/simple_mp -n 1 -c C --proc-type=secondary" % self.target, "Finished Process Init", 100)
 
-        self.dut.send_expect("send hello_primary", ">")
-        self.dut.send_expect("quit", "# ")
-        self.dut.alt_session.send_expect("quit","# ")
-        out = self.dut.alt_session.send_expect("cat out","# ")
+        self.dut.alt_session.send_expect("send hello_primary", ">")
+        out = self.dut.get_session_output()
+        self.dut.alt_session.send_expect("quit", "# ")
+        self.dut.send_expect("quit","# ")
         self.verify("Received 'hello_primary'" in out, "Message not received on primary process")
         # Send message from primary to secondary
         self.dut.alt_session.send_expect("./examples/multi_process/simple_mp/simple_mp/%s/simple_mp -n 1 -c 3 --proc-type=primary " % self.target, "Finished Process Init", 100)
         time.sleep(20)
-        self.dut.send_expect("./examples/multi_process/simple_mp/simple_mp/%s/simple_mp -n 1 -c C --proc-type=secondary | tee out  " % self.target, "Finished Process Init", 100)
+        self.dut.send_expect("./examples/multi_process/simple_mp/simple_mp/%s/simple_mp -n 1 -c C --proc-type=secondary" % self.target, "Finished Process Init", 100)
         self.dut.alt_session.send_expect("send hello_secondary", ">")
+        out = self.dut.get_session_output()
         self.dut.alt_session.send_expect("quit", "# ")
         self.dut.send_expect("quit", "# ")
-        out = self.dut.send_expect("cat out", "# ")
 
         self.verify("Received 'hello_secondary'" in out,
                     "Message not received on primary process")
@@ -109,7 +109,7 @@ class TestMultiprocess(TestCase, IxiaPacketGenerator):
         self.dut.kill_all()
         self.dut.send_expect("fg", "# ")
 
-        self.dut.send_expect("./examples/multi_process/simple_mp/simple_mp/%s/simple_mp -n 1 -c 3 --proc-type=primary > testing.txt &" % self.target, "# ", 100)
+        self.dut.alt_session.send_expect("./examples/multi_process/simple_mp/simple_mp/%s/simple_mp -n 1 -c 3 --proc-type=primary" % self.target, "Finished Process Init", 100)
         time.sleep(20)
         self.dut.send_expect("./examples/multi_process/simple_mp/simple_mp/%s/simple_mp -n 1 -c C --proc-type=secondary" % self.target, "Finished Process Init", 100)
         stringsSent = 0
@@ -122,7 +122,7 @@ class TestMultiprocess(TestCase, IxiaPacketGenerator):
 
         time.sleep(5)
         self.dut.send_expect("quit", "# ")
-        self.dut.send_expect("fg", ">")
+        self.dut.alt_session.send_expect("quit", "# ")
 
     def test_multiprocess_simple_mpapplicationstartup(self):
         """
@@ -132,32 +132,30 @@ class TestMultiprocess(TestCase, IxiaPacketGenerator):
         self.dut.kill_all()
 
         # Send message from secondary to primary (auto process type)
-        self.dut.alt_session.send_expect("./examples/multi_process/simple_mp/simple_mp/%s/simple_mp -n 1 -c 3 --proc-type=auto |tee out " % self.target, "Finished Process Init", 100)
+        out = self.dut.send_expect("./examples/multi_process/simple_mp/simple_mp/%s/simple_mp -n 1 -c 3 --proc-type=auto " % self.target, "Finished Process Init", 100)
+        self.verify("EAL: Auto-detected process type: PRIMARY" in out, "The type of process (PRIMARY) was not detected properly")
         time.sleep(20)
-        out = self.dut.send_expect("./examples/multi_process/simple_mp/simple_mp/%s/simple_mp -n 1 -c C --proc-type=auto" % self.target, "Finished Process Init", 100)
+        out = self.dut.alt_session.send_expect("./examples/multi_process/simple_mp/simple_mp/%s/simple_mp -n 1 -c C --proc-type=auto" % self.target, "Finished Process Init", 100)
         self.verify("EAL: Auto-detected process type: SECONDARY" in out,
                     "The type of process (SECONDARY) was not detected properly")
 
-        self.dut.send_expect("send hello_primary", ">")
-        self.dut.send_expect("quit", "# ")
+        self.dut.alt_session.send_expect("send hello_primary", ">")
+        out = self.dut.get_session_output()
         self.dut.alt_session.send_expect("quit", "# ")
-        out = self.dut.send_expect("cat out", "# ")
-
-        self.verify("EAL: Auto-detected process type: PRIMARY" in out, "The type of process (PRIMARY) was not detected properly")
+        self.dut.send_expect("quit", "# ")
         self.verify("Received 'hello_primary'" in out, "Message not received on primary process")
 
         # Send message from primary to secondary (auto process type)
-        out = self.dut.alt_session.send_expect("./examples/multi_process/simple_mp/simple_mp/%s/simple_mp -n 1 -c 3 --proc-type=auto |tee out_primary " % self.target, "Finished Process Init", 100)
+        out = self.dut.alt_session.send_expect("./examples/multi_process/simple_mp/simple_mp/%s/simple_mp -n 1 -c 3 --proc-type=auto" % self.target, "Finished Process Init", 100)
+        self.verify("EAL: Auto-detected process type: PRIMARY" in out, "The type of process (PRIMARY) was not detected properly")
         time.sleep(20)
-        self.dut.send_expect("./examples/multi_process/simple_mp/simple_mp/%s/simple_mp -n 1 -c C --proc-type=auto |tee out_secondary " % self.target, "Finished Process Init", 100)
+        out = self.dut.send_expect("./examples/multi_process/simple_mp/simple_mp/%s/simple_mp -n 1 -c C --proc-type=auto" % self.target, "Finished Process Init", 100)
+        self.verify("EAL: Auto-detected process type: SECONDARY" in out, "The type of process (SECONDARY) was not detected properly")
         self.dut.alt_session.send_expect("send hello_secondary", ">",100)
+        out = self.dut.get_session_output()
         self.dut.alt_session.send_expect("quit", "# ")
         self.dut.send_expect("quit", "# ")
-        out = self.dut.send_expect("cat out_primary", "# ")
-        self.verify("EAL: Auto-detected process type: PRIMARY" in out, "The type of process (PRIMARY) was not detected properly")
 
-        out = self.dut.send_expect("cat out_secondary", "# ")
-        self.verify("EAL: Auto-detected process type: SECONDARY" in out, "The type of process (SECONDARY) was not detected properly")
         self.verify("Received 'hello_secondary'" in out,
                     "Message not received on primary process")
 
@@ -167,14 +165,13 @@ class TestMultiprocess(TestCase, IxiaPacketGenerator):
         """
 
         self.dut.kill_all()
-        self.dut.send_expect("./examples/multi_process/simple_mp/simple_mp/%s/simple_mp -n 1 -c 3 -m 64 &" % self.target, "Finished Process Init", 100)
+        self.dut.alt_session.send_expect("./examples/multi_process/simple_mp/simple_mp/%s/simple_mp -n 1 -c 3 -m 64" % self.target, "Finished Process Init", 100)
         out = self.dut.send_expect("./examples/multi_process/simple_mp/simple_mp/%s/simple_mp -n 1 -c C" % self.target, "# ", 100)
 
         self.verify("Is another primary process running" in out,
                     "No other primary process detected")
 
-        self.dut.send_expect("fg", " > ")
-        self.dut.send_expect("quit", "# ")
+        self.dut.alt_session.send_expect("quit", "# ")
 
     def test_perf_multiprocess_client_serverperformance(self):
         """
