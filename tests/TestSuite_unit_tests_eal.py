@@ -34,7 +34,7 @@ class TestUnitTestsEal(TestCase):
         self.verify('make: Leaving directory' in out, "Compilation failed")
         [arch, machine, self.env, toolchain] = self.target.split('-')
         self.start_test_time = 60
-        self.run_cmd_time = 60
+        self.run_cmd_time = 180
 
     def set_up(self):
         """
