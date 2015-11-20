@@ -360,7 +360,7 @@ class TestNvgre(TestCase):
 
         # Verify that enough threads are available
         self.all_cores_mask = dts.create_mask(self.dut.get_core_list("all"))
-        cores = self.dut.get_core_list("1S/2C/2T")
+        cores = self.dut.get_core_list("1S/5C/1T")
         self.verify(cores is not None, "Insufficient cores for speed testing")
         self.coremask = dts.create_mask(cores)
 
@@ -434,8 +434,8 @@ class TestNvgre(TestCase):
         """
         send nvgre packet and check whether testpmd detect the correct packet type
         """
-        out = self.dut.send_expect("./%s/app/testpmd -c %s -n %d -- -i --disable-rss --rxq=4 --txq=4 --nb-cores=8 --portmask=%s --txqflags=0"
-                                   % (self.target, self.all_cores_mask, self.dut.get_memory_channels(), self.portmask), "testpmd>", 30)
+        out = self.dut.send_expect("./%s/app/testpmd -c %s -n %d -- -i --disable-rss --rxq=4 --txq=4 --nb-cores=4 --portmask=%s --txqflags=0"
+                                   % (self.target, self.coremask, self.dut.get_memory_channels(), self.portmask), "testpmd>", 30)
         print out
         out = self.dut.send_expect("set fwd rxonly", "testpmd>", 10)
         print out
@@ -467,8 +467,8 @@ class TestNvgre(TestCase):
         """
         send nvgre packet and check whether receive packet in assigned queue
         """
-        self.dut.send_expect("./%s/app/testpmd -c %s -n %d -- -i --disable-rss --rxq=4 --txq=4 --nb-cores=8 --portmask=%s --txqflags=0"
-                             % (self.target, self.all_cores_mask, self.dut.get_memory_channels(), self.portmask), "testpmd>", 30)
+        self.dut.send_expect("./%s/app/testpmd -c %s -n %d -- -i --disable-rss --rxq=4 --txq=4 --nb-cores=4 --portmask=%s --txqflags=0"
+                             % (self.target, self.coremask, self.dut.get_memory_channels(), self.portmask), "testpmd>", 30)
         self.dut.send_expect("set fwd rxonly", "testpmd>", 10)
         self.dut.send_expect("set verbose 1", "testpmd>", 10)
 
@@ -532,8 +532,8 @@ class TestNvgre(TestCase):
         self.logger.info("chksums_wrong" + str(chksums))
 
         # start testpmd with 2queue/1port
-        out = self.dut.send_expect("./%s/app/testpmd -c %s -n %d -- -i --disable-rss --rxq=4 --txq=4 --nb-cores=8 --portmask=%s --enable-rx-cksum --txqflags=0"
-                                   % (self.target, self.all_cores_mask, self.dut.get_memory_channels(), self.portmask), "testpmd>", 30)
+        out = self.dut.send_expect("./%s/app/testpmd -c %s -n %d -- -i --disable-rss --rxq=4 --txq=4 --nb-cores=4 --portmask=%s --enable-rx-cksum --txqflags=0"
+                                   % (self.target, self.coremask, self.dut.get_memory_channels(), self.portmask), "testpmd>", 30)
         print out
         # enable tx checksum offload
         self.dut.send_expect("set verbose 1", "testpmd>", 10)
@@ -675,8 +675,8 @@ class TestNvgre(TestCase):
         self.nvgre_filter(filter_type="imac", remove=True)
         config = NvgreTestConfig(self)
         # config.outer_mac_dst = self.dut_port_mac
-        self.dut.send_expect("./%s/app/testpmd -c %s -n %d -- -i --disable-rss --rxq=4 --txq=4 --nb-cores=8 --portmask=%s --txqflags=0"
-                             % (self.target, self.all_cores_mask, self.dut.get_memory_channels(), self.portmask), "testpmd>", 30)
+        self.dut.send_expect("./%s/app/testpmd -c %s -n %d -- -i --disable-rss --rxq=4 --txq=4 --nb-cores=4 --portmask=%s --txqflags=0"
+                             % (self.target, self.coremask, self.dut.get_memory_channels(), self.portmask), "testpmd>", 30)
         out = self.dut.send_expect("tunnel_filter add %d %s %s %s %d nvgre %s %d %d"
                                    % (self.dut_rx_port, config.outer_mac_dst, self.invalid_mac, config.inner_ip_dst, vlan_id,
                                       filter_type, config.tni, queue_id), "testpmd>", 10)

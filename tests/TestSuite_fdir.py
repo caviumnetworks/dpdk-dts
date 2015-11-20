@@ -165,6 +165,9 @@ class TestFdir(TestCase, IxiaPacketGenerator):
 
         # Verify that enough threads are available
         self.all_cores_mask = dts.create_mask(self.dut.get_core_list("all"))
+        cores = self.dut.get_core_list("1S/5C/1T")
+        self.verify(cores is not None, "Insufficient cores for speed testing")
+        self.coreMask = dts.create_mask(cores)
         self.portMask = dts.create_mask([self.dut_ports[0], self.dut_ports[1]])
         self.ports_socket = self.dut.get_numa_id(self.dut_ports[0])
         self.dut_rx_port = self.tester.get_local_port(self.dut_ports[0])
@@ -262,7 +265,7 @@ class TestFdir(TestCase, IxiaPacketGenerator):
         """
 
         self.dut.kill_all()
-        self.dut.send_expect("./%s/app/testpmd -c %s -n 4 -- -i --portmask=%s --disable-rss  --rxq=8 --txq=8 --nb-cores=16  --nb-ports=1 --pkt-filter-mode=perfect" % (self.target, self.all_cores_mask, dts.create_mask([self.dut_ports[0]])), "testpmd>", 120)
+        self.dut.send_expect("./%s/app/testpmd -c %s -n 4 -- -i --portmask=%s --disable-rss  --rxq=4 --txq=4 --nb-cores=4  --nb-ports=1 --pkt-filter-mode=perfect" % (self.target, self.coreMask, dts.create_mask([self.dut_ports[0]])), "testpmd>", 120)
         self.dut.send_expect("set verbose 1", "testpmd>")
         self.dut.send_expect("set fwd rxonly", "testpmd>")
 
@@ -338,10 +341,10 @@ class TestFdir(TestCase, IxiaPacketGenerator):
         self.dut.kill_all()
         if self.nic in ["niantic"]:
             # Niantic ipv6 only support signature mode
-            self.dut.send_expect("./%s/app/testpmd -c %s -n 4 -- -i --portmask=%s --disable-rss  --rxq=8 --txq=8 --nb-cores=16  --nb-ports=1 --pkt-filter-mode=signature" % (self.target, self.all_cores_mask, dts.create_mask([self.dut_ports[0]])), "testpmd>", 120)
+            self.dut.send_expect("./%s/app/testpmd -c %s -n 4 -- -i --portmask=%s --disable-rss  --rxq=4 --txq=4 --nb-cores=4  --nb-ports=1 --pkt-filter-mode=signature" % (self.target, self.coreMask, dts.create_mask([self.dut_ports[0]])), "testpmd>", 120)
         elif self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single"]:
             # Fortville ipv6 support perfect mode
-            self.dut.send_expect("./%s/app/testpmd -c %s -n 4 -- -i --portmask=%s --disable-rss  --rxq=8 --txq=8 --nb-cores=16  --nb-ports=1 --pkt-filter-mode=perfect" % (self.target, self.all_cores_mask, dts.create_mask([self.dut_ports[0]])), "testpmd>", 120)
+            self.dut.send_expect("./%s/app/testpmd -c %s -n 4 -- -i --portmask=%s --disable-rss  --rxq=4 --txq=4 --nb-cores=4  --nb-ports=1 --pkt-filter-mode=perfect" % (self.target, self.coreMask, dts.create_mask([self.dut_ports[0]])), "testpmd>", 120)
         self.dut.send_expect("set verbose 1", "testpmd>")
         self.dut.send_expect("set fwd rxonly", "testpmd>")
 
@@ -409,7 +412,7 @@ class TestFdir(TestCase, IxiaPacketGenerator):
     def test_fdir_noflexword_drop_ipv4(self):
         # drop command testing
         self.dut.kill_all()
-        self.dut.send_expect("./%s/app/testpmd -c %s -n 4 -- -i --portmask=%s --disable-rss  --rxq=8 --txq=8 --nb-cores=16  --nb-ports=1 --pkt-filter-mode=perfect" % (self.target, self.all_cores_mask, dts.create_mask([self.dut_ports[0]])), "testpmd>", 120)
+        self.dut.send_expect("./%s/app/testpmd -c %s -n 4 -- -i --portmask=%s --disable-rss  --rxq=4 --txq=4 --nb-cores=4  --nb-ports=1 --pkt-filter-mode=perfect" % (self.target, self.coreMask, dts.create_mask([self.dut_ports[0]])), "testpmd>", 120)
         self.dut.send_expect("set verbose 1", "testpmd>")
         self.dut.send_expect("set fwd rxonly", "testpmd>")
 
@@ -481,7 +484,7 @@ class TestFdir(TestCase, IxiaPacketGenerator):
             # drop command testing
             self.dut.kill_all()
 
-            self.dut.send_expect("./%s/app/testpmd -c %s -n 4 -- -i --portmask=%s --disable-rss  --rxq=8 --txq=8 --nb-cores=16  --nb-ports=1 --pkt-filter-mode=perfect" % (self.target, self.all_cores_mask, dts.create_mask([self.dut_ports[0]])), "testpmd>", 120)
+            self.dut.send_expect("./%s/app/testpmd -c %s -n 4 -- -i --portmask=%s --disable-rss  --rxq=4 --txq=4 --nb-cores=4  --nb-ports=1 --pkt-filter-mode=perfect" % (self.target, self.coreMask, dts.create_mask([self.dut_ports[0]])), "testpmd>", 120)
             self.dut.send_expect("set verbose 1", "testpmd>")
             self.dut.send_expect("set fwd rxonly", "testpmd>")
 
@@ -538,7 +541,7 @@ class TestFdir(TestCase, IxiaPacketGenerator):
 
         self.dut.kill_all()
         # fwd testing with flexword
-        self.dut.send_expect("./%s/app/testpmd -c %s -n 4 -- -i --portmask=%s --disable-rss --rxq=8 --txq=8 --nb-cores=16 --nb-ports=1 --pkt-filter-mode=perfect" % (self.target, self.all_cores_mask, dts.create_mask([self.dut_ports[0]])), "testpmd>", 120)
+        self.dut.send_expect("./%s/app/testpmd -c %s -n 4 -- -i --portmask=%s --disable-rss --rxq=4 --txq=4 --nb-cores=4 --nb-ports=1 --pkt-filter-mode=perfect" % (self.target, self.coreMask, dts.create_mask([self.dut_ports[0]])), "testpmd>", 120)
         self.dut.send_expect("set verbose 1", "testpmd>")
         self.dut.send_expect("set fwd rxonly", "testpmd>")
 
@@ -614,10 +617,10 @@ class TestFdir(TestCase, IxiaPacketGenerator):
         # fwd testing with flexword
         if self.nic in ["niantic"]:
             # Niantic ipv6 only support signature mode
-            self.dut.send_expect("./%s/app/testpmd -c %s -n 4 -- -i --portmask=%s --disable-rss  --rxq=8 --txq=8 --nb-cores=16  --nb-ports=1 --pkt-filter-mode=signature" % (self.target, self.all_cores_mask, dts.create_mask([self.dut_ports[0]])), "testpmd>", 120)
+            self.dut.send_expect("./%s/app/testpmd -c %s -n 4 -- -i --portmask=%s --disable-rss  --rxq=4 --txq=4 --nb-cores=4  --nb-ports=1 --pkt-filter-mode=signature" % (self.target, self.coreMask, dts.create_mask([self.dut_ports[0]])), "testpmd>", 120)
         elif self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single"]:
             # fortville ipv6 support perfect mode
-            self.dut.send_expect("./%s/app/testpmd -c %s -n 4 -- -i --portmask=%s --disable-rss --rxq=8 --txq=8 --nb-cores=16 --nb-ports=1 --pkt-filter-mode=perfect" % (self.target, self.all_cores_mask, dts.create_mask([self.dut_ports[0]])), "testpmd>", 120)
+            self.dut.send_expect("./%s/app/testpmd -c %s -n 4 -- -i --portmask=%s --disable-rss --rxq=4 --txq=4 --nb-cores=4 --nb-ports=1 --pkt-filter-mode=perfect" % (self.target, self.coreMask, dts.create_mask([self.dut_ports[0]])), "testpmd>", 120)
         self.dut.send_expect("set verbose 1", "testpmd>")
         self.dut.send_expect("set fwd rxonly", "testpmd>")
 
@@ -684,7 +687,7 @@ class TestFdir(TestCase, IxiaPacketGenerator):
     def test_fdir_flexword_drop_ipv4(self):
 
         # drop testing with flexword
-        self.dut.send_expect("./%s/app/testpmd -c %s -n 4 -- -i --portmask=%s --disable-rss --rxq=8 --txq=8 --nb-cores=16 --nb-ports=1 --pkt-filter-mode=perfect" % (self.target, self.all_cores_mask, dts.create_mask([self.dut_ports[0]])), "testpmd>", 120)
+        self.dut.send_expect("./%s/app/testpmd -c %s -n 4 -- -i --portmask=%s --disable-rss --rxq=4 --txq=4 --nb-cores=4 --nb-ports=1 --pkt-filter-mode=perfect" % (self.target, self.coreMask, dts.create_mask([self.dut_ports[0]])), "testpmd>", 120)
         self.dut.send_expect("set verbose 1", "testpmd>")
         self.dut.send_expect("set fwd rxonly", "testpmd>")
 
@@ -736,7 +739,7 @@ class TestFdir(TestCase, IxiaPacketGenerator):
         # Niantic is not support in drop ipv6
         if (self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single"]):
             # drop testing with flexword
-            self.dut.send_expect("./%s/app/testpmd -c %s -n 4 -- -i --portmask=%s --disable-rss --rxq=8 --txq=8 --nb-cores=16 --nb-ports=1 --pkt-filter-mode=perfect" % (self.target, self.all_cores_mask, dts.create_mask([self.dut_ports[0]])), "testpmd>", 120)
+            self.dut.send_expect("./%s/app/testpmd -c %s -n 4 -- -i --portmask=%s --disable-rss --rxq=4 --txq=4 --nb-cores=4 --nb-ports=1 --pkt-filter-mode=perfect" % (self.target, self.coreMask, dts.create_mask([self.dut_ports[0]])), "testpmd>", 120)
             self.dut.send_expect("set verbose 1", "testpmd>")
             self.dut.send_expect("set fwd rxonly", "testpmd>")
 

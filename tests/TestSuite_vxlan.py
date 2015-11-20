@@ -278,7 +278,7 @@ class TestVxlan(TestCase, IxiaPacketGenerator):
         # Verify that enough threads are available
         netdev = self.dut.ports_info[ports[0]]['port']
         self.ports_socket = netdev.socket
-        cores = self.dut.get_core_list("1S/5C/2T", socket=self.ports_socket)
+        cores = self.dut.get_core_list("1S/5C/1T", socket=self.ports_socket)
         self.verify(cores is not None, "Insufficient cores for speed testing")
         self.coremask = dts.create_mask(cores)
 
@@ -368,7 +368,7 @@ class TestVxlan(TestCase, IxiaPacketGenerator):
         """
         pmd_temp = "./%(TARGET)s/app/testpmd -c %(COREMASK)s -n " + \
             "%(CHANNEL)d -- -i --disable-rss --rxq=4 --txq=4" + \
-            " --nb-cores=8 --portmask=%(PORT)s --txqflags=0x0"
+            " --nb-cores=4 --portmask=%(PORT)s --txqflags=0x0"
         pmd_cmd = pmd_temp % {'TARGET': self.target,
                               'COREMASK': self.coremask,
                               'CHANNEL': self.dut.get_memory_channels(),
@@ -468,7 +468,7 @@ class TestVxlan(TestCase, IxiaPacketGenerator):
         # start testpmd with 2queue/1port
         pmd_temp = "./%(TARGET)s/app/testpmd -c %(COREMASK)s -n " + \
             "%(CHANNEL)d -- -i --disable-rss --rxq=4 --txq=4" + \
-            " --nb-cores=8 --portmask=%(PORT)s --txqflags=0x0"
+            " --nb-cores=4 --portmask=%(PORT)s --txqflags=0x0"
         pmd_cmd = pmd_temp % {'TARGET': self.target,
                               'COREMASK': self.coremask,
                               'CHANNEL': self.dut.get_memory_channels(),
@@ -557,7 +557,7 @@ class TestVxlan(TestCase, IxiaPacketGenerator):
         """
         pmd_temp = "./%(TARGET)s/app/testpmd -c %(COREMASK)s -n " + \
             "%(CHANNEL)d -- -i --disable-rss --rxq=4 --txq=4" + \
-            " --nb-cores=8 --portmask=%(PORT)s --txqflags=0x0"
+            " --nb-cores=4 --portmask=%(PORT)s --txqflags=0x0"
         pmd_cmd = pmd_temp % {'TARGET': self.target,
                               'COREMASK': self.coremask,
                               'CHANNEL': self.dut.get_memory_channels(),
@@ -773,7 +773,7 @@ class TestVxlan(TestCase, IxiaPacketGenerator):
 
         pmd_temp = "./%(TARGET)s/app/testpmd -c %(COREMASK)s -n " + \
             "%(CHANNEL)d -- -i --disable-rss --rxq=4 --txq=4" + \
-            " --nb-cores=8 --portmask=%(PORT)s --txqflags=0x0"
+            " --nb-cores=4 --portmask=%(PORT)s --txqflags=0x0"
         pmd_cmd = pmd_temp % {'TARGET': self.target,
                               'COREMASK': self.coremask,
                               'CHANNEL': self.dut.get_memory_channels(),
