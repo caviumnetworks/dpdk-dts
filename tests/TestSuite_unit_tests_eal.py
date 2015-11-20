@@ -398,6 +398,14 @@ class TestUnitTestsEal(TestCase):
         self.dut.send_expect("quit", "# ")
         self.verify("Test OK" in out, "Test failed")
 
+    def test_link_bonding_rssconf(self):
+        """
+        """
+        self.dut.send_expect("./app/test/test -n 1 -c ffff", "R.*T.*E.*>.*>", self.start_test_time)
+        out = self.dut.send_expect("link_bonding_rssconf_autotest", "RTE>>", self.run_cmd_time)
+        self.dut.send_expect("quit", "# ")
+        self.verify("Test OK" in out, "Test failed")
+
     def tear_down(self):
         """
         Run after each test case.
