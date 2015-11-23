@@ -776,11 +776,17 @@ class Dut(Crb):
             else:
                 port_cfg = {}
 
-            for key in ['intf', 'mac', 'numa', 'peer', 'source']:
+            for key in ['intf', 'mac', 'peer', 'source']:
                 if key in port_cfg:
                     if key in port and port_cfg[key].lower() != port[key].lower():
                         self.logger.warning("CONFIGURED %s NOT SAME AS SCANNED!!!" % (key.upper()))
                     port[key] = port_cfg[key].lower()
+            if 'numa' in port_cfg:
+                if port_cfg['numa'] != port['numa']:
+                    self.logger.warning("CONFIGURED NUMA NOT SAME AS SCANNED!!!")
+                port['numa'] = port_cfg['numa']
+                
+                
 
     def map_available_ports(self):
         """
