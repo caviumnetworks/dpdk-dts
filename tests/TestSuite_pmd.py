@@ -299,7 +299,7 @@ class TestPmd(TestCase,IxiaPacketGenerator):
 
         for rxfreet_value in self.rxfreet_values:
 
-            self.pmdout.start_testpmd("all", "--coremask=%s --portmask=%s --nb-cores=2 --enable-rx-cksum --disable-hw-vlan --disable-rss --crc-strip --rxd=1024 --txd=1024 --rxfreet=%d" % (core_mask, port_mask, rxfreet_value))
+            self.pmdout.start_testpmd("all", "--coremask=%s --portmask=%s --nb-cores=2 --enable-rx-cksum --disable-hw-vlan --disable-rss --rxd=1024 --txd=1024 --rxfreet=%d" % (core_mask, port_mask, rxfreet_value))
             self.dut.send_expect("set fwd csum", "testpmd> ")
             self.dut.send_expect("start", "testpmd> ")
 
@@ -402,19 +402,11 @@ class TestPmd(TestCase,IxiaPacketGenerator):
         self.verify(p0tx_pkts == p1rx_pkts,
                     "packet pass assert error, %d RX packets, %d TX packets" % (p1rx_pkts, p0tx_pkts))
 
-        if checksum_test:
-            if self.nic in ["powerville", "springville", "kawela_4"]:
-            	self.verify(p1rx_bytes == frame_size,
-                        	"packet pass assert error, expected %d RX bytes, actual %d" % (frame_size, p1rx_bytes))
-            else:
-            	self.verify(p1rx_bytes == frame_size - 4,
-                        	"packet pass assert error, expected %d RX bytes, actual %d" % (frame_size - 4, p1rx_bytes))
-        else:
-            self.verify(p1rx_bytes == frame_size,
-                        "packet pass assert error, expected %d RX bytes, actual %d" % (frame_size, p1rx_bytes))
+        self.verify(p1rx_bytes == frame_size - 4,
+                    "packet pass assert error, expected %d RX bytes, actual %d" % (frame_size - 4, p1rx_bytes))
 
-        self.verify(p0tx_bytes == frame_size,
-                    "packet pass assert error, expected %d TX bytes, actual %d" % (frame_size, p0tx_bytes))
+        self.verify(p0tx_bytes == frame_size - 4,
+                    "packet pass assert error, expected %d TX bytes, actual %d" % (frame_size - 4, p0tx_bytes))
 
         return out
     
