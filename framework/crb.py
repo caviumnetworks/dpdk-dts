@@ -337,14 +337,14 @@ class Crb(object):
             f.write(contents)
         self.session.copy_file_to(fileName)
 
-    def kill_all(self):
+    def kill_all(self, alt_session=True):
         """
         Kill all dpdk applications on CRB.
         """
         pids = []
         pid_reg = r'p(\d+)'
         cmd = 'lsof -Fp /var/run/.rte_config'
-        out = self.alt_session.session.send_expect(cmd, "# ", 10)
+        out = self.send_expect(cmd, "# ", 20, alt_session)
         if len(out):
             lines = out.split('\r\n')
             for line in lines:
@@ -352,11 +352,11 @@ class Crb(object):
                 if m:
                     pids.append(m.group(1))
         for pid in pids:
-            self.alt_session.session.send_expect('kill -9 %s' % pid, '# ')
+            self.send_expect('kill -9 %s' % pid, '# ', 20, alt_session)
             self.get_session_output(timeout=2)
 
         cmd = 'lsof -Fp /var/run/.rte_hugepage_info'
-        out = self.alt_session.session.send_expect(cmd, "# ", 10)
+        out = self.send_expect(cmd, "# ", 20, alt_session)
         if len(out) and "No such file or directory" not in out:
             self.logger.warning("There are some dpdk process not free hugepage")
             self.logger.warning("**************************************")
