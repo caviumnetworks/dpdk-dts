@@ -93,12 +93,8 @@ class TestJumboframes(TestCase):
         p1rx_err -= gp1rx_err
 
         if received:
-            if self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single"]:
-                self.verify((p0tx_pkts == p1rx_pkts) and ((p0tx_bytes + 4) == pktsize) and (p1rx_bytes == pktsize),
-                            "packet pass assert error")
-            else:
-                self.verify((p0tx_pkts == p1rx_pkts) and (p0tx_bytes == pktsize) and (p1rx_bytes == pktsize),
-                            "packet pass assert error")
+            self.verify((p0tx_pkts == p1rx_pkts) and ((p0tx_bytes + 4) == pktsize) and ((p1rx_bytes + 4) == pktsize),
+                        "packet pass assert error")
         else:
             #self.verify(p0tx_pkts == p1rx_pkts and (p1rx_err == 1 or p1rx_pkts == 0),
             self.verify(p1rx_err == 1 or p0tx_pkts == 0, "packet drop assert error")
