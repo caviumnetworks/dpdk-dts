@@ -39,7 +39,6 @@ from settings import NICS, LOG_NAME_SEP
 from ssh_connection import SSHConnection
 from crb import Crb
 from net_device import NetDevice
-from logger import getLogger
 from virt_resource import VirtResource
 from utils import RED
 
@@ -62,19 +61,10 @@ class Dut(Crb):
     PCI_DEV_CACHE_KEY = 'dut_pci_dev_info'
 
     def __init__(self, crb, serializer):
-        super(Dut, self).__init__(crb, serializer)
         self.NAME = 'dut'
+        super(Dut, self).__init__(crb, serializer, self.NAME)
 
         self.host_init_flag = False
-        self.logger = getLogger(self.NAME)
-        self.session = SSHConnection(self.get_ip_address(), self.NAME,
-                                     self.get_password())
-        self.session.init_log(self.logger)
-        self.alt_session = SSHConnection(
-            self.get_ip_address(),
-            self.NAME + '_alt',
-            self.get_password())
-        self.alt_session.init_log(self.logger)
         self.number_of_cores = 0
         self.tester = None
         self.cores = []

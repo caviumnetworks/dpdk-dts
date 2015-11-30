@@ -34,6 +34,8 @@ import dts
 import re
 import os
 from settings import TIMEOUT, IXIA
+from ssh_connection import SSHConnection
+from logger import getLogger
 
 """
 CRB (customer reference board) basic functions and handlers
@@ -48,12 +50,22 @@ class Crb(object):
     CPU/PCI/NIC on the board and setup running environment for DPDK.
     """
 
-    def __init__(self, crb, serializer):
+    def __init__(self, crb, serializer, name):
         self.crb = crb
         self.read_cache = False
         self.skip_setup = False
         self.serializer = serializer
         self.ports_info = None
+
+        self.logger = getLogger(name)
+        self.session = SSHConnection(self.get_ip_address(), name,
+                                     self.get_password())
+        self.session.init_log(self.logger)
+        self.alt_session = SSHConnection(
+            self.get_ip_address(),
+            name + '_alt',
+            self.get_password())
+        self.alt_session.init_log(self.logger)
 
     def send_expect(self, cmds, expected, timeout=TIMEOUT,
                     alt_session=False, verify=False):

@@ -36,11 +36,9 @@ Interface for bulk traffic generators.
 import re
 from time import sleep
 from settings import NICS
-from ssh_connection import SSHConnection
 from crb import Crb
 from net_device import NetDevice
 from etgen import IxiaPacketGenerator, SoftwarePacketGenerator
-from logger import getLogger
 from settings import IXIA
 import random
 
@@ -58,17 +56,8 @@ class Tester(Crb):
     PCI_DEV_CACHE_KEY = 'tester_pci_dev_info'
 
     def __init__(self, crb, serializer):
-        super(Tester, self).__init__(crb, serializer)
         self.NAME = 'tester'
-
-        self.logger = getLogger(self.NAME)
-        self.session = SSHConnection(self.get_ip_address(),
-                                     self.NAME, self.get_password())
-        self.session.init_log(self.logger)
-        self.alt_session = SSHConnection(self.get_ip_address(),
-                                         self.NAME + '_alt',
-                                         self.get_password())
-        self.alt_session.init_log(self.logger)
+        super(Tester, self).__init__(crb, serializer, self.NAME)
 
         self.bgProcIsRunning = False
         self.dut = None
