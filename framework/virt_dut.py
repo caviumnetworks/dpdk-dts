@@ -36,11 +36,9 @@ import dts
 import settings
 from config import PortConf
 from settings import NICS, LOG_NAME_SEP, get_netdev
-from ssh_connection import SSHConnection
 from project_dpdk import DPDKdut
 from dut import Dut
 from net_device import NetDevice
-from logger import getLogger
 
 
 class VirtDut(DPDKdut):
@@ -58,20 +56,12 @@ class VirtDut(DPDKdut):
         self.vm_name = vm_name
         self.hyper = hyper
         self.cpu_topo = cpu_topo
-        super(Dut, self).__init__(crb, serializer)
-        self.vm_ip = self.get_ip_address()
+
+        self.vm_ip = crb['IP']
         self.NAME = 'virtdut' + LOG_NAME_SEP + '%s' % self.vm_ip
+        super(Dut, self).__init__(crb, serializer, self.NAME)
         # load port config from suite cfg
         self.suite = suite
-        self.logger = getLogger(self.NAME)
-        self.session = SSHConnection(self.vm_ip, self.NAME,
-                                     self.get_password())
-        self.session.init_log(self.logger)
-
-        # if redirect ssh port, there's only one session enabled
-        self.alt_session = SSHConnection(self.vm_ip, self.NAME + '_alt',
-                                         self.get_password())
-        self.alt_session.init_log(self.logger)
 
         self.number_of_cores = 0
         self.tester = None
