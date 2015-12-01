@@ -82,19 +82,19 @@ class TestShutdownApi(TestCase):
         stats = output.get_pmd_stats(portid)
         return stats
 
-    def check_forwarding(self, ports=None, pktSize=68, received=True, vlan=False, promisc=False, crcStrip=False):
+    def check_forwarding(self, ports=None, pktSize=68, received=True, vlan=False, promisc=False):
         if ports is None:
             ports = self.ports
         if len(ports) == 1:
-            self.send_packet(ports[0], ports[0], pktSize, received, vlan, promisc, crcStrip)
+            self.send_packet(ports[0], ports[0], pktSize, received, vlan, promisc)
             return
 
         for i in range(len(ports)):
             if i % 2 == 0:
-                self.send_packet(ports[i], ports[i + 1], pktSize, received, vlan, promisc, crcStrip)
-                self.send_packet(ports[i + 1], ports[i], pktSize, received, vlan, promisc, crcStrip)
+                self.send_packet(ports[i], ports[i + 1], pktSize, received, vlan, promisc)
+                self.send_packet(ports[i + 1], ports[i], pktSize, received, vlan, promisc)
 
-    def send_packet(self, txPort, rxPort, pktSize=68, received=True, vlan=False, promisc=False, crcStrip=False):
+    def send_packet(self, txPort, rxPort, pktSize=68, received=True, vlan=False, promisc=False):
         """
         Send packages according to parameters.
         """
@@ -146,21 +146,10 @@ class TestShutdownApi(TestCase):
                 # RRC will always strip rx/tx vlan
                 rx_bytes_exp -= 4
                 tx_bytes_exp -= 4
-        elif self.nic in ["fortville_eagle", "fortville_spirit",
-                        "fortville_spirit_single", "bartonhills"]:
-            # some NIC will always strip tx crc
-            tx_bytes_exp -= 4
-            if vlan is True:
-                # vlan strip default is on
-                tx_bytes_exp -= 4
-        elif self.nic in ["springville", "powerville"]:
-            if vlan is True:
-                # vlan strip default is on
-                tx_bytes_exp -= 4
         else:
             # some NIC will always include tx crc
-            if crcStrip is True:
-                rx_bytes_exp -= 4
+            rx_bytes_exp -= 4
+            tx_bytes_exp -= 4
             if vlan is True:
                 # vlan strip default is on
                 tx_bytes_exp -= 4
@@ -292,7 +281,7 @@ class TestShutdownApi(TestCase):
         self.verify(
             "CRC stripping enabled" in out, "CRC stripping not enabled properly")
         self.dut.send_expect("start", "testpmd> ")
-        self.check_forwarding(crcStrip=True)
+        self.check_forwarding()
 
 
     def test_change_linkspeed(self):
@@ -376,15 +365,9 @@ class TestShutdownApi(TestCase):
         self.dut.send_expect("port config all hw-vlan off", "testpmd> ")
         self.dut.send_expect("port start all", "testpmd> ", 100)
         self.dut.send_expect("start", "testpmd> ")
-        if self.nic in ["bartonhills", "powerville", "springville", "hartwell"]:
-            jumbo_size = jumbo_size + 4
-            self.check_forwarding(pktSize=jumbo_size - 1)
-            self.check_forwarding(pktSize=jumbo_size)
-            self.check_forwarding(pktSize=jumbo_size + 1, received=False)
-        else:
-            self.check_forwarding(pktSize=jumbo_size - 1)
-            self.check_forwarding(pktSize=jumbo_size)
-            self.check_forwarding(pktSize=jumbo_size + 1, received=False)
+        self.check_forwarding(pktSize=jumbo_size - 1)
+        self.check_forwarding(pktSize=jumbo_size)
+        self.check_forwarding(pktSize=jumbo_size + 1, received=False)
 
     def test_enable_disablerss(self):
         """
