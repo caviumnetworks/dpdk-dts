@@ -56,7 +56,11 @@ class TestUnitTestsCmdline(TestCase):
         """
         Run at the start of each test suite.
         """
-        out = self.dut.build_dpdk_apps('./app/test/')
+        # icc compilation cost long long time.
+        if "icc" in self.target:
+            out = self.dut.send_expect("make -j -C ./app/test/", "# ", 300)
+        else:
+            out = self.dut.build_dpdk_apps('./app/test/')
         self.verify('make: Leaving directory' in out, "Compilation failed")
 
     def set_up(self):
