@@ -464,6 +464,16 @@ class Crb(object):
             self.send_expect(
                 "grep --color=never \"processor\\|physical id\\|core id\\|^$\" /proc/cpuinfo",
                 "#", alt_session=True)
+
+        if "processor" not in cpuinfo:              
+            # yocto not support --color=never, but ubuntu must need --color=never, 
+            # so check cpuinfo, before parsing cpuinfo, if cpuifo get error, delete --color=never
+            # and get cpuinfo again
+            cpuinfo = \
+                self.send_expect(
+                    r'grep "processor\|physical id\|core id\|^$" /proc/cpuinfo',
+                    "#", alt_session=True)
+
         cpuinfo = cpuinfo.split('\r\n\r\n')
         # haswell cpu on cottonwood core id not correct
         # need addtional coremap for haswell cpu
