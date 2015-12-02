@@ -41,6 +41,7 @@ from crb import Crb
 from net_device import NetDevice
 from virt_resource import VirtResource
 from utils import RED
+from uuid import uuid4
 
 
 class Dut(Crb):
@@ -84,6 +85,25 @@ class Dut(Crb):
                 self.get_password())
             self.host_session.init_log(self.logger)
             self.host_init_flag = True
+
+    def new_session(self, suite=""):
+        """
+        Create new session for dut instance. Session name will be unique.
+        """
+        session_name = self.NAME + '_' + str(uuid4())
+        session = self.create_session(name=session_name)
+        if suite != "":
+            session.logger.config_suite(suite, self.NAME)
+        else:
+            session.logger.config_execution(self.NAME)
+        session.send_expect("cd %s" % self.base_dir, "# ")
+        return session
+
+    def close_session(self, session):
+        """
+        close new session in dut instance
+        """
+        self.destroy_session(session)
 
     def change_config_option(self, target, parameter, value):
         """

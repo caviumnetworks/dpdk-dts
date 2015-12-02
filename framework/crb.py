@@ -56,6 +56,7 @@ class Crb(object):
         self.skip_setup = False
         self.serializer = serializer
         self.ports_info = None
+        self.sessions = []
 
         self.logger = getLogger(name)
         self.session = SSHConnection(self.get_ip_address(), name,
@@ -80,6 +81,28 @@ class Crb(object):
                                                         timeout, verify)
 
         return self.session.send_expect(cmds, expected, timeout, verify)
+
+    def create_session(self, name=""):
+        """
+        Create new session for addtional useage. This session will not enable log.
+        """
+        logger = getLogger(name)
+        session = SSHConnection(self.get_ip_address(), name,
+                                     self.get_password())
+        session.init_log(logger)
+        self.sessions.append(session)
+        return session
+
+    def destroy_session(self, session=None):
+        """
+        Destroy addtional session.
+        """
+        for save_session in self.sessions:
+            if save_session == session:
+                save_session.close()
+                logger = getLogger(save_session.name)
+                logger.logger_exit()
+            self.sessions.remove(save_session)
 
     def send_command(self, cmds, timeout=TIMEOUT, alt_session=False):
         """
