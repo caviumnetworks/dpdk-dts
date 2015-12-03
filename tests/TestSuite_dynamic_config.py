@@ -111,7 +111,7 @@ class TestDynamicConfig(TestCase):
 
         self.tester.scapy_foreground()
         self.tester.scapy_append(
-            'sendp([Ether(dst="%s", src="52:00:00:00:00:00")], iface="%s")' % (destMac, itf))
+            'sendp([Ether(dst="%s", src="52:00:00:00:00:00")/Raw(load="X"*26)], iface="%s")' % (destMac, itf))
 
         self.tester.scapy_execute()
 
