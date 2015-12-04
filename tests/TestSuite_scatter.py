@@ -94,7 +94,7 @@ class TestScatter(TestCase):
         time.sleep(5) #wait for scapy capture subprocess exit
         res = self.get_tcpdump_packet()
         self.tester.send_expect("ifconfig %s mtu 1500" % sintf, "#")
-        self.tester.send_expect("ifconfig %s mtu 1500" % sintf, "#")
+        self.tester.send_expect("ifconfig %s mtu 1500" % rintf, "#")
         return res
 
     def set_up(self):
