@@ -86,7 +86,7 @@ class TestWhitelist(TestCase):
         """
         itf = self.tester.get_interface(self.tester.get_local_port(portid))
         self.tester.scapy_foreground()
-        self.tester.scapy_append('sendp([Ether(dst="%s", src="52:00:00:00:00:00")], iface="%s", count=%d)' % (destMac,
+        self.tester.scapy_append('sendp([Ether(dst="%s", src="52:00:00:00:00:00")/Raw(load="X"*26)], iface="%s", count=%d)' % (destMac,
                                                                                              itf, self.frames_to_send))
         self.tester.scapy_execute()
         time.sleep(5)
