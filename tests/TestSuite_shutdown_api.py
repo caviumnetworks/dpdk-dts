@@ -365,6 +365,11 @@ class TestShutdownApi(TestCase):
         self.dut.send_expect("port config all hw-vlan off", "testpmd> ")
         self.dut.send_expect("port start all", "testpmd> ", 100)
         self.dut.send_expect("start", "testpmd> ")
+        """
+        On 1G NICs, when the jubmo frame MTU set as X, the software adjust it to (X + 4).
+        """
+        if self.nic in ["powerville", "springville", "kawela_4"]:
+            jumbo_size += 4
         self.check_forwarding(pktSize=jumbo_size - 1)
         self.check_forwarding(pktSize=jumbo_size)
         self.check_forwarding(pktSize=jumbo_size + 1, received=False)
