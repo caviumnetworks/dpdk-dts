@@ -370,7 +370,7 @@ class Crb(object):
         """
         with open(fileName, "w") as f:
             f.write(contents)
-        self.session.copy_file_to(fileName)
+        self.session.copy_file_to(fileName, password=self.get_password())
 
     def kill_all(self, alt_session=True):
         """
