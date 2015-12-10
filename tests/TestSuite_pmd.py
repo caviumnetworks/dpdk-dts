@@ -292,14 +292,11 @@ class TestPmd(TestCase,IxiaPacketGenerator):
 
         self.dut.kill_all()
 
-        all_cores_mask = dts.create_mask(self.dut.get_core_list("all"))
-        core_mask = dts.create_mask(self.dut.get_core_list('1S/1C/1T',
-                                                           socket=self.ports_socket))
         port_mask = dts.create_mask([self.dut_ports[0], self.dut_ports[1]])
 
         for rxfreet_value in self.rxfreet_values:
 
-            self.pmdout.start_testpmd("all", "--coremask=%s --portmask=%s --nb-cores=2 --enable-rx-cksum --disable-hw-vlan --disable-rss --rxd=1024 --txd=1024 --rxfreet=%d" % (core_mask, port_mask, rxfreet_value))
+            self.pmdout.start_testpmd("1S/2C/1T", "--portmask=%s --enable-rx-cksum --disable-hw-vlan --disable-rss --rxd=1024 --txd=1024 --rxfreet=%d" % ( port_mask, rxfreet_value), socket=self.ports_socket)
             self.dut.send_expect("set fwd csum", "testpmd> ")
             self.dut.send_expect("start", "testpmd> ")
 
@@ -322,12 +319,9 @@ class TestPmd(TestCase,IxiaPacketGenerator):
 
         self.dut.kill_all()
 
-        all_cores_mask = dts.create_mask(self.dut.get_core_list("all"))
-        core_mask = dts.create_mask(self.dut.get_core_list('1S/1C/1T',
-                                                           socket=self.ports_socket))
         port_mask = dts.create_mask([self.dut_ports[0], self.dut_ports[1]])
 
-        self.pmdout.start_testpmd("all", "--coremask=%s --portmask=%s" % (core_mask, port_mask))
+        self.pmdout.start_testpmd("1S/2C/1T", "--portmask=%s" % port_mask, socket=self.ports_socket)
         self.dut.send_expect("start", "testpmd> ")
         for size in self.frame_sizes:
             self.send_packet(size)

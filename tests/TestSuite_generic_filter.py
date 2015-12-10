@@ -60,10 +60,9 @@ class TestGeneric_filter(TestCase):
         ports = self.dut.get_ports(self.nic)
         # Verify that enough ports are available
         self.verify(len(ports) >= 2, "Insufficient ports")
-        cores = self.dut.get_core_list("all")
-        self.verify(len(cores) >= 10, "Insufficient core")
-        global coreMask
-        coreMask = dts.create_mask(cores)
+
+        self.cores = "1S/5C/1T"
+
         # Based on h/w type, choose how many ports to use
         global valports
         valports = [_ for _ in ports if self.tester.get_local_port(_) != -1]
@@ -201,7 +200,7 @@ class TestGeneric_filter(TestCase):
         """
         self.verify(self.nic in ["niantic", "kawela_4", "bartonhills", "powerville"], "%s nic not support syn filter" % self.nic)
         self.pmdout.start_testpmd(
-            "all", "--disable-rss --rxq=4 --txq=4 --portmask=%s --nb-cores=8 --nb-ports=1" % portMask)
+            "%s" % self.cores, "--disable-rss --rxq=4 --txq=4 --portmask=%s --nb-cores=4 --nb-ports=1" % portMask)
         self.port_config()
         self.dut.send_expect(
             "syn_filter %s add priority high queue 2" % valports[0], "testpmd> ")
@@ -239,7 +238,7 @@ class TestGeneric_filter(TestCase):
         priority filter
         """
         self.pmdout.start_testpmd(
-            "all", "--disable-rss --rxq=4 --txq=4 --portmask=%s --nb-cores=8 --nb-ports=1" % portMask)
+            "%s" % self.cores, "--disable-rss --rxq=4 --txq=4 --portmask=%s --nb-cores=4 --nb-ports=1" % portMask)
         self.port_config()
 
         if self.nic == "niantic":
@@ -304,7 +303,7 @@ class TestGeneric_filter(TestCase):
         """
         if self.nic in ["niantic", "kawela_4"]:
             self.pmdout.start_testpmd(
-                "all", "--disable-rss --rxq=4 --txq=4 --portmask=%s --nb-cores=8 --nb-ports=1" % portMask)
+                "%s" % self.cores, "--disable-rss --rxq=4 --txq=4 --portmask=%s --nb-cores=4 --nb-ports=1" % portMask)
             self.port_config()
 
             mask = ['0x1f', '0x0']
@@ -369,7 +368,7 @@ class TestGeneric_filter(TestCase):
                            "powerville", "fortville_eagle", "fortville_spirit",
                            "fortville_spirit_single"], "%s nic not support syn filter" % self.nic)
         self.pmdout.start_testpmd(
-            "all", "--disable-rss --rxq=4 --txq=4 --portmask=%s --nb-cores=8 --nb-ports=1" % portMask)
+            "%s" % self.cores, "--disable-rss --rxq=4 --txq=4 --portmask=%s --nb-cores=4 --nb-ports=1" % portMask)
         self.port_config()
         self.ethertype_filter = "on"
         ethertype = "0x0806"
@@ -406,7 +405,7 @@ class TestGeneric_filter(TestCase):
     def test_multiple_filters_10GB(self):
         if self.nic == "niantic":
             self.pmdout.start_testpmd(
-                "all", "--disable-rss --rxq=4 --txq=4 --portmask=%s --nb-cores=8 --nb-ports=1" % portMask)
+                "%s" % self.cores, "--disable-rss --rxq=4 --txq=4 --portmask=%s --nb-cores=4 --nb-ports=1" % portMask)
             self.port_config()
             self.dut.send_expect(
                 "syn_filter %s add priority high queue 1" % valports[0], "testpmd> ")
@@ -490,7 +489,7 @@ class TestGeneric_filter(TestCase):
 
         if self.nic in ["powerville", "bartonhills"]:
             self.pmdout.start_testpmd(
-                "all", "--disable-rss --rxq=4 --txq=4 --portmask=%s --nb-cores=8 --nb-ports=1" % portMask)
+                "%s" % self.cores, "--disable-rss --rxq=4 --txq=4 --portmask=%s --nb-cores=4 --nb-ports=1" % portMask)
             self.port_config()
             self.dut.send_expect(
                 "2tuple_filter %s add dst_port 64 protocol 0x11 mask 1 tcp_flags 0 priority 3 queue 1" % valports[0], "testpmd> ")
@@ -525,7 +524,7 @@ class TestGeneric_filter(TestCase):
 
         masks = ['000C', '000C']
         self.pmdout.start_testpmd(
-            "all", "--disable-rss --rxq=4 --txq=4 --portmask=%s --nb-cores=8 --nb-ports=1" % portMask)
+            "%s" % self.cores, "--disable-rss --rxq=4 --txq=4 --portmask=%s --nb-cores=4 --nb-ports=1" % portMask)
         self.port_config()
         for i in [0, 1]:
             if i == 0:
@@ -578,7 +577,7 @@ class TestGeneric_filter(TestCase):
 
         if self.nic in ["powerville", "kawela_4", "bartonhills"]:
             self.pmdout.start_testpmd(
-                "all", "--disable-rss --rxq=4 --txq=4 --portmask=%s --nb-cores=8 --nb-ports=1" % portMask)
+                "%s" % self.cores, "--disable-rss --rxq=4 --txq=4 --portmask=%s --nb-cores=4 --nb-ports=1" % portMask)
             self.port_config()
             self.dut.send_expect(
                 "syn_filter %s add priority high queue 1" % valports[0], "testpmd> ")
@@ -622,7 +621,7 @@ class TestGeneric_filter(TestCase):
         
         self.verify(self.nic not in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single"], "%s nic not support this test" % self.nic)
         self.pmdout.start_testpmd(
-            "all", "--disable-rss --rxq=4 --txq=4 --portmask=%s --nb-cores=8 --nb-ports=1 --mbcache=200 --mbuf-size=2048 --max-pkt-len=9600" % portMask)
+            "%s" % self.cores, "--disable-rss --rxq=4 --txq=4 --portmask=%s --nb-cores=4 --nb-ports=1 --mbcache=200 --mbuf-size=2048 --max-pkt-len=9600" % portMask)
         port = self.tester.get_local_port(valports[0])
         txItf = self.tester.get_interface(port)
 
@@ -696,7 +695,7 @@ class TestGeneric_filter(TestCase):
             global valports
             total_mbufs = self.request_mbufs(128) * len(valports)
             self.pmdout.start_testpmd(
-                "all", "--disable-rss --rxq=128 --txq=128 --portmask=%s --nb-cores=8 --total-num-mbufs=%d" % (portMask, total_mbufs))
+                "all", "--disable-rss --rxq=128 --txq=128 --portmask=%s --nb-cores=4 --total-num-mbufs=%d" % (portMask, total_mbufs))
             self.dut.send_expect(
                 "set stat_qmap rx %s 0 0" % valports[0], "testpmd> ")
             self.dut.send_expect(
@@ -748,7 +747,7 @@ class TestGeneric_filter(TestCase):
 
     def test_perf_generic_filter_perf(self):
         self.pmdout.start_testpmd(
-            "all", "--disable-rss --rxq=4 --txq=4 --portmask=%s --nb-cores=8 --nb-ports=1" % portMask)
+            "%s" % self.cores, "--disable-rss --rxq=4 --txq=4 --portmask=%s --nb-cores=4 --nb-ports=1" % portMask)
         self.port_config()
         print valports[0], valports[1]
         tx_port = self.tester.get_local_port(valports[0])
