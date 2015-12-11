@@ -476,18 +476,18 @@ class IxiaPacketGenerator(SSHConnection):
 
         return {'card': int(m.group(1)), 'port': int(m.group(2))}
 
-    def loss(self, portList, ratePercent):
+    def loss(self, portList, ratePercent, delay=5):
         """
         Run loss performance test and return loss rate.
         """
         rxPortlist, txPortlist = self._configure_everything(portList, ratePercent)
-        return self.get_loss_packet_rate(rxPortlist, txPortlist)
+        return self.get_loss_packet_rate(rxPortlist, txPortlist, delay)
 
-    def get_loss_packet_rate(self, rxPortlist, txPortlist):
+    def get_loss_packet_rate(self, rxPortlist, txPortlist, delay=5):
         """
         Get RX/TX packet statistics and calculate loss rate.
         """
-        time.sleep(3)
+        time.sleep(delay)
 
         self.send_expect("ixStopTransmit portList", "%", 10)
         time.sleep(2)
@@ -507,7 +507,7 @@ class IxiaPacketGenerator(SSHConnection):
             revNumber += self.get_frames_received()
         self.logger.info("rev  :%f" % revNumber)
 
-        return float(sendNumber - revNumber) / sendNumber
+        return float(sendNumber - revNumber) / sendNumber, sendNumber, revNumber
 
     def latency(self, portList, ratePercent, delay=5):
         """
@@ -801,7 +801,12 @@ class IxiaPacketGenerator(SSHConnection):
         Returns the number of packets captured by IXIA on a previously set
         port. Call self.stat_get_stat_all_stats(port) before.
         """
-        return self._stat_cget_value('framesReceived')
+        if self._stat_cget_value('framesReceived') !=0:
+            return self._stat_cget_value('framesReceived')
+        else:
+        #if the packet size is large than 1518, this line will avoid return
+        #a wrong number
+            return self._stat_cget_value('oversize')
 
     def get_flow_control_frames(self):
         """

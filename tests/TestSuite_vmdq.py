@@ -115,7 +115,7 @@ class TestVmdq(TestCase, IxiaPacketGenerator):
             self.tester.scapy_execute()
             tgen_input.append((tx_port, rx_port, "test%d.pcap" %p))
 
-        loss = self.tester.traffic_generator_loss(tgen_input, 10)
+        loss, _, _ = self.tester.traffic_generator_loss(tgen_input, 10)
         print "loss is %s !" % loss
 
         # Verify the accurate
