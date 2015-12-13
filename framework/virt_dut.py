@@ -38,7 +38,7 @@ from config import PortConf
 from settings import NICS, LOG_NAME_SEP, get_netdev
 from project_dpdk import DPDKdut
 from dut import Dut
-from net_device import NetDevice
+from net_device import GetNicObj
 
 
 class VirtDut(DPDKdut):
@@ -252,7 +252,7 @@ class VirtDut(DPDKdut):
                 addr_array = pci_bus.split(':')
                 bus_id = addr_array[0]
                 devfun_id = addr_array[1]
-                port = NetDevice(self, bus_id, devfun_id)
+                port = GetNicObj(self, bus_id, devfun_id)
                 itf = port.get_interface_name()
                 self.send_expect("ifconfig %s up" % itf, "# ")
                 time.sleep(30)
