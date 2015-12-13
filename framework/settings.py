@@ -40,6 +40,7 @@ FOLDERS = {
     'Configuration': 'conf',
     'Depends': 'dep',
     'Output': 'output',
+    'NicDriver': 'nics',
 }
 
 """
@@ -159,7 +160,7 @@ The log name seperater.
 LOG_NAME_SEP = '.'
 
 
-def nic_name_from_type(type):
+def get_nic_name(type):
     """
     strip nic code name by nic type
     """
