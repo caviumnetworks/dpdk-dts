@@ -689,3 +689,11 @@ class Crb(object):
             perCorelCs = [_ for _ in perSocklCs if _['core'] == coreNum]
 
             return perCorelCs[threadid]['thread']
+
+    def get_port_info(self, pci):
+        """
+        return port info by pci id
+        """
+        for port_info in self.ports_info:
+            if port_info['pci'] == pci:
+                return port_info
