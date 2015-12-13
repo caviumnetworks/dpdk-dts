@@ -78,6 +78,7 @@ class DPDKdut(Dut):
 
         if bind_dev and self.get_os_type() == 'linux':
             self.bind_interfaces_linux(dts.drivername)
+        self.extra_nic_setup()
 
     def setup_modules(self, target):
         """
@@ -254,6 +255,14 @@ class DPDKdut(Dut):
         """
         self.prepare_package(pkgName, patch)
         self.dut_prerequisites()
+
+    def extra_nic_setup(self):
+        """
+        Some nic like RRC required additional setup after module installed
+        """
+        for port_info in self.ports_info:
+            netdev = port_info['port']
+            netdev.setup()
 
     def bind_interfaces_linux(self, driver='igb_uio', nics_to_bind=None):
         """
