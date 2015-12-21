@@ -460,7 +460,7 @@ class Tester(Crb):
         else:
             return None
 
-    def check_random_pkts(self, portList, pktnum=2000, interval=0.01, allow_miss=True):
+    def check_random_pkts(self, portList, pktnum=2000, interval=0.01, allow_miss=True, params=None):
         """
         Send several random packets and check rx packets matched
         """
@@ -485,6 +485,11 @@ class Tester(Crb):
                 pkt = pkt_c(pkt_type=pkt_type,
                             pkt_len=random.randint(64, 1514),
                             ran_payload=True)
+                # config packet if has parameters
+                if params and len(portList) == len(params):
+                    for param in params:
+                        layer, config = param
+                        pkt.config_layer(layer, config)
                 # sequence saved in layer4 source port
                 if "TCP" in pkt_type:
                     pkt.config_layer('tcp', {'src': num % 65536})
@@ -499,11 +504,10 @@ class Tester(Crb):
 
             # only report when recevied number not matched
             if len(pkts) != len(recv_pkts):
-                if allow_miss is False:
-                    return False
-
                 print "Pkt number not matched,%d sent and %d received\n" \
                        % (len(pkts), len(recv_pkts))
+                if allow_miss is False:
+                    return False
 
             # check each received packet content
             for idx in range(len(recv_pkts)):
