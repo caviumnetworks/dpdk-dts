@@ -98,6 +98,9 @@ class VirtDut(DPDKdut):
         return
 
     def create_portmap(self):
+        # if not config ports in vm port config file, used ping6 get portmap
+        if not self.ports_cfg:
+            self.map_available_ports()
         port_num = len(self.ports_info)
         self.ports_map = [-1] * port_num
         for key in self.ports_cfg.keys():
@@ -136,7 +139,7 @@ class VirtDut(DPDKdut):
         if bind_dev:
             self.bind_interfaces_linux('igb_uio')
 
-    def prerequisites(self, pkgName, patch, auto_portmap):
+    def prerequisites(self, pkgName, patch):
         """
         Prerequest function should be called before execute any test case.
         Will call function to scan all lcore's information which on DUT.
@@ -172,18 +175,13 @@ class VirtDut(DPDKdut):
 
         # no need to rescan ports for guest os just bootup
         # load port infor from config file
-        if auto_portmap is False:
-            self.load_portconf()
+        self.load_portconf()
 
         # enable tester port ipv6
         self.host_dut.enable_tester_ipv6()
         self.mount_procfs()
 
-        if auto_portmap:
-            # auto detect network topology
-            self.map_available_ports()
-        else:
-            self.create_portmap()
+        self.create_portmap()
 
         # disable tester port ipv6
         self.host_dut.disable_tester_ipv6()
