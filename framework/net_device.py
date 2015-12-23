@@ -722,6 +722,9 @@ class NetDevice(object):
         self.__send_expect(
             "echo %s > /sys/bus/pci/drivers/%s/bind" %
             (nic_pci_num, driver), "# ")
+        if driver == self.default_driver:
+            itf = self.get_interface_name()
+            self.__send_expect("ifconfig %s up" % itf, "# ")
 
     def bind_driver_linux_pci_stub(self, bus_id, devfun_id):
         """
