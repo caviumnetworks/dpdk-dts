@@ -106,8 +106,12 @@ class TestVfPacketRxtx(TestCase):
 
         self.vm0_dut_ports = self.vm_dut_0.get_ports('any')
 
+        port_id_0 = 0
+
         self.vm0_testpmd = PmdOutput(self.vm_dut_0)
         self.vm0_testpmd.start_testpmd(VM_CORES_MASK)
+        self.vm0_testpmd.execute_cmd('show port info all')
+        pmd_vf0_mac = self.vm0_testpmd.get_port_mac(port_id_0)
         self.vm0_testpmd.execute_cmd('set fwd mac')
         self.vm0_testpmd.execute_cmd('start')
 
@@ -118,7 +122,7 @@ class TestVfPacketRxtx(TestCase):
         rx_port = self.tester.get_local_port(self.dut_ports[1])
         tgen_ports.append((tx_port, rx_port))
 
-        dst_mac = self.vm_dut_0.get_mac_address(self.vm0_dut_ports[0])
+        dst_mac = pmd_vf0_mac
         src_mac = self.tester.get_mac(tx_port)
 
         pkt_param=[("ether", {'dst': dst_mac, 'src': src_mac})]
