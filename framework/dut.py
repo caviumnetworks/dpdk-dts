@@ -38,7 +38,7 @@ from config import PortConf
 from settings import NICS, LOG_NAME_SEP
 from ssh_connection import SSHConnection
 from crb import Crb
-from net_device import NetDevice
+from net_device import GetNicObj
 from virt_resource import VirtResource
 from utils import RED
 from uuid import uuid4
@@ -240,7 +240,7 @@ class Dut(Crb):
                 bus_id = addr_array[0]
                 devfun_id = addr_array[1]
 
-                port = NetDevice(self, bus_id, devfun_id)
+                port = GetNicObj(self, bus_id, devfun_id)
 
                 self.send_expect('echo 0000:%s > /sys/bus/pci/devices/0000\:%s\:%s/driver/unbind'
                                  % (pci_bus, bus_id, devfun_id), '# ')
@@ -476,14 +476,6 @@ class Dut(Crb):
 
         return self.ports_info[port_num]['numa']
 
-    def get_port_info(self, pci):
-        """
-        return port info by pci id
-        """
-        for port_info in self.ports_info:
-            if port_info['pci'] == pci:
-                return port_info
-
     def lcore_table_print(self, horizontal=False):
         if not horizontal:
             dts.results_table_add_header(['Socket', 'Core', 'Thread'])
@@ -631,7 +623,7 @@ class Dut(Crb):
             return
 
         for port_info in self.ports_info:
-            port = NetDevice(self, port_info['pci'], port_info['type'])
+            port = GetNicObj(self, port_info['pci'], port_info['type'])
             intf = port.get_interface_name()
 
             self.logger.info("DUT cached: [000:%s %s] %s" % (port_info['pci'],
@@ -665,7 +657,7 @@ class Dut(Crb):
             bus_id = addr_array[0]
             devfun_id = addr_array[1]
 
-            port = NetDevice(self, bus_id, devfun_id)
+            port = GetNicObj(self, bus_id, devfun_id)
             numa = port.socket
             # store the port info to port mapping
             self.ports_info.append(
@@ -686,7 +678,7 @@ class Dut(Crb):
                                                       skipped))
                 continue
 
-            port = NetDevice(self, pci_bus, '')
+            port = GetNicObj(self, pci_bus, '')
             intf = port.get_interface_name()
 
             macaddr = port.get_mac_addr()
@@ -734,13 +726,13 @@ class Dut(Crb):
         sriov_vfs_pci = port.get_sriov_vfs_pci()
         self.ports_info[port_id]['sriov_vfs_pci'] = sriov_vfs_pci
 
-        # instantiate the VF with NetDevice
+        # instantiate the VF
         vfs_port = []
         for vf_pci in sriov_vfs_pci:
             addr_array = vf_pci.split(':')
             bus_id = addr_array[0]
             devfun_id = addr_array[1]
-            vf_port = NetDevice(self, bus_id, devfun_id)
+            vf_port = GetNicObj(self, bus_id, devfun_id)
             vfs_port.append(vf_port)
         self.ports_info[port_id]['vfs_port'] = vfs_port
 

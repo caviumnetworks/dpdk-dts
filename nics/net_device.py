@@ -40,6 +40,8 @@ import settings
 from crb import Crb
 from settings import TIMEOUT
 
+NICS_LIST = []      # global list for save nic objects
+
 
 class NetDevice(object):
 
@@ -54,13 +56,19 @@ class NetDevice(object):
         self.bus_id = bus_id
         self.devfun_id = devfun_id
         self.pci = bus_id + ':' + devfun_id
-        self.pci_id = self.get_pci_id(bus_id, devfun_id)
+        self.pci_id = get_pci_id(crb, bus_id, devfun_id)
         self.default_driver = settings.get_nic_driver(self.pci_id)
 
         if self.nic_is_pf():
             self.default_vf_driver = ''
         self.get_interface_name()
         self.socket = self.get_nic_socket()
+
+    def close(self):
+        pass
+
+    def setup(self):
+        pass
 
     def __send_expect(self, cmds, expected, timeout=TIMEOUT, alt_session=True):
         """
@@ -245,17 +253,6 @@ class NetDevice(object):
                 generic_driver)
 
         return get_mac_addr_linux(intf, bus_id, devfun_id, driver)
-
-    def get_pci_id(self, bus_id, devfun_id):
-        command = ('cat /sys/bus/pci/devices/0000\:%s\:%s/vendor' %
-                   (bus_id, devfun_id))
-        out = self.__send_expect(command, '# ')
-        vender = out[2:]
-        command = ('cat /sys/bus/pci/devices/0000\:%s\:%s/device' %
-                   (bus_id, devfun_id))
-        out = self.__send_expect(command, '# ')
-        device = out[2:]
-        return "%s:%s" % (vender, device)
 
     def get_mac_addr_linux_generic(self, intf, bus_id, devfun_id, driver):
         """
@@ -771,3 +768,68 @@ class NetDevice(object):
         nic_pci_num = ':'.join(['0000', bus_id, devfun_id])
         cmd = "echo %s > /sys/bus/pci/devices/0000\:%s\:%s/driver/unbind"
         self.send_expect(cmd % (nic_pci_num, bus_id, devfun_id), "# ")
+
+
+def get_pci_id(crb, bus_id, devfun_id):
+    """
+    Return pci device type
+    """
+    command = ('cat /sys/bus/pci/devices/0000\:%s\:%s/vendor' %
+               (bus_id, devfun_id))
+    out = crb.send_expect(command, "# ")
+    vender = out[2:]
+    command = ('cat /sys/bus/pci/devices/0000\:%s\:%s/device' %
+               (bus_id, devfun_id))
+    out = crb.send_expect(command, '# ')
+    device = out[2:]
+    return "%s:%s" % (vender, device)
+
+
+def add_to_list(host, obj):
+    """
+    Add network device object to global structure
+    Parameter 'host' is ip address, 'obj' is netdevice object
+    """
+    nic = {}
+    nic['host'] = host
+    nic['pci'] = obj.pci
+    nic['port'] = obj
+    NICS_LIST.append(nic)
+
+
+def get_from_list(host, bus_id, devfun_id):
+    """
+    Get network device object from global structure
+    Parameter will by host ip, pci bus id, pci function id
+    """
+    for nic in NICS_LIST:
+        if host == nic['host']:
+            pci = ':'.join((bus_id, devfun_id))
+            if pci == nic['pci']:
+                return nic['port']
+    return None
+
+
+def GetNicObj(crb, bus_id, devfun_id):
+    """
+    Get network device object. If network device has been initialized, just
+    return object. Based on nic type, some special nics like RRC will return
+    object different from default.
+    """
+    # find existed NetDevice object
+    obj = get_from_list(crb.crb['IP'], bus_id, devfun_id)
+    if obj:
+        return obj
+
+    pci_id = get_pci_id(crb, bus_id, devfun_id)
+    nic = settings.get_nic_name(pci_id)
+
+    if nic == 'redrockcanyou':
+        # redrockcanyou nic need special initialization
+        from fm10k import RedRockCanyou
+        obj = RedRockCanyou(crb, bus_id, devfun_id)
+    else:
+        obj = NetDevice(crb, bus_id, devfun_id)
+
+    add_to_list(crb.crb['IP'], obj)
+    return obj

@@ -1,6 +1,6 @@
 import xlrd
 
-from settings import nic_name_from_type
+from settings import get_nic_name
 
 filter_file = r'./conf/dpdk_test_case_checklist.xls'
 filter_case = []
@@ -96,7 +96,7 @@ class check_case_skip():
     def check_nic(self, nic_type):
         if 'all' == nic_type[0].lower():
             return True
-        dut_nic_type = nic_name_from_type(self.dut.ports_info[0]['type'])
+        dut_nic_type = get_nic_name(self.dut.ports_info[0]['type'])
         if dut_nic_type in nic_type:
             return True
         else:

@@ -41,9 +41,10 @@ import signal       # signal module for debug mode
 import time         # time module for unique output folder
 
 import rst          # rst file support
+import sys          # system module
+from settings import FOLDERS, NICS
 from tester import Tester
 from dut import Dut
-from settings import FOLDERS, NICS, DRIVERS
 from serializer import Serializer
 from exception import VerifyFailure
 from test_case import TestCase
@@ -99,10 +100,15 @@ def report(text, frame=False, annex=False):
         rst.write_text(text, annex)
 
 
-def close_crb_sessions():
+def close_all_sessions():
     """
     Close session to DUT and tester.
     """
+    # close all nics
+    for port_info in dut.ports_info:
+        netdev = port_info['port']
+        netdev.close()
+    # close all session
     if dut is not None:
         dut.close()
     if tester is not None:
@@ -418,8 +424,6 @@ def run_all(config_file, pkgName, git, patch, skip_setup,
         os.mkdir(output_dir)
 
     # add python module search path
-    for folder in FOLDERS.values():
-        sys.path.append(folder)
     sys.path.append(suite_dir)
 
     # enable debug mode
@@ -446,7 +450,7 @@ def run_all(config_file, pkgName, git, patch, skip_setup,
         raise ConfigParseException(config_file)
 
     # register exit action
-    atexit.register(close_crb_sessions)
+    atexit.register(close_all_sessions)
 
     os.environ["TERM"] = "dumb"
 

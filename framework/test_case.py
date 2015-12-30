@@ -35,7 +35,7 @@ A base class for creating DTF test cases.
 
 import dts
 from exception import VerifyFailure
-from settings import DRIVERS, NICS, nic_name_from_type
+from settings import DRIVERS, NICS, get_nic_name
 
 
 class TestCase(object):
@@ -48,7 +48,7 @@ class TestCase(object):
         self.nics = []
         for portid in range(len(self.dut.ports_info)):
             nic_type = self.dut.ports_info[portid]['type']
-            self.nics.append(nic_name_from_type(nic_type))
+            self.nics.append(get_nic_name(nic_type))
         if len(self.nics):
             self.nic = self.nics[0]
         else:
