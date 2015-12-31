@@ -98,3 +98,13 @@ def remove_old_rsa_key(crb, ip):
         remove_rsa_key_cmd = "sed -i '/^%s/d' %s" % \
             (ip.strip(), rsa_key_path)
     crb.send_expect(remove_rsa_key_cmd, "# ")
+
+def human_read_number(num):
+    if num > 1000000:
+        num /= 1000000
+        return str(num) + "M"
+    elif num > 1000:
+        num /= 1000
+        return str(num) + "K"
+    else:
+        return str(num)

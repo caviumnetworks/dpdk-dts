@@ -445,7 +445,7 @@ class Tester(Crb):
         Run loss performance test on specified ports.
         """
         if self.check_port_list(portList, 'ixia'):
-            return self.ixia_packet_gen.loss(portList, ratePercent)
+            return self.ixia_packet_gen.loss(portList, ratePercent, delay)
         elif not self.check_port_list(portList):
             self.logger.warning("exception by mixed port types")
             return None

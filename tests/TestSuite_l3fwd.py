@@ -42,28 +42,29 @@ from test_case import TestCase
 from exception import VerifyFailure
 from settings import HEADER_SIZE
 from etgen import IxiaPacketGenerator
+from utils import *
 
 class TestL3fwd(TestCase,IxiaPacketGenerator):
 
     path = "./examples/l3fwd/build/"
 
-    test_cases_2_ports = {"1S/1C/1T": "%s -c %s -n %d -- -p %s  --config '(P0,0,C{1.1.0}), (P1,0,C{1.1.0})'",
-                          "1S/1C/2T": "%s -c %s -n %d -- -p %s  --config '(P0,0,C{1.1.0}), (P1,0,C{1.1.1})'",
-                          "1S/2C/1T": "%s -c %s -n %d -- -p %s  --config '(P0,0,C{1.1.0}), (P1,0,C{1.2.0})'",
-                          "1S/4C/1T": "%s -c %s -n %d -- -p %s  --config '(P0,0,C{1.1.0}), (P1,0,C{1.2.0}),(P0,1,C{1.3.0}), (P1,1,C{1.4.0})'",
-                          "2S/2C/1T": "%s -c %s -n %d -- -p %s  --config '(P0,0,C{0.1.0}), (P1,0,C{0.2.0}),(P0,1,C{1.3.0}), (P1,1,C{1.4.0})'",
+    test_cases_2_ports = {"1S/1C/1T": "%s -c %s -n %d -- -p %s  --config '(P0,0,C{1.1.0}), (P1,0,C{1.1.0})' --enable-jumbo --max-pkt-len 4096",
+                          #"1S/1C/2T": "%s -c %s -n %d -- -p %s  --config '(P0,0,C{1.1.0}), (P1,0,C{1.1.1})'",
+                          "1S/2C/1T": "%s -c %s -n %d -- -p %s  --config '(P0,0,C{1.1.0}), (P1,0,C{1.2.0})' --enable-jumbo --max-pkt-len 4096",
+                          #"1S/4C/1T": "%s -c %s -n %d -- -p %s  --config '(P0,0,C{1.1.0}), (P1,0,C{1.2.0}),(P0,1,C{1.3.0}), (P1,1,C{1.4.0})'",
+                          #"2S/2C/1T": "%s -c %s -n %d -- -p %s  --config '(P0,0,C{0.1.0}), (P1,0,C{0.2.0}),(P0,1,C{1.3.0}), (P1,1,C{1.4.0})'",
                           }
 
     test_cases_4_ports = [(1, "1S/1C/1T",
-                           "%s -c %s -n %d -- -p %s  --config '(P0,0,C{1.1.0}),(P1,0,C{1.1.0}),(P2,0,C{1.1.0}),(P3,0,C{1.1.0})'"),
-                          (1, "1S/2C/2T",
-                           "%s -c %s -n %d -- -p %s  --config '(P0,0,C{1.1.0}),(P1,0,C{1.1.1}),(P2,0,C{1.2.0}),(P3,0,C{1.2.1})'"),
+                           "%s -c %s -n %d -- -p %s  --config '(P0,0,C{1.1.0}),(P1,0,C{1.1.0}),(P2,0,C{1.1.0}),(P3,0,C{1.1.0})' --enable-jumbo --max-pkt-len 4096"),
+                          #(1, "1S/2C/2T",
+                          # "%s -c %s -n %d -- -p %s  --config '(P0,0,C{1.1.0}),(P1,0,C{1.1.1}),(P2,0,C{1.2.0}),(P3,0,C{1.2.1})'"),
                           (1, "1S/4C/1T",
-                           "%s -c %s -n %d -- -p %s  --config '(P0,0,C{1.1.0}),(P1,0,C{1.2.0}),(P2,0,C{1.3.0}),(P3,0,C{1.4.0})'"),
-                          (2, "1S/8C/1T",
-                           "%s -c %s -n %d -- -p %s  --config '(P0,0,C{1.1.0}),(P0,1,C{1.2.0}),(P1,0,C{1.3.0}),(P1,1,C{1.4.0}),(P2,0,C{1.5.0}),(P2,1,C{1.6.0}),(P3,0,C{1.7.0}),(P3,1,C{1.8.0})'"),
-                          (2, "2S/2C/1T",
-                           "%s -c %s -n %d -- -p %s  --config '(P0,0,C{1.1.0}),(P1,0,C{1.2.0}),(P2,0,C{0.3.0}),(P3,0,C{0.4.0})'"),
+                           "%s -c %s -n %d -- -p %s  --config '(P0,0,C{1.1.0}),(P1,0,C{1.2.0}),(P2,0,C{1.3.0}),(P3,0,C{1.4.0})' --enable-jumbo --max-pkt-len 4096"),
+                          #(2, "1S/8C/1T",
+                           #"%s -c %s -n %d -- -p %s  --config '(P0,0,C{1.1.0}),(P0,1,C{1.2.0}),(P1,0,C{1.3.0}),(P1,1,C{1.4.0}),(P2,0,C{1.5.0}),(P2,1,C{1.6.0}),(P3,0,C{1.7.0}),(P3,1,C{1.8.0})'"),
+                          #(2, "2S/2C/1T",
+                          # "%s -c %s -n %d -- -p %s  --config '(P0,0,C{1.1.0}),(P1,0,C{1.2.0}),(P2,0,C{0.3.0}),(P3,0,C{0.4.0})'"),
                           ]
 
     queues_4_ports = []
@@ -94,7 +95,7 @@ class TestL3fwd(TestCase,IxiaPacketGenerator):
         "{IPv4(13,101,0,0), 24, P3}",
     ]
 
-    frame_sizes = [64,128]  # 65, 128
+    frame_sizes = [64, 128, 256, 512, 2048]  # 65, 128
     methods = ['lpm', 'exact']
 
     #
@@ -202,7 +203,7 @@ class TestL3fwd(TestCase,IxiaPacketGenerator):
                 image_path = self.plotting.create_bars_plot(
                     'test_perf_l3fwd_4ports_%d_%dRxQ' % (frame_size, queues),
                     'LPM & Exact modes, %dB, %d Rx Queues, 4 ports' % (frame_size, queues),
-                    cores,
+                    TestL3fwd.frame_sizes,
                     ydata,
                     ylabel='% linerate',
                     legend=TestL3fwd.methods)
@@ -227,7 +228,7 @@ class TestL3fwd(TestCase,IxiaPacketGenerator):
             for core in cores:
                 core_ydata = []
                 for row in data:
-                    if row[5] == mode and row[2] == core:
+                    if row[1] == mode and row[2] == core:
                         core_ydata.append(float(row[4]))
 
                 mode_ydata.append(core_ydata)
@@ -255,7 +256,7 @@ class TestL3fwd(TestCase,IxiaPacketGenerator):
             for frame_size in TestL3fwd.frame_sizes:
                 for row in data:
                     if row[2] == core and row[0] == frame_size and \
-                            row[5] == mode:
+                            row[1] == mode:
                         mode_ydata.append(float(row[4]))
 
             ydata.append(mode_ydata)
@@ -391,7 +392,6 @@ class TestL3fwd(TestCase,IxiaPacketGenerator):
         output_pattern = re.compile("P([0123]),([0123]),(C\{\d.\d.\d\})")
         pat2 = re.compile("C\{\d")
         repl1 = "C{" + str(self.port_socket)
- 
 
         bps = dict()
         pps = dict()
@@ -449,7 +449,7 @@ class TestL3fwd(TestCase,IxiaPacketGenerator):
             # stop l3fwd
             self.dut.send_expect("^C", "#")
 
-        data_row = [frame_size, rx_queues_per_port, cores_config]
+        data_row = [frame_size, method, cores_config, rx_queues_per_port]
         for method in TestL3fwd.methods:
             data_row.append(pps[method])
             data_row.append(pct[method])
@@ -474,7 +474,7 @@ class TestL3fwd(TestCase,IxiaPacketGenerator):
         # Verify that enough ports are available
         self.verify(len(ports) >= 4, "Insufficient ports for speed testing")
 
-        header_row = ["Frame size", "RX Queues/NIC Port", "S/C/T"]
+        header_row = ["Frame size", "mode", "S/C/T", "RX Queues/NIC Port"]
 
         for method in TestL3fwd.methods:
             header_row.append('%s Mpps' % method)
@@ -521,7 +521,7 @@ class TestL3fwd(TestCase,IxiaPacketGenerator):
         L3fwd main 2 ports.
         """
 
-        header_row = ["Frame", "Ports", "S/C/T", "Mpps", "% linerate", "mode"]
+        header_row = ["Frame", "mode", "S/C/T", "Mpps", "% linerate"]
         self.l3fwd_test_results['header'] = header_row
         dts.results_table_add_header(header_row)
         self.l3fwd_test_results['data'] = []
@@ -533,7 +533,7 @@ class TestL3fwd(TestCase,IxiaPacketGenerator):
                 HEADER_SIZE['ip'] - HEADER_SIZE['eth']
             for _port in range(2):
                 dmac = self.dut.get_mac_address(valports[_port])
-                flows = ['Ether(dst=%s)/%s/("X"*%d)' % (dmac, flow, payload_size) for flow in self.flows()[_port *2:(_port +1)*2]]
+                flows = ['Ether(dst="%s")/%s/("X"*%d)' % (dmac, flow, payload_size) for flow in self.flows()[_port *2:(_port +1)*2]]
                 self.tester.scapy_append('wrpcap("dst%d.pcap", [%s])' %(valports[_port],string.join(flows,',')))
             self.tester.scapy_execute() 
 
@@ -611,11 +611,114 @@ class TestL3fwd(TestCase,IxiaPacketGenerator):
                     # Stop l3fwd
                     self.dut.send_expect("^C", "#")
 
-                    data_row = [frame_size, 2, cores, str(pps), str(pct), mode]
+                    data_row = [frame_size, mode, cores, str(pps), str(pct)]
                     dts.results_table_add_row(data_row)
                     self.l3fwd_test_results['data'].append(data_row)
 
         self.plot_2_ports()
+        dts.results_table_print()
+
+    def test_perf_rfc2544(self):
+
+        header_row = ["Frame", "mode", "S/C/T", "LR_tx_pkts(1min)", "LR_rx_pkts(1min)", "LR_loss_pkts(1min)", "% zero_loss_rate", "zero_loss_throughput(Mpps)"]
+        self.l3fwd_test_results['header'] = header_row
+        dts.results_table_add_header(header_row)
+        self.l3fwd_test_results['data'] = []
+
+        for frame_size in TestL3fwd.frame_sizes:
+
+            # Prepare traffic flow
+            payload_size = frame_size -  \
+                HEADER_SIZE['ip'] - HEADER_SIZE['eth']
+            for _port in range(2):
+                dmac = self.dut.get_mac_address(valports[_port])
+                flows = ['Ether(dst="%s")/%s/("X"*%d)' % (dmac, flow, payload_size) for flow in self.flows()[_port *2:(_port +1)*2]]
+                self.tester.scapy_append('wrpcap("dst%d.pcap", [%s])' %(valports[_port],string.join(flows,',')))
+            self.tester.scapy_execute()
+
+            dts.report("Flows for 2 ports, %d frame size.\n" % (frame_size),
+                       annex=True)
+            dts.report("%s" % string.join(flows, '\n'),
+                       frame=True, annex=True)
+
+
+            # Prepare the command line
+            global corelist
+            pat = re.compile("P([0123]),([0123]),(C\{\d.\d.\d\})")
+
+            pat2 = re.compile("C\{\d")
+            repl1 = "C{" + str(self.port_socket)
+
+            coreMask = {}
+            rtCmdLines = dict(TestL3fwd.test_cases_2_ports)
+            for key in rtCmdLines.keys():
+                corelist = []
+                while pat.search(rtCmdLines[key]):
+                    # Change the socket to the NIC's socket
+                    if key.find('1S')>=0:
+                        rtCmdLines[key] = pat2.sub(repl1, rtCmdLines[key])
+                    rtCmdLines[key] = pat.sub(self.repl, rtCmdLines[key])
+
+                self.logger.info("%s\n" % str(corelist))
+                coreMask[key] = dts.create_mask(set(corelist))
+
+            # measure by two different mode
+            for mode in TestL3fwd.methods:
+
+                # start l3fwd
+                index = 0
+                subtitle = []
+                for cores in rtCmdLines.keys():
+
+                    #in order to save time, only some of the cases will be run.
+                    if mode == "lpm" and (cores == "1S/1C/1T" or cores == "1S/4C/1T"):
+                        info = "Executing l3fwd using %s mode, 2 ports, %s and %d frame size.\n" % (
+                               mode, cores, frame_size)
+
+                        self.logger.info(info)
+                        dts.report(info, annex=True)
+
+                        subtitle.append(cores)
+                        cmdline = rtCmdLines[cores] % (TestL3fwd.path + "l3fwd_" + mode, coreMask[cores],
+                                                       self.dut.get_memory_channels(), dts.create_mask(valports[:2]))
+
+                        dts.report(cmdline + "\n", frame=True, annex=True)
+
+                        out = self.dut.send_expect(cmdline, "L3FWD:", 120)
+
+                        # Measure test
+                        tgenInput = []
+                        for rxPort in range(2):
+                            # No use on rx/tx limitation
+                            if rxPort % 2 == 0:
+                                txIntf = self.tester.get_local_port(valports[rxPort + 1])
+                            else:
+                                txIntf = self.tester.get_local_port(valports[rxPort - 1])
+
+                            rxIntf = self.tester.get_local_port(valports[rxPort])
+                            if rxPort % 2 == 0:
+                                tgenInput.append((txIntf, rxIntf, "dst%d.pcap" %valports[rxPort+1]))
+                            else:
+                                tgenInput.append((txIntf, rxIntf, "dst%d.pcap" %valports[rxPort-1]))
+
+                        zero_loss_rate, tx_pkts, rx_pkts = self.tester.run_rfc2544(tgenInput, delay=60)
+                        loss_pkts = tx_pkts - rx_pkts
+                        self.dut.send_expect("^C", "#")
+                        linerate = self.wirespeed(self.nic, frame_size, 2)
+                        zero_loss_throughput = (linerate * zero_loss_rate) / 100
+
+                        tx_pkts = human_read_number(tx_pkts)
+                        rx_pkts = human_read_number(rx_pkts)
+                        loss_pkts = human_read_number(loss_pkts)
+
+                        data_row = [frame_size, mode, cores, tx_pkts, rx_pkts, loss_pkts, zero_loss_rate, zero_loss_throughput]
+                        dts.results_table_add_row(data_row)
+                        self.l3fwd_test_results['data'].append(data_row)
+                    else:
+                        pass
+
+                    index += 1
+
         dts.results_table_print()
 
     def ip(self, port, frag, src, proto, tos, dst, chksum, len, options, version, flags, ihl, ttl, id):
