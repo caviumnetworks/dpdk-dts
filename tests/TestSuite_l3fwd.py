@@ -95,7 +95,7 @@ class TestL3fwd(TestCase,IxiaPacketGenerator):
         "{IPv4(13,101,0,0), 24, P3}",
     ]
 
-    frame_sizes = [64, 128, 256, 512, 2048]  # 65, 128
+    frame_sizes = [64]#, 128, 256, 512, 2048]  # 65, 128
     methods = ['lpm', 'exact']
 
     #
@@ -120,160 +120,6 @@ class TestL3fwd(TestCase,IxiaPacketGenerator):
     #
     # Test cases.
     #
-
-    def plot_4_ports(self):
-
-        data = self.l3fwd_test_results['data']
-
-        # Create a plot for each number of queues for frame size and mode comparison
-        cores = '1S/1C/1T'
-        for queues in TestL3fwd.queues_4_ports:
-            ydata = []
-            lpm_ydata = []
-            exact_ydata = []
-            for frame_size in TestL3fwd.frame_sizes:
-                for row in data:
-                    if row[1] * 4 == queues and row[2] == cores and \
-                            row[0] == frame_size:
-                        if len(TestL3fwd.methods) == 2:
-                            lpm_ydata.append(row[4])
-                            exact_ydata.append(row[6])
-                        else:
-                            if 'lpm' in TestL3fwd.methods:
-                                lpm_ydata.append(row[4])
-                            if 'exact' in TestL3fwd.methods:
-                                exact_ydata.append(row[4])
-
-            if 'lpm' in TestL3fwd.methods:
-                ydata.append(lpm_ydata)
-            if 'exact' in TestL3fwd.methods:
-                ydata.append(exact_ydata)
-
-            if len(ydata[0]) == 0:
-                self.logger.warning('No data for plotting 1S/1C/1T')
-                break
-            else:
-                try:
-                    image_path = self.plotting.create_bars_plot(
-                        'test_perf_l3fwd_4ports_1S_1C_1T_%dRxQ' % queues,
-                        'LPM & Exact modes, 1S/1C/1T, %d Rx Queues, 4 ports' % queues,
-                        TestL3fwd.frame_sizes,
-                        ydata,
-                        ylabel='% linerate',
-                        legend=TestL3fwd.methods)
-
-                    dts.results_plot_print(image_path, 50)
-                except VerifyFailure as e:
-                    self.logger.error(str(e))
-
-        # Create a plot for each number of queues for core config and mode comparison
-        frame_size = TestL3fwd.frame_sizes[0]   # Frame size fixed to the first selected
-        for queues in TestL3fwd.queues_4_ports:
-
-            cores = []
-            for row in data:
-                if row[2] not in cores and \
-                   row[1] * 4 == queues:
-                    cores.append(row[2])
-
-            ydata = []
-            lpm_ydata = []
-            exact_ydata = []
-
-            for core in cores:
-                for row in data:
-                    if row[1] * 4 == queues and \
-                       row[2] == core and \
-                       row[0] == frame_size:
-                        if len(TestL3fwd.methods) == 2:
-                            lpm_ydata.append(row[4])
-                            exact_ydata.append(row[6])
-                        else:
-                            if 'lpm' in TestL3fwd.methods:
-                                lpm_ydata.append(row[4])
-                            if 'exact' in TestL3fwd.methods:
-                                exact_ydata.append(row[4])
-
-            if 'lpm' in TestL3fwd.methods:
-                ydata.append(lpm_ydata)
-            if 'exact' in TestL3fwd.methods:
-                ydata.append(exact_ydata)
-
-            try:
-                image_path = self.plotting.create_bars_plot(
-                    'test_perf_l3fwd_4ports_%d_%dRxQ' % (frame_size, queues),
-                    'LPM & Exact modes, %dB, %d Rx Queues, 4 ports' % (frame_size, queues),
-                    TestL3fwd.frame_sizes,
-                    ydata,
-                    ylabel='% linerate',
-                    legend=TestL3fwd.methods)
-
-                dts.results_plot_print(image_path)
-            except VerifyFailure as e:
-                self.logger.error(str(e))
-
-    def plot_2_ports(self):
-
-        data = self.l3fwd_test_results['data']
-
-        cores = []
-        for row in data:
-            if row[2] not in cores:
-                cores.append(row[2])
-
-        # Create a plot for each mode for frame size and cores comparison
-        for mode in TestL3fwd.methods:
-            mode_ydata = []
-
-            for core in cores:
-                core_ydata = []
-                for row in data:
-                    if row[1] == mode and row[2] == core:
-                        core_ydata.append(float(row[4]))
-
-                mode_ydata.append(core_ydata)
-
-            image_path = self.plotting.create_bars_plot(
-                'test_perf_l3fwd_2ports_%s' % mode,
-                'L3fwd %s mode, 2 ports' % mode,
-                TestL3fwd.frame_sizes,
-                mode_ydata,
-                ylabel='% linerate',
-                legend=cores)
-
-            dts.results_plot_print(image_path, 50)
-
-        # If testing only one mode, do nothing else.
-        if len(TestL3fwd.methods) == 1:
-            return
-
-        # Create a plot for 1st core config for mode and frame size comparison
-        core = '1S/1C/1T'
-
-        ydata = []
-        for mode in TestL3fwd.methods:
-            mode_ydata = []
-            for frame_size in TestL3fwd.frame_sizes:
-                for row in data:
-                    if row[2] == core and row[0] == frame_size and \
-                            row[1] == mode:
-                        mode_ydata.append(float(row[4]))
-
-            ydata.append(mode_ydata)
-
-        str_frame_sizes = []
-        for frame_size in TestL3fwd.frame_sizes:
-            str_frame_sizes.append(str(frame_size))
-
-        image_path = self.plotting.create_bars_plot(
-            'test_perf_l3fwd_2ports_1S_1C_1T',
-            'L3fwd 1S/1C/1T cores, 2 ports',
-            TestL3fwd.frame_sizes,
-            ydata,
-            ylabel='% linerate',
-            legend=TestL3fwd.methods)
-
-        dts.results_plot_print(image_path)
 
     def set_up_all(self):
         """
@@ -513,7 +359,6 @@ class TestL3fwd(TestCase,IxiaPacketGenerator):
                 if number_sockets >= int(test_case[1].split('/')[0][0]):
                     self.get_throughput(frame_size, *test_case)
 
-        self.plot_4_ports()
         dts.results_table_print()
 
     def test_perf_l3fwd_2ports(self):
@@ -615,7 +460,6 @@ class TestL3fwd(TestCase,IxiaPacketGenerator):
                     dts.results_table_add_row(data_row)
                     self.l3fwd_test_results['data'].append(data_row)
 
-        self.plot_2_ports()
         dts.results_table_print()
 
     def test_perf_rfc2544(self):
