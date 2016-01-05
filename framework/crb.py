@@ -697,3 +697,7 @@ class Crb(object):
         for port_info in self.ports_info:
             if port_info['pci'] == pci:
                 return port_info
+    
+    def enable_promisc(self,intf):
+        if intf !='N/A':
+            self.send_expect("ifconfig %s promisc" %intf, "# ",alt_session=True)

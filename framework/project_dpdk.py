@@ -382,6 +382,7 @@ class DPDKtester(Tester):
 
         self.tester_prerequisites()
 
+        self.set_promisc()
         # use software pktgen for performance test
         if perf_test is True:
             try:

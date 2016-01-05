@@ -211,6 +211,17 @@ class Tester(Crb):
 
         sleep(2)
 
+    def set_promisc(self):
+        try:
+            for (pci_bus, pci_id) in self.pci_devices_info:
+                addr_array = pci_bus.split(':')
+                port = NetDevice(self, addr_array[0], addr_array[1])
+                itf = port.get_interface_name()
+                self.enable_promisc(itf)
+        except Exception as e:
+            pass
+
+
     def load_serializer_ports(self):
         cached_ports_info = self.serializer.load(self.PORT_INFO_CACHE_KEY)
         if cached_ports_info is None:
