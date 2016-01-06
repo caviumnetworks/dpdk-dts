@@ -283,7 +283,10 @@ class Dut(Crb):
                 arch_huge_pages = hugepages if hugepages > 0 else 256
 
             if total_huge_pages != arch_huge_pages:
-                self.set_huge_pages(arch_huge_pages)
+                 # before all hugepage  average distribution  by all socket, 
+                 # but sometimes crete mbuf pool on socket 0 failed when setup testpmd, 
+                 # so set all huge page on socket 0
+                self.set_huge_pages(arch_huge_pages, 0)
 
         self.mount_huge_pages()
         self.hugepage_path = self.strip_hugepage_path()
