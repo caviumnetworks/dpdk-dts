@@ -141,6 +141,9 @@ class SSHPexpect(object):
         Copies a file from a remote place into local.
         """
         command = 'scp {0}@{1}:{2} {3}'.format(self.username, self.host, src, dst)
+        if ':' in self.host:
+            command = 'scp -P {0} -o NoHostAuthenticationForLocalhost=yes {1}@{2}:{3} {4}'.format(
+                str(self.port), self.username, self.ip, src, dst)
         if password == '':
             self._spawn_scp(command, self.password)
         else:
