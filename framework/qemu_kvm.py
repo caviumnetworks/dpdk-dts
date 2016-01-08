@@ -602,8 +602,7 @@ class QEMUKvm(VirtBase):
         """
         separator = ','
         # chardev parameter
-        if 'opt_path' in options.keys() and \
-                options['opt_path']:
+        if 'opt_path' in options.keys() and options['opt_path']:
             dev_boot_line = '-chardev socket'
             char_id = 'char%d' % self.char_idx
             dev_boot_line += separator + 'id=%s' % char_id + separator + 'path=%s' % options['opt_path']
@@ -629,9 +628,12 @@ class QEMUKvm(VirtBase):
         """
         separator = ','
         dev_boot_line = '-netdev tap'
-        cuse_id = 'vhost%d' % self.cuse_id
+        if 'opt_tap' in options.keys():
+            cuse_id = options['opt_tap']
+        else:
+            cuse_id = 'vhost%d' % self.cuse_id
+            self.cuse_id += 1
         dev_boot_line += separator + 'id=%s' % cuse_id + separator + 'ifname=tap_%s' % cuse_id + separator + "vhost=on" + separator + "script=no"
-        self.cuse_id += 1
         self.__add_boot_line(dev_boot_line)
         # device parameter
         opts = {'opt_netdev': '%s' % cuse_id,
