@@ -34,6 +34,7 @@ Interface for bulk traffic generators.
 """
 
 import re
+import subprocess
 from time import sleep
 from settings import NICS
 from crb import Crb
@@ -540,6 +541,30 @@ class Tester(Crb):
             current_attrs = instance.__dict__
             instance.__dict__ = self.ixia_packet_gen.__dict__
             instance.__dict__.update(current_attrs)
+
+    def sendpkt_bg(self, localPort, dst_mac):
+        """
+        loop to Send packet in background, should call stop_sendpkt_bg to stop it.
+        """
+        itf = self.get_interface(localPort)
+        src_mac = self.get_mac(localPort)
+        script_str = "from scapy.all import *\n" + \
+                     "sendp([Ether(dst='%s', src='%s')/IP(len=46)], iface='%s', loop=1)\n" % (dst_mac, src_mac, itf)
+
+        self.send_expect("rm -fr send_pkg_loop.py", "# ")
+        f = open("send_pkt_loop.py", "w")
+        f.write(script_str)
+        f.close()
+
+        self.proc = subprocess.Popen(['python', 'send_pkt_loop.py'])
+
+    def stop_sendpkt_bg(self):
+        """
+        stop send_pkt_loop in background
+        """
+        if self.proc:
+            self.proc.kill()
+            self.proc = None
 
     def kill_all(self, killall=False):
         """
