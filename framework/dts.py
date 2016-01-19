@@ -297,6 +297,7 @@ def dts_run_target(crbInst, targets, test_suites, nic, scenario):
     """
     Run each target in execution targets.
     """
+    global drivername
     if scenario != '':
         scene = VirtScene(dut, tester, scenario)
     else:
@@ -317,7 +318,10 @@ def dts_run_target(crbInst, targets, test_suites, nic, scenario):
                 if not scene.host_bound:
                     dut.set_target(target, bind_dev=False)
             else:
-                dut.set_target(target)
+                if drivername == "":
+                    dut.set_target(target, bind_dev=False)
+                else:
+                    dut.set_target(target)
         except AssertionError as ex:
             log_handler.error(" TARGET ERROR: " + str(ex))
             result.add_failed_target(result.dut, target, str(ex))
