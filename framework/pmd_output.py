@@ -206,3 +206,6 @@ class PmdOutput():
         vlan_info['qinq'] = self.get_detail_from_port_info(
             'qinq\(extend\) ', '\S+', port_id)
         return vlan_info
+
+    def quit(self):
+        self.dut.send_expect("quit", "# ")
