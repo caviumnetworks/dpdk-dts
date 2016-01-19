@@ -485,6 +485,7 @@ class Tester(Crb):
         pkts = []
         # packet type random between tcp/udp/ipv6
         random_type = ['TCP', 'UDP', 'IPv6_TCP', 'IPv6_UDP']
+        pkt_minlen = {'TCP': 64, 'UDP': 64, 'IPv6_TCP': 74, 'IPv6_UDP': 64}
         # at least wait 2 seconds
         timeout = int(pktnum * (interval + 0.01)) + 2
         for txport, rxport in portList:
@@ -494,7 +495,7 @@ class Tester(Crb):
                 # chose random packet
                 pkt_type = random.choice(random_type)
                 pkt = pkt_c(pkt_type=pkt_type,
-                            pkt_len=random.randint(64, 1514),
+                            pkt_len=random.randint(pkt_minlen[pkt_type], 1514),
                             ran_payload=True)
                 # config packet if has parameters
                 if params and len(portList) == len(params):
