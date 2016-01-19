@@ -38,7 +38,7 @@ import subprocess
 from time import sleep
 from settings import NICS
 from crb import Crb
-from net_device import NetDevice
+from net_device import GetNicObj
 from etgen import IxiaPacketGenerator, SoftwarePacketGenerator
 from settings import IXIA
 import random
@@ -202,7 +202,7 @@ class Tester(Crb):
         try:
             for (pci_bus, pci_id) in self.pci_devices_info:
                 addr_array = pci_bus.split(':')
-                port = NetDevice(self, addr_array[0], addr_array[1])
+                port = GetNicObj(self, addr_array[0], addr_array[1])
                 itf = port.get_interface_name()
                 self.enable_ipv6(itf)
                 self.send_expect("ifconfig %s up" % itf, "# ")
@@ -267,7 +267,7 @@ class Tester(Crb):
             if port_info['type'] == 'ixia':
                 continue
 
-            port = NetDevice(self, port_info['pci'], port_info['type'])
+            port = GetNicObj(self, port_info['pci'], port_info['type'])
             intf = port.get_interface_name()
 
             self.logger.info("Tester cached: [000:%s %s] %s" % (
@@ -291,7 +291,7 @@ class Tester(Crb):
             bus_id = addr_array[0]
             devfun_id = addr_array[1]
 
-            port = NetDevice(self, bus_id, devfun_id)
+            port = GetNicObj(self, bus_id, devfun_id)
             intf = port.get_interface_name()
 
             if "No such file" in intf:
