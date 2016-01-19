@@ -639,8 +639,20 @@ def sniff_packets(intf, count=0, timeout=5):
     """
     sniff all packets for certain port in certain seconds
     """
-    sniff_cmd = 'tcpdump -i %(INTF)s -w %(FILE)s'
-    options = {'INTF': intf, 'COUNT': count,
+    param = ""
+    direct_param = r"(\s+)\[ -(\w) in\|out\|inout \]"
+    tcpdump_help = subprocess.check_output("tcpdump -h; echo 0",
+                        stderr=subprocess.STDOUT, shell=True)
+    for line in tcpdump_help.split('\n'):
+        m = re.match(direct_param, line)
+        if m:
+            param = "-" + m.group(2) + " in"
+
+    if len(param) == 0:
+        print "tcpdump not support direction chioce!!!"
+
+    sniff_cmd = 'tcpdump -i %(INTF)s %(IN_PARAM)s -w %(FILE)s'
+    options = {'INTF': intf, 'COUNT': count, 'IN_PARAM': param,
                'FILE': '/tmp/sniff_%s.pcap' % intf}
     if count:
         sniff_cmd += ' -c %(COUNT)d'
