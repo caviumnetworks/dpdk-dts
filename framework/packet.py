@@ -196,7 +196,7 @@ class scapy(object):
         if element == 'src':
             value = layer.sport
         elif element == 'dst':
-            valude = layer.dport
+            value = layer.dport
 
         return value
 

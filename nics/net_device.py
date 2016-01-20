@@ -820,7 +820,7 @@ def GetNicObj(crb, bus_id, devfun_id):
     object different from default.
     """
     # find existed NetDevice object
-    obj = get_from_list(crb.crb['IP'], bus_id, devfun_id)
+    obj = get_from_list(crb.crb['My IP'], bus_id, devfun_id)
     if obj:
         return obj
 
@@ -831,8 +831,12 @@ def GetNicObj(crb, bus_id, devfun_id):
         # redrockcanyou nic need special initialization
         from fm10k import RedRockCanyou
         obj = RedRockCanyou(crb, bus_id, devfun_id)
+    elif nic == 'atwood':
+        # atwood nic need special initialization
+        from atwood import Atwood
+        obj = Atwood(crb, bus_id, devfun_id)
     else:
         obj = NetDevice(crb, bus_id, devfun_id)
 
-    add_to_list(crb.crb['IP'], obj)
+    add_to_list(crb.crb['My IP'], obj)
     return obj

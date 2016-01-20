@@ -39,6 +39,7 @@ import atexit       # register callback when exit
 import json         # json format
 import signal       # signal module for debug mode
 import time         # time module for unique output folder
+import copy         # copy module for duplicate variable
 
 import rst          # rst file support
 import sys          # system module
@@ -252,8 +253,12 @@ def dts_crbs_init(crbInst, skip_setup, read_cache, project, base_dir, nic, virtt
                                        '/.%s.cache' % crbInst['IP'])
     serializer.load_from_file()
 
-    dut = get_project_obj(project, Dut, crbInst, serializer)
-    tester = get_project_obj(project, Tester, crbInst, serializer)
+    dutInst = copy.copy(crbInst)
+    dutInst['My IP'] =  crbInst['IP']
+    dut = get_project_obj(project, Dut, dutInst, serializer)
+    testInst = copy.copy(crbInst)
+    testInst['My IP'] =  crbInst['tester IP']
+    tester = get_project_obj(project, Tester, testInst, serializer)
     dts_log_execution(log_handler)
     dut.tester = tester
     tester.dut = dut
