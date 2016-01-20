@@ -63,44 +63,42 @@ class TestPmdrssHash(TestCase):
         """
         global reta_lines
         self.tester.scapy_foreground()
-        self.tester.scapy_append('sys.path.append("./")')
-        self.tester.scapy_append('from sctp import *')
         self.dut.send_expect("start", "testpmd>")
         mac = self.dut.get_mac_address(0)
 
         # send packet with different source and dest ip
         if tran_type == "ipv4-other":
             for i in range(10):
-                packet = r'sendp([Ether(dst="%s")/IP(src="192.168.0.%d", dst="192.168.0.%d")], iface="%s")' % (
-                    mac, i + 1, i + 2, itf)
+                packet = r'sendp([Ether(dst="%s", src=get_if_hwaddr("%s"))/IP(src="192.168.0.%d", dst="192.168.0.%d")], iface="%s")' % (
+                    mac, itf, i + 1, i + 2, itf)
                 self.tester.scapy_append(packet)
                 self.tester.scapy_execute()
                 time.sleep(.5)
         elif tran_type == "ipv4-tcp":
             for i in range(10):
-                packet = r'sendp([Ether(dst="%s")/IP(src="192.168.0.%d", dst="192.168.0.%d")/TCP(sport=1024,dport=1024)], iface="%s")' % (
-                    mac, i + 1, i + 2, itf)
+                packet = r'sendp([Ether(dst="%s", src=get_if_hwaddr("%s"))/IP(src="192.168.0.%d", dst="192.168.0.%d")/TCP(sport=1024,dport=1024)], iface="%s")' % (
+                    mac, itf, i + 1, i + 2, itf)
                 self.tester.scapy_append(packet)
                 self.tester.scapy_execute()
                 time.sleep(.5)
         elif tran_type == "ipv4-udp":
             for i in range(10):
-                packet = r'sendp([Ether(dst="%s")/IP(src="192.168.0.%d", dst="192.168.0.%d")/UDP(sport=1024,dport=1024)], iface="%s")' % (
-                    mac, i + 1, i + 2, itf)
+                packet = r'sendp([Ether(dst="%s", src=get_if_hwaddr("%s"))/IP(src="192.168.0.%d", dst="192.168.0.%d")/UDP(sport=1024,dport=1024)], iface="%s")' % (
+                    mac, itf, i + 1, i + 2, itf)
                 self.tester.scapy_append(packet)
                 self.tester.scapy_execute()
                 time.sleep(.5)
         elif tran_type == "ipv4-sctp":
             for i in range(10):
-                packet = r'sendp([Ether(dst="%s")/IP(src="192.168.0.%d", dst="192.168.0.%d")/SCTP(sport=1024,dport=1024,tag=1)], iface="%s")' % (
-                    mac, i + 1, i + 2, itf)
+                packet = r'sendp([Ether(dst="%s", src=get_if_hwaddr("%s"))/IP(src="192.168.0.%d", dst="192.168.0.%d")/SCTP(sport=1024,dport=1024,tag=1)], iface="%s")' % (
+                    mac, itf, i + 1, i + 2, itf)
                 self.tester.scapy_append(packet)
                 self.tester.scapy_execute()
                 time.sleep(.5)
         elif tran_type == "ipv4-frag":
             for i in range(10):
-                packet = r'sendp([Ether(dst="%s")/IP(src="192.168.0.%d", dst="192.168.0.%d",frag=1,flags="MF")], iface="%s")' % (
-                    mac, i + 1, i + 2, itf)
+                packet = r'sendp([Ether(dst="%s", src=get_if_hwaddr("%s"))/IP(src="192.168.0.%d", dst="192.168.0.%d",frag=1,flags="MF")], iface="%s")' % (
+                    mac, itf, i + 1, i + 2, itf)
                 self.tester.scapy_append(packet)
                 self.tester.scapy_execute()
                 time.sleep(.5)
@@ -114,71 +112,68 @@ class TestPmdrssHash(TestCase):
 
         elif tran_type == "ipv6-other":
             for i in range(10):
-                packet = r'sendp([Ether(dst="%s")/IPv6(src="3ffe:2501:200:1fff::%d", dst="3ffe:2501:200:3::%d")], iface="%s")' % (
-                    mac, i + 1, i + 2, itf)
+                packet = r'sendp([Ether(dst="%s", src=get_if_hwaddr("%s"))/IPv6(src="3ffe:2501:200:1fff::%d", dst="3ffe:2501:200:3::%d")], iface="%s")' % (
+                    mac, itf, i + 1, i + 2, itf)
                 self.tester.scapy_append(packet)
                 self.tester.scapy_execute()
                 time.sleep(.5)
         elif tran_type == "ipv6-tcp":
             for i in range(10):
-                packet = r'sendp([Ether(dst="%s")/IPv6(src="3ffe:2501:200:1fff::%d", dst="3ffe:2501:200:3::%d")/TCP(sport=1024,dport=1024)], iface="%s")' % (
-                    mac, i + 1, i + 2, itf)
+                packet = r'sendp([Ether(dst="%s", src=get_if_hwaddr("%s"))/IPv6(src="3ffe:2501:200:1fff::%d", dst="3ffe:2501:200:3::%d")/TCP(sport=1024,dport=1024)], iface="%s")' % (
+                    mac, itf, i + 1, i + 2, itf)
                 self.tester.scapy_append(packet)
                 self.tester.scapy_execute()
                 time.sleep(.5)
         elif tran_type == "ipv6-udp":
             for i in range(10):
-                packet = r'sendp([Ether(dst="%s")/IPv6(src="3ffe:2501:200:1fff::%d", dst="3ffe:2501:200:3::%d")/UDP(sport=1024,dport=1024)], iface="%s")' % (
-                    mac, i + 1, i + 2, itf)
+                packet = r'sendp([Ether(dst="%s", src=get_if_hwaddr("%s"))/IPv6(src="3ffe:2501:200:1fff::%d", dst="3ffe:2501:200:3::%d")/UDP(sport=1024,dport=1024)], iface="%s")' % (
+                    mac, itf, i + 1, i + 2, itf)
                 self.tester.scapy_append(packet)
                 self.tester.scapy_execute()
                 time.sleep(.5)
         elif tran_type == "ipv6-sctp":
             for i in range(10):
-                packet = r'sendp([Ether(dst="%s")/IPv6(src="3ffe:2501:200:1fff::%d", dst="3ffe:2501:200:3::%d")/SCTP(sport=1024,dport=1024,tag=1)], iface="%s")' % (
-                    mac, i + 1, i + 2, itf)
+                packet = r'sendp([Ether(dst="%s", src=get_if_hwaddr("%s"))/IPv6(src="3ffe:2501:200:1fff::%d", dst="3ffe:2501:200:3::%d")/SCTP(sport=1024,dport=1024,tag=1)], iface="%s")' % (
+                    mac, itf, i + 1, i + 2, itf)
                 self.tester.scapy_append(packet)
                 self.tester.scapy_execute()
                 time.sleep(.5)
         elif tran_type == "ipv6-frag":
             for i in range(10):
-                packet = r'sendp([Ether(dst="%s")/IPv6(src="3ffe:2501:200:1fff::%d", dst="3ffe:2501:200:3::%d",nh=44)/IPv6ExtHdrFragment()], iface="%s")' % (
-                    mac, i + 1, i + 2, itf)
+                packet = r'sendp([Ether(dst="%s", src=get_if_hwaddr("%s"))/IPv6(src="3ffe:2501:200:1fff::%d", dst="3ffe:2501:200:3::%d",nh=44)/IPv6ExtHdrFragment()], iface="%s")' % (
+                    mac, itf, i + 1, i + 2, itf)
                 self.tester.scapy_append(packet)
                 self.tester.scapy_execute()
                 time.sleep(.5)
         else:
             print "\ntran_type error!\n"
 
-        out = self.dut.send_expect("stop", "testpmd>")
-        print "******************************************************"
-        print out
-        print "*****************************************************"
+        out = self.dut.get_session_output(timeout=1)
+        self.dut.send_expect("stop", "testpmd>")
         lines = out.split("\r\n")
         reta_line = {}
         # collect the hash result and the queue id
         for line in lines:
             line = line.strip()
-            if len(line) != 0 and line.startswith(("src=",)):
-                for item in line.split("-"):
-                    item = item.strip()
-                    print item
-                    if(item.startswith("RSS hash")):
-                        name, value = item.split("=", 1)
-
-                reta_line[name.strip()] = value.strip()
-                reta_lines.append(reta_line)
+            if len(line) != 0 and line.strip().startswith("port "):
                 reta_line = {}
-            elif len(line) != 0 and line.strip().startswith("port "):
                 rexp = r"port (\d)/queue (\d{1,2}): received (\d) packets"
                 m = re.match(rexp, line.strip())
                 if m:
                     reta_line["port"] = m.group(1)
                     reta_line["queue"] = m.group(2)
-            elif len(line) != 0 and line.startswith("stop"):
-                break
-            else:
-                pass
+
+            elif len(line) != 0 and line.startswith(("src=",)):
+                if "RSS hash" not in line:
+                    continue
+                for item in line.split("-"):
+                    item = item.strip()
+                    if(item.startswith("RSS hash")):
+                        name, value = item.split("=", 1)
+
+                reta_line[name.strip()] = value.strip()
+                reta_lines.append(reta_line)
+
         self.verifyResult()
 
     def verifyResult(self):
@@ -219,8 +214,6 @@ class TestPmdrssHash(TestCase):
         """
         global reta_lines
         self.tester.scapy_foreground()
-        self.tester.scapy_append('sys.path.append("./")')
-        self.tester.scapy_append('from sctp import *')
         self.dut.send_expect("start", "testpmd>")
         mac = self.dut.get_mac_address(0)
 
@@ -358,14 +351,21 @@ class TestPmdrssHash(TestCase):
         else:
             print "\ntran_type error!\n"
 
-        out = self.dut.send_expect("stop", "testpmd>")
+        out = self.dut.get_session_output(timeout=1)
+        self.dut.send_expect("stop", "testpmd>")
         lines = out.split("\r\n")
-        reta_line = {}
 
         # collect the hash result of five tuple and the queue id
         for line in lines:
             line = line.strip()
-            if len(line) != 0 and line.startswith(("src=",)):
+            if len(line) != 0 and line.strip().startswith("port "):
+                reta_line = {}
+                rexp = r"port (\d)/queue (\d{1,2}): received (\d) packets"
+                m = re.match(rexp, line.strip())
+                if m:
+                    reta_line["port"] = m.group(1)
+                    reta_line["queue"] = m.group(2)
+            elif len(line) != 0 and line.startswith(("src=",)):
                 for item in line.split("-"):
                     item = item.strip()
                     if(item.startswith("RSS hash")):
@@ -373,17 +373,6 @@ class TestPmdrssHash(TestCase):
 
                 reta_line[name.strip()] = value.strip()
                 reta_lines.append(reta_line)
-                reta_line = {}
-            elif len(line) != 0 and line.strip().startswith("port "):
-                rexp = r"port (\d)/queue (\d{1,2}): received (\d) packets"
-                m = re.match(rexp, line.strip())
-                if m:
-                    reta_line["port"] = m.group(1)
-                    reta_line["queue"] = m.group(2)
-            elif len(line) != 0 and line.startswith("stop"):
-                break
-            else:
-                pass
 
         self.verifyResult_symmetric()
 
@@ -422,22 +411,20 @@ class TestPmdrssHash(TestCase):
         self.verify(
             sum(result) == 0, "the symmetric RSS hash function failed!")
 
-    #
-    #
-    #
-    # Test cases.
-    #
     def set_up_all(self):
         """
         Run at the start of each test suite.
         """
 
-        self.verify(
-            self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single"], "NIC Unsupported: " + str(self.nic))
+        self.verify(self.nic in ["fortville_eagle", "fortville_spirit",
+                    "fortville_spirit_single", "redrockcanyou"],
+                    "NIC Unsupported: " + str(self.nic))
         global reta_num
         if self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single"]:
             reta_num = 512
         elif self.nic in ["niantic"]:
+            reta_num = 128
+        elif self.nic in ["redrockcanyou"]:
             reta_num = 128
         else:
             self.verify(False, "NIC Unsupported:%s" % str(self.nic))
@@ -582,15 +569,17 @@ class TestPmdrssHash(TestCase):
                 (self.target, self.dut.get_memory_channels(), queue, queue), "testpmd> ", 120)
 
             for iptype, rsstype in iptypes.items():
-                print "***********************%s rss test********************************" % iptype
+                self.logger.info("***********************%s rss test********************************" % iptype)
                 self.dut.send_expect("set verbose 8", "testpmd> ")
                 self.dut.send_expect("set fwd rxonly", "testpmd> ")
                 self.dut.send_expect(
                     "set nbcore %d" % (queue + 1), "testpmd> ")
 
                 self.dut.send_expect("port stop all", "testpmd> ")
-                self.dut.send_expect(
-                    "set_hash_global_config 0 simple_xor %s enable" % iptype, "testpmd> ")
+                # some nic not support change hash algorithm
+                if self.nic not in ["redrockcanyou"]:
+                    self.dut.send_expect(
+                        "set_hash_global_config 0 simple_xor %s enable" % iptype, "testpmd> ")
                 # self.dut.send_expect("port config all rss ip", "testpmd> ")
                 self.dut.send_expect("port start all", "testpmd> ")
                 self.dut.send_expect(

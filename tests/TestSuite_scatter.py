@@ -36,6 +36,7 @@ Test Scattered Packets.
 import dts
 from test_case import TestCase
 from pmd_output import PmdOutput
+from packet import Packet, sniff_packets, load_sniff_packets, strip_pktload
 import time
 #
 #
@@ -54,47 +55,31 @@ class TestScatter(TestCase):
         """
         dutPorts = self.dut.get_ports(self.nic)
         # Verify that enough ports are available
-        self.verify(len(dutPorts) >= 2, "Insufficient ports")
+        self.verify(len(dutPorts) >= 1, "Insufficient ports")
+        self.port = dutPorts[0]
         self.pmdout = PmdOutput(self.dut)
         if self.nic in ["niantic", "sageville", "fortpark", "fortville_eagle", "fortville_spirit", "fortville_spirit_single", "redrockcanyou", "ironpond", "twinpond", "springfountain"]:
             self.mbsize = 2048
         else:
             self.mbsize = 1024
 
-    def start_tcpdump(self, tester_rx_intf):
-        self.tester.send_expect("rm -rf ./scatter.cap", "#")
-        self.tester.send_expect("tcpdump -i %s -x -w ./scatter.cap 2>/dev/null &" % tester_rx_intf, "#")
-
-    def get_tcpdump_packet(self):
-        self.tester.send_expect("killall tcpdump", "#")
-        return self.tester.send_expect("tcpdump -nn -x -r ./scatter.cap", "#")
-
-    def scatter_pktgen_send_packet(self, sPortid, rPortid, pktsize, num=1):
+    def scatter_pktgen_send_packet(self, pktsize):
         """
         Functional test for scatter packets.
         """
-        sport = self.tester.get_local_port(sPortid)
-        sintf = self.tester.get_interface(sport)
-        smac = self.tester.get_mac(sport)
-        dmac = self.dut.get_mac_address(sPortid)
-        rport = self.tester.get_local_port(rPortid)
-        rintf = self.tester.get_interface(rport)
-        self.tester.send_expect("ifconfig %s mtu 9000" % sintf, "#")
-        self.tester.send_expect("ifconfig %s mtu 9000" % rintf, "#")
+        tester_port = self.tester.get_local_port(self.port)
+        intf = self.tester.get_interface(tester_port)
+        dmac = self.dut.get_mac_address(self.port)
+        self.tester.send_expect("ifconfig %s mtu 9000" % intf, "#")
 
-        self.start_tcpdump(rintf)
+        inst = sniff_packets(intf)
+        pkt = Packet(pkt_type="IP_RAW", pkt_len=pktsize)
+        pkt.config_layer('ether', {'dst': dmac})
+        pkt.send_pkt(tx_port=intf)
+        sniff_pkts = load_sniff_packets(inst)
 
-        pktlen = pktsize - 18
-        padding = pktlen - 20
-
-        self.tester.scapy_append(
-            'sendp([Ether(src="%s",dst="%s")/IP(len=%s)/Raw(load="\x50"*%s)], iface="%s")' % (smac, dmac,pktlen, padding, sintf))
-        time.sleep(3)
-        self.tester.scapy_execute()
-        time.sleep(5) #wait for scapy capture subprocess exit
-        res = self.get_tcpdump_packet()
-        self.tester.send_expect("ifconfig %s mtu 1500" % sintf, "#")
-        self.tester.send_expect("ifconfig %s mtu 1500" % rintf, "#")
+        res = strip_pktload(sniff_pkts[0], layer="L4")
+        self.tester.send_expect("ifconfig %s mtu 1500" % intf, "#")
         return res
 
     def set_up(self):
@@ -107,23 +92,18 @@ class TestScatter(TestCase):
         """
         Scatter 2048 mbuf
         """
-        cores = self.dut.get_core_list('1S/2C/2T')
-        coreMask = dts.create_mask(cores)
-        dutPorts = self.dut.get_ports(self.nic)
-        portMask = dts.create_mask(dutPorts[:2])
-
         # set the mbuf size to 1024
         out = self.pmdout.start_testpmd(
-                "1S/2C/2T", "--mbcache=200 --mbuf-size=%d --portmask=%s --max-pkt-len=9000" % (self.mbsize, portMask))
+                "1S/2C/1T", "--mbcache=200 --mbuf-size=%d --portmask=0x1 --max-pkt-len=9000 --port-topology=loop" % (self.mbsize))
+
         self.verify("Error" not in out, "launch error 1")
 
         self.dut.send_expect("set fwd mac", "testpmd> ", 120)
         self.dut.send_expect("start", "testpmd> ")
 
         for offset in [-1, 0, 1, 4, 5]:
-            ret = self.scatter_pktgen_send_packet(
-                dutPorts[0], dutPorts[1], self.mbsize + offset)
-            self.verify("5050 5050 5050 5050 5050 5050 5050" in ret, "packet receive error")
+            ret = self.scatter_pktgen_send_packet(self.mbsize + offset)
+            self.verify("58 58 58 58 58 58 58 58" in ret, "packet receive error")
 
         self.dut.send_expect("stop", "testpmd> ")
         self.dut.send_expect("quit", "# ", 30)

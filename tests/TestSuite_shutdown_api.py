@@ -166,6 +166,10 @@ class TestShutdownApi(TestCase):
         """
         Check link status of the ports.
         """
+        # RRC not support link speed change
+        if self.nic in ['redrockcanyou']:
+            return
+
         for port in self.ports:
             out = self.tester.send_expect(
                 "ethtool %s" % self.tester.get_interface(self.tester.get_local_port(port)), "# ")
@@ -187,7 +191,6 @@ class TestShutdownApi(TestCase):
         self.pmdout.start_testpmd("Default", "--portmask=%s" % dts.create_mask(self.ports), socket=self.ports_socket)
 
         self.dut.send_expect("set fwd mac", "testpmd>")
-        self.dut.send_expect("set promisc all off", "testpmd> ")
         self.dut.send_expect("start", "testpmd> ")
         self.check_forwarding()
         self.dut.send_expect("stop", "testpmd> ")
@@ -257,7 +260,6 @@ class TestShutdownApi(TestCase):
         self.dut.send_expect("port config all txq 2", "testpmd> ")
         self.dut.send_expect("set coremask %s" % fwdcoremask, "testpmd> ")
         self.dut.send_expect("set fwd mac", "testpmd>")
-        self.dut.send_expect("set promisc all off", "testpmd> ")
         self.dut.send_expect("port start all", "testpmd> ", 100)
         out = self.dut.send_expect("show config rxtx", "testpmd> ")
         self.verify("RX queues=2" in out, "RX queues not reconfigured properly")
@@ -275,7 +277,6 @@ class TestShutdownApi(TestCase):
         self.dut.send_expect("port stop all", "testpmd> ", 100)
         self.dut.send_expect("port config all crc-strip on", "testpmd> ")
         self.dut.send_expect("set fwd mac", "testpmd>")
-        self.dut.send_expect("set promisc all off", "testpmd>")
         self.dut.send_expect("port start all", "testpmd> ", 100)
         out = self.dut.send_expect("show config rxtx", "testpmd> ")
         self.verify(
@@ -383,7 +384,6 @@ class TestShutdownApi(TestCase):
         self.dut.send_expect("port stop all", "testpmd> ", 100)
         self.dut.send_expect("port config rss ip", "testpmd> ")
         self.dut.send_expect("set fwd mac", "testpmd>")
-        self.dut.send_expect("set promisc all off", "testpmd>")
         self.dut.send_expect("port start all", "testpmd> ", 100)
         self.dut.send_expect("start", "testpmd> ")
         self.check_forwarding()
@@ -398,7 +398,6 @@ class TestShutdownApi(TestCase):
         self.dut.send_expect("port config all rxd 1024", "testpmd> ")
         self.dut.send_expect("port config all txd 1024", "testpmd> ")
         self.dut.send_expect("set fwd mac", "testpmd>")
-        self.dut.send_expect("set promisc all off", "testpmd>")
         self.dut.send_expect("port start all", "testpmd> ", 100)
         out = self.dut.send_expect("show config rxtx", "testpmd> ")
         self.verify(
@@ -418,7 +417,6 @@ class TestShutdownApi(TestCase):
         self.dut.send_expect("port config all rxd 1024", "testpmd> ")
         self.dut.send_expect("port config all txd 1024", "testpmd> ")
         self.dut.send_expect("set fwd mac", "testpmd>")
-        self.dut.send_expect("set promisc all off", "testpmd>")
         self.dut.send_expect("port start all", "testpmd> ", 100)
         out = self.dut.send_expect("show config rxtx", "testpmd> ")
         self.verify(
@@ -470,7 +468,6 @@ class TestShutdownApi(TestCase):
         self.verify("hthresh=64" in out, "TX descriptor not reconfigured properly")
         self.verify("wthresh=64" in out, "TX descriptor not reconfigured properly")
         self.dut.send_expect("set fwd mac", "testpmd>")
-        self.dut.send_expect("set promisc all off", "testpmd>")
         self.dut.send_expect("start", "testpmd> ")
         self.check_forwarding()
 
@@ -490,7 +487,6 @@ class TestShutdownApi(TestCase):
         for _ in range(stress_iterations):
             self.dut.send_expect("port stop all", "testpmd> ", 100)
             self.dut.send_expect("set fwd mac", "testpmd>")
-            self.dut.send_expect("set promisc all off", "testpmd>")
             self.dut.send_expect("port start all", "testpmd> ", 100)
             self.dut.send_expect("start", "testpmd> ")
             self.check_forwarding()
@@ -508,7 +504,6 @@ class TestShutdownApi(TestCase):
 
         self.pmdout.start_testpmd("Default", "--portmask=%s" % dts.create_mask(self.ports), socket=self.ports_socket)
         self.dut.send_expect("set fwd mac", "testpmd>")
-        self.dut.send_expect("set promisc all off", "testpmd>")
         self.dut.send_expect("start", "testpmd>")
 
         ports_num = len(self.ports)

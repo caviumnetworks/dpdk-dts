@@ -68,7 +68,6 @@ class TestChecksumOffload(TestCase):
                                       (self.portMask) + "--disable-hw-vlan --enable-rx-cksum --crc-strip", socket=self.ports_socket)
             self.dut.send_expect("set verbose 1", "testpmd>")
             self.dut.send_expect("set fwd csum", "testpmd>")
-            self.dut.send_expect("set promisc all off", "testpmd>")
 
     def checksum_enablehw(self, port):
             self.dut.send_expect("csum set ip hw %d" % port, "testpmd>")
@@ -89,15 +88,13 @@ class TestChecksumOffload(TestCase):
         tx_interface = self.tester.get_interface(self.tester.get_local_port(self.dut_ports[1]))
         rx_interface = self.tester.get_interface(self.tester.get_local_port(self.dut_ports[0]))
 
-	sniff_src = self.dut.get_mac_address(self.dut_ports[0])
+        sniff_src = self.dut.get_mac_address(self.dut_ports[0])
         checksum_pattern = re.compile("chksum.*=.*(0x[0-9a-z]+)")
 
         chksum = dict()
         result = dict()
 
         self.tester.send_expect("scapy", ">>> ")
-        self.tester.send_expect('sys.path.append("./")', ">>> ")
-        self.tester.send_expect('from sctp import *', ">>> ")
 
         for packet_type in packets_expected.keys():
             self.tester.send_expect("p = %s" % packets_expected[packet_type], ">>>")
@@ -108,9 +105,6 @@ class TestChecksumOffload(TestCase):
         self.tester.send_expect("exit()", "#")
 
         self.tester.scapy_background()
-        self.tester.scapy_append('sys.path.append("./")')
-        self.tester.scapy_append('import sctp')
-        self.tester.scapy_append('from sctp import *')
         self.tester.scapy_append('p = sniff(filter="ether src %s", iface="%s", count=%d)' % (sniff_src,rx_interface, len(packets_sent)))
         self.tester.scapy_append('nr_packets=len(p)')
         self.tester.scapy_append('reslist = [p[i].sprintf("%IP.chksum%;%TCP.chksum%;%UDP.chksum%;%SCTP.chksum%") for i in range(nr_packets)]')
@@ -119,9 +113,6 @@ class TestChecksumOffload(TestCase):
 
         # Send packet.
         self.tester.scapy_foreground()
-        self.tester.scapy_append('sys.path.append("./")')
-        self.tester.scapy_append('import sctp')
-        self.tester.scapy_append('from sctp import *')
 
         for packet_type in packets_sent.keys():
             self.tester.scapy_append('sendp([%s], iface="%s")' % (packets_sent[packet_type], tx_interface))

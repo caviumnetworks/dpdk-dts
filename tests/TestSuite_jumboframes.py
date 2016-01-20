@@ -119,6 +119,12 @@ class TestJumboframes(TestCase):
 
         self.port_mask = dts.create_mask([self.rx_port, self.tx_port])
 
+        if self.nic == "redrockcanyou":
+            netobj = self.dut.ports_info[self.tx_port]['port']
+            netobj.enable_jumbo(framesize = ETHER_JUMBO_FRAME_MTU)
+            netobj = self.dut.ports_info[self.rx_port]['port']
+            netobj.enable_jumbo(framesize = ETHER_JUMBO_FRAME_MTU)
+
         self.tester.send_expect("ifconfig %s mtu %s" % (self.tester.get_interface(self.tester.get_local_port(self.rx_port)), ETHER_JUMBO_FRAME_MTU + 200), "# ")
         self.tester.send_expect("ifconfig %s mtu %s" % (self.tester.get_interface(self.tester.get_local_port(self.tx_port)), ETHER_JUMBO_FRAME_MTU + 200), "# ")
 
@@ -136,9 +142,7 @@ class TestJumboframes(TestCase):
         frame on testpmd app.
         """
         self.pmdout.start_testpmd("Default", "--max-pkt-len=%d" % (ETHER_STANDARD_MTU))
-        if self.nic == "redrockcanyou":
-            self.dut.send_expect("set promisc all off", "testpmd> ")
-            self.dut.send_expect("set fwd mac", "testpmd> ")
+        self.dut.send_expect("set fwd mac", "testpmd> ")
         self.dut.send_expect("start", "testpmd> ")
 
         self.jumboframes_send_packet(ETHER_STANDARD_MTU - 1)
@@ -171,9 +175,7 @@ class TestJumboframes(TestCase):
         packet forwrding should be support correct.
         """
         self.pmdout.start_testpmd("Default", "--max-pkt-len=%s" % (ETHER_JUMBO_FRAME_MTU))
-        if self.nic == "redrockcanyou":
-            self.dut.send_expect("set promisc all off", "testpmd> ")
-            self.dut.send_expect("set fwd mac", "testpmd> ")
+        self.dut.send_expect("set fwd mac", "testpmd> ")
         self.dut.send_expect("start", "testpmd> ")
 
         self.jumboframes_send_packet(1517)
@@ -188,9 +190,7 @@ class TestJumboframes(TestCase):
         packet can be forwarded correct.
         """
         self.pmdout.start_testpmd("Default", "--max-pkt-len=%s" % (ETHER_JUMBO_FRAME_MTU))
-        if self.nic == "redrockcanyou":
-            self.dut.send_expect("set promisc all off", "testpmd> ")
-            self.dut.send_expect("set fwd mac", "testpmd> ")
+        self.dut.send_expect("set fwd mac", "testpmd> ")
         self.dut.send_expect("start", "testpmd> ")
 
         self.jumboframes_send_packet(ETHER_STANDARD_MTU + 1)
@@ -206,9 +206,7 @@ class TestJumboframes(TestCase):
         packet which the length bigger than MTU can not be forwarded.
         """
         self.pmdout.start_testpmd("Default", "--max-pkt-len=%s" % (ETHER_JUMBO_FRAME_MTU))
-        if self.nic == "redrockcanyou":
-            self.dut.send_expect("set promisc all off", "testpmd> ")
-            self.dut.send_expect("set fwd mac", "testpmd> ")
+        self.dut.send_expect("set fwd mac", "testpmd> ")
         self.dut.send_expect("start", "testpmd> ")
         
         """

@@ -141,11 +141,10 @@ class TestQueueStartStop(TestCase):
         """
         #dpdk start
         try:
-            self.dut.send_expect("./app/test-pmd/testpmd -c 0xf -n 4 -- -i --portmask=0x3", "testpmd>", 120)
+            self.dut.send_expect("./app/test-pmd/testpmd -c 0xf -n 4 -- -i --portmask=0x1 --port-topology=loop", "testpmd>", 120)
             self.dut.send_expect("set fwd mac", "testpmd>")
-            self.dut.send_expect("set promisc all off", "testpmd>")
             self.dut.send_expect("start", "testpmd>")
-            self.check_forwarding([0, 1], self.nic)
+            self.check_forwarding([0, 0], self.nic)
         except Exception, e:
             raise IOError("dpdk start and first forward failure: %s" % e)
 
@@ -155,15 +154,15 @@ class TestQueueStartStop(TestCase):
             self.dut.send_expect("stop", "testpmd>")
             self.dut.send_expect("port 0 rxq 0 stop", "testpmd>")
             self.dut.send_expect("start", "testpmd>")
-            self.check_forwarding([0, 1], self.nic, received=False)
+            self.check_forwarding([0, 0], self.nic, received=False)
 
             # start rx queue test
             print "test start rx queue stop tx queue"
             self.dut.send_expect("stop", "testpmd>")
             self.dut.send_expect("port 0 rxq 0 start", "testpmd>")
-            self.dut.send_expect("port 1 txq 0 stop", "testpmd>")
+            self.dut.send_expect("port 0 txq 0 stop", "testpmd>")
             self.dut.send_expect("start", "testpmd>")
-            self.check_forwarding([0, 1], self.nic, received=False)
+            self.check_forwarding([0, 0], self.nic, received=False)
             out = self.dut.get_session_output()
         except Exception, e:
             raise IOError("queue start/stop forward failure: %s" % e)
@@ -174,9 +173,9 @@ class TestQueueStartStop(TestCase):
             # start tx queue test
             print "test start rx and tx queue"
             self.dut.send_expect("stop", "testpmd>")
-            self.dut.send_expect("port 1 txq 0 start", "testpmd>")
+            self.dut.send_expect("port 0 txq 0 start", "testpmd>")
             self.dut.send_expect("start", "testpmd>")
-            self.check_forwarding([0, 1], self.nic)
+            self.check_forwarding([0, 0], self.nic)
         except Exception, e:
             raise IOError("queue start/stop forward failure: %s" % e)
 

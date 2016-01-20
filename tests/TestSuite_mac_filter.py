@@ -38,6 +38,7 @@ import dts
 import time
 from test_case import TestCase
 from pmd_output import PmdOutput
+from packet import Packet
 
 class TestWhitelist(TestCase):
 
@@ -58,7 +59,7 @@ class TestWhitelist(TestCase):
         self.pmdout = PmdOutput(self.dut)
         self.pmdout.start_testpmd("Default", "--portmask=%s" % portMask)
         self.dut.send_expect("set verbose 1", "testpmd> ")
-        self.dut.send_expect("set fwd mac", "testpmd> ")
+        self.dut.send_expect("set fwd rxonly", "testpmd> ")
         self.dut.send_expect("start", "testpmd> ")
 
         # get dest address from self.target port
@@ -85,11 +86,9 @@ class TestWhitelist(TestCase):
         Send 1 packet to portid.
         """
         itf = self.tester.get_interface(self.tester.get_local_port(portid))
-        self.tester.scapy_foreground()
-        self.tester.scapy_append('sendp([Ether(dst="%s", src="52:00:00:00:00:00")/Raw(load="X"*26)], iface="%s", count=%d)' % (destMac,
-                                                                                             itf, self.frames_to_send))
-        self.tester.scapy_execute()
-        time.sleep(5)
+        pkt = Packet(pkt_type='UDP')
+        pkt.config_layer('ether', {'src': '52:00:00:00:00:00', 'dst': destMac})
+        pkt.send_pkt(tx_port=itf)
 
     def test_add_remove_mac_address(self):
         """
@@ -97,19 +96,20 @@ class TestWhitelist(TestCase):
         Remove mac address and check packet can't received
         """
         # initialise first port without promiscuous mode
-        fake_mac_addr = "01:01:01:00:00:00"
+        fake_mac_addr = "00:01:01:00:00:00"
         portid = self.dutPorts[0]
         txportid = self.dutPorts[1]
         self.dut.send_expect("set promisc %d off" % portid, "testpmd> ")
 
-        out = self.dut.send_expect("show port stats %d" % txportid, "testpmd> ")
-        pre_rxpkt = dts.regexp(out, "TX-packets: ([0-9]+)")
+        self.dut.send_expect("clear port stats all", "testpmd> ")
+
+        out = self.dut.send_expect("show port stats %d" % portid, "testpmd> ")
+        pre_rxpkt = dts.regexp(out, "RX-packets: ([0-9]+)")
 
         # send one packet with the portid MAC address
-        self.dut.send_expect("clear port stats all", "testpmd> ")
         self.whitelist_send_packet(portid, self.dest)
-        out = self.dut.send_expect("show port stats %d" % txportid, "testpmd> ")
-        cur_rxpkt = dts.regexp(out, "TX-packets: ([0-9]+)")
+        out = self.dut.send_expect("show port stats %d" % portid, "testpmd> ")
+        cur_rxpkt = dts.regexp(out, "RX-packets: ([0-9]+)")
         # check the packet increase
         self.verify(int(cur_rxpkt) == int(pre_rxpkt) + self.frames_to_send,
                     "Packet has not been received on default address")
@@ -118,8 +118,8 @@ class TestWhitelist(TestCase):
         self.whitelist_send_packet(portid, fake_mac_addr)
 
         pre_rxpkt = cur_rxpkt
-        out = self.dut.send_expect("show port stats %d" % txportid, "testpmd> ")
-        cur_rxpkt = dts.regexp(out, "TX-packets: ([0-9]+)")
+        out = self.dut.send_expect("show port stats %d" % portid, "testpmd> ")
+        cur_rxpkt = dts.regexp(out, "RX-packets: ([0-9]+)")
 
         # check the packet DO NOT increase
         self.verify(int(cur_rxpkt) == int(pre_rxpkt),
@@ -131,8 +131,8 @@ class TestWhitelist(TestCase):
         self.whitelist_send_packet(portid, fake_mac_addr)
 
         pre_rxpkt = cur_rxpkt
-        out = self.dut.send_expect("show port stats %d" % txportid, "testpmd> ")
-        cur_rxpkt = dts.regexp(out, "TX-packets: ([0-9]+)")
+        out = self.dut.send_expect("show port stats %d" % portid, "testpmd> ")
+        cur_rxpkt = dts.regexp(out, "RX-packets: ([0-9]+)")
 
         # check the packet increase
         self.verify(int(cur_rxpkt) == int(pre_rxpkt) + self.frames_to_send,
@@ -145,8 +145,8 @@ class TestWhitelist(TestCase):
         self.whitelist_send_packet(portid, fake_mac_addr)
 
         pre_rxpkt = cur_rxpkt
-        out = self.dut.send_expect("show port stats %d" % txportid, "testpmd> ")
-        cur_rxpkt = dts.regexp(out, "TX-packets: ([0-9]+)")
+        out = self.dut.send_expect("show port stats %d" % portid, "testpmd> ")
+        cur_rxpkt = dts.regexp(out, "RX-packets: ([0-9]+)")
 
         # check the packet increase
         self.verify(int(cur_rxpkt) == int(pre_rxpkt),
@@ -180,7 +180,7 @@ class TestWhitelist(TestCase):
 
         # add 1 address more that max number
         i = 0
-        base_addr = "01:00:00:00:00:"
+        base_addr = "00:01:00:00:00:"
         while i <= int(self.max_mac_addr):
             new_addr = base_addr + "%0.2X" % i
             out = self.dut.send_expect("mac_addr add %d" % portid + " %s" % new_addr, "testpmd>")
