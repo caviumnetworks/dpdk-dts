@@ -29,7 +29,6 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
 from crb import Crb
 from config import PortConf, PORTCONF
 from exception import PortConfigParseException
@@ -39,6 +38,44 @@ from net_device import NetDevice
 DEF_PASSWD = 's'
 TP_BINARY = 'TestPoint'
 
+FUNC_RULES = [
+            # disable cut through for jumbo frame case
+            'set port config 20,22 tx_cut_through off',
+            # disable mac learning
+            'set port config 0..22 learning off',
+            #redirect PEP0 to EPL0
+            'create acl 0',
+            'create acl-rule 0 0',
+            'add acl-rule condition 0 0 src-port 20',
+            'add acl-rule action 0 0 redirect 1',
+            'add acl-rule action 0 0 count',
+            #redirect PEP1 to EPL1
+            'create acl 1',
+            'create acl-rule 1 0',
+            'add acl-rule condition 1 0 src-port 22',
+            'add acl-rule action 1 0 redirect 5',
+            'add acl-rule action 1 0 count',
+            'apply acl',
+           ]
+
+PERF_RULES = [
+             'set port config 0..11 parser_cfg L4', # frame parser up to L4
+             # good for performance
+             'set api attribute boolean api.paritySweeper.enable false',
+             'reg dbg set 0 CM_SOFTDROP_WM 0x5f005f00 0 0',
+             'reg dbg set 0 CM_SHARED_WM 0x5f00 0 0',
+             # rule for direct rx traffic
+             # mac filter will be useless, so only enable for perf
+             'create acl-rule 0 1',
+             'add acl-rule condition 0 1 src-port 1',
+             'add acl-rule action 0 1 redirect 20',
+             'add acl-rule action 0 1 count',
+             'create acl-rule 1 1',
+             'add acl-rule condition 1 1 src-port 5',
+             'add acl-rule action 1 1 redirect 22',
+             'add acl-rule action 1 1 count',
+             'apply acl',
+           ]
 
 class CtrlCrb(Crb):
     """
@@ -113,13 +150,29 @@ class RedRockCanyou(NetDevice):
         # setup function should be called after bind to igb_uio
         self.start_testpoint()
 
-    def close(self):
+    def optimize_perf(self, peer0="", peer1=""):
+        # rule which can optimize performance
+        if self.sec_port is False:
+            # applied rules
+            for rule in PERF_RULES:
+                self.ctrl_crb.send_expect("%s" %rule, "<0>%")
+            # add default mac rule
+            self.ctrl_crb.send_expect("add mac %s 1 locked port 1" % peer0, "<0>%")
+            self.ctrl_crb.send_expect("add mac %s 1 locked port 5" % peer1, "<0>%")
+
+    def stop(self):
         # second port do not need any operation
         if self.sec_port:
             return
 
         # stop testpoint
         self.stop_testpoint()
+
+    def close(self):
+        # second port do not need any operation
+        if self.sec_port:
+            return
+
         # close session
         if self.ctrl_crb.session:
             self.ctrl_crb.session.close()
@@ -142,6 +195,8 @@ class RedRockCanyou(NetDevice):
             command = TP_BINARY
 
         self.ctrl_crb.send_expect("%s" % command, "<0>%", 120)
+        for rule in FUNC_RULES:
+            self.ctrl_crb.send_expect("%s" %rule, "<0>%")
 
     def stop_testpoint(self):
         """
@@ -152,13 +207,34 @@ class RedRockCanyou(NetDevice):
     def get_control(self):
         return self.ctrl_crb
 
-    def enable_vlan(self, vlan_id=0):
+    def add_vlan(self, vlan_id=0):
         self.ctrl_crb.send_expect("create vlan %d" % vlan_id, "<0>%")
-        self.ctrl_crb.send_expect("add vlan port %d 1,5,20,22" % vlan_id, "<0>%")
+        if self.sec_port:
+            self.ctrl_crb.send_expect("add vlan port %d 5,22" % vlan_id, "<0>%")
+        else:
+            self.ctrl_crb.send_expect("add vlan port %d 1,20" % vlan_id, "<0>%")
     
-    def disable_vlan(self, vlan_id=0):
-        self.ctrl_crb.send_expect("del vlan port %d 1,5,20,22" % vlan_id, "<0>%")
+    def delete_vlan(self, vlan_id=0):
+        if self.sec_port:
+            self.ctrl_crb.send_expect("del vlan port %d 5,22" % vlan_id, "<0>%")
+        else:
+            self.ctrl_crb.send_expect("del vlan port %d 1,20" % vlan_id, "<0>%")
         self.ctrl_crb.send_expect("del vlan %d" % vlan_id, "<0>%")
 
-    def enable_jumbo(self):
-        NotImplemented
+    def add_txvlan(self, vlan_id=0):
+        if self.sec_port:
+            self.ctrl_crb.send_expect("set vlan tagging %d 5 tag" % vlan_id, "<0>%")
+        else:
+            self.ctrl_crb.send_expect("set vlan tagging %d 1 tag" % vlan_id, "<0>%")
+
+    def delete_txvlan(self, vlan_id=0):
+        if self.sec_port:
+            self.ctrl_crb.send_expect("set vlan tagging %d 5 untag" % vlan_id, "<0>%")
+        else:
+            self.ctrl_crb.send_expect("set vlan tagging %d 1 untag" % vlan_id, "<0>%")
+
+    def enable_jumbo(self, framesize=0):
+        if self.sec_port:
+            self.ctrl_crb.send_expect("set port config 5 max_frame_size %d" % framesize, "<0>%")
+        else:
+            self.ctrl_crb.send_expect("set port config 1 max_frame_size %d" % framesize, "<0>%")
