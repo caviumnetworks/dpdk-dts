@@ -322,6 +322,7 @@ class Packet(object):
         'TIMESYNC': {'layers': ['ether', 'raw'], 'cfgload': False},
         'ARP': {'layers': ['ether', 'arp'], 'cfgload': False},
         'LLDP': {'layers': ['ether', 'lldp'], 'cfgload': False},
+        'IP_RAW': {'layers': ['ether', 'ipv4', 'raw'], 'cfgload': True},
         'TCP': {'layers': ['ether', 'ipv4', 'tcp', 'raw'], 'cfgload': True},
         'UDP': {'layers': ['ether', 'ipv4', 'udp', 'raw'], 'cfgload': True},
         'VLAN_UDP': {'layers': ['ether', 'dot1q', 'ipv4', 'udp', 'raw'], 'cfgload': True},
@@ -720,6 +721,23 @@ def compare_pktload(pkt1=None, pkt2=None, layer="L2"):
         return True
     else:
         return False
+
+def strip_pktload(pkt=None, layer="L2"):
+    if layer == "L2":
+        l_idx = 0
+    elif layer == "L3":
+        l_idx = 1
+    elif layer == "L4":
+        l_idx = 2
+    else:
+        l_idx = 0
+    try:
+        load = hexstr(str(pkt.pktgen.pkt.getlayer(l_idx)), onlyhex=1)
+    except:
+        # return pass when scapy failed to extract packet
+        load = ""
+
+    return load
 
 ###############################################################################
 ###############################################################################
