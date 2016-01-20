@@ -54,9 +54,9 @@ class TestChecksumOffload(TestCase):
         # Based on h/w type, choose how many ports to use
         self.dut_ports = self.dut.get_ports(self.nic)
         # Verify that enough ports are available
-        self.verify(len(self.dut_ports) >= 2, "Insufficient ports for testing")
+        self.verify(len(self.dut_ports) >= 1, "Insufficient ports for testing")
         self.pmdout = PmdOutput(self.dut)
-        self.portMask = dts.create_mask([self.dut_ports[0], self.dut_ports[1]])
+        self.portMask = dts.create_mask([self.dut_ports[0]])
         self.ports_socket = self.dut.get_numa_id(self.dut_ports[0])
 
     def set_up(self):
@@ -65,7 +65,8 @@ class TestChecksumOffload(TestCase):
         """
         if self.dut.want_func_tests:
             self.pmdout.start_testpmd("Default", "--portmask=%s " %
-                                      (self.portMask) + "--disable-hw-vlan --enable-rx-cksum --crc-strip", socket=self.ports_socket)
+                                      (self.portMask) + "--disable-hw-vlan --enable-rx-cksum " +
+                                      "--crc-strip --port-topology=loop", socket=self.ports_socket)
             self.dut.send_expect("set verbose 1", "testpmd>")
             self.dut.send_expect("set fwd csum", "testpmd>")
 
@@ -85,7 +86,7 @@ class TestChecksumOffload(TestCase):
         """
         Validate the checksum.
         """
-        tx_interface = self.tester.get_interface(self.tester.get_local_port(self.dut_ports[1]))
+        tx_interface = self.tester.get_interface(self.tester.get_local_port(self.dut_ports[0]))
         rx_interface = self.tester.get_interface(self.tester.get_local_port(self.dut_ports[0]))
 
         sniff_src = self.dut.get_mac_address(self.dut_ports[0])
@@ -105,7 +106,7 @@ class TestChecksumOffload(TestCase):
         self.tester.send_expect("exit()", "#")
 
         self.tester.scapy_background()
-        self.tester.scapy_append('p = sniff(filter="ether src %s", iface="%s", count=%d)' % (sniff_src,rx_interface, len(packets_sent)))
+        self.tester.scapy_append('p = sniff(filter="ether src %s", iface="%s", count=%d)' % (sniff_src, rx_interface, len(packets_sent)))
         self.tester.scapy_append('nr_packets=len(p)')
         self.tester.scapy_append('reslist = [p[i].sprintf("%IP.chksum%;%TCP.chksum%;%UDP.chksum%;%SCTP.chksum%") for i in range(nr_packets)]')
         self.tester.scapy_append('import string')
@@ -154,27 +155,25 @@ class TestChecksumOffload(TestCase):
         Verify that the same number of packet are correctly received on the
         traffic generator side.
         """
-        dmac = self.dut.get_mac_address(self.dut_ports[1])
-        smac = self.dut.get_mac_address(self.dut_ports[0])
+        mac = self.dut.get_mac_address(self.dut_ports[0])
 
-        pktsChkErr = {'IP/UDP': 'Ether(dst="%s", src="52:00:00:00:00:00")/Dot1Q(vlan=1)/IP(chksum=0x0)/UDP(chksum=0xf)/("X"*46)' % dmac,
-                'IP/TCP': 'Ether(dst="%s", src="52:00:00:00:00:00")/Dot1Q(vlan=1)/IP(chksum=0x0)/TCP(chksum=0xf)/("X"*46)' % dmac,
-                'IP/SCTP': 'Ether(dst="%s", src="52:00:00:00:00:00")/Dot1Q(vlan=1)/IP(chksum=0x0)/SCTP(chksum=0xf)/("X"*48)' % dmac,
-                'IPv6/UDP': 'Ether(dst="%s", src="52:00:00:00:00:00")/Dot1Q(vlan=1)/IPv6(src="::1")/UDP(chksum=0xf)/("X"*46)' % dmac,
-                'IPv6/TCP': 'Ether(dst="%s", src="52:00:00:00:00:00")/Dot1Q(vlan=1)/IPv6(src="::1")/TCP(chksum=0xf)/("X"*46)' % dmac}
+        pktsChkErr = {'IP/UDP': 'Ether(dst="%s", src="52:00:00:00:00:00")/Dot1Q(vlan=1)/IP(chksum=0x0)/UDP(chksum=0xf)/("X"*46)' % mac,
+                'IP/TCP': 'Ether(dst="%s", src="52:00:00:00:00:00")/Dot1Q(vlan=1)/IP(chksum=0x0)/TCP(chksum=0xf)/("X"*46)' % mac,
+                'IP/SCTP': 'Ether(dst="%s", src="52:00:00:00:00:00")/Dot1Q(vlan=1)/IP(chksum=0x0)/SCTP(chksum=0xf)/("X"*48)' % mac,
+                'IPv6/UDP': 'Ether(dst="%s", src="52:00:00:00:00:00")/Dot1Q(vlan=1)/IPv6(src="::1")/UDP(chksum=0xf)/("X"*46)' % mac,
+                'IPv6/TCP': 'Ether(dst="%s", src="52:00:00:00:00:00")/Dot1Q(vlan=1)/IPv6(src="::1")/TCP(chksum=0xf)/("X"*46)' % mac}
 
-        pkts = {'IP/UDP': 'Ether(dst="02:00:00:00:00:00", src="%s")/Dot1Q(vlan=1)/IP(src="127.0.0.2")/UDP()/("X"*46)' % smac,
-                    'IP/TCP': 'Ether(dst="02:00:00:00:00:00", src="%s")/Dot1Q(vlan=1)/IP(src="127.0.0.2")/TCP()/("X"*46)' % smac,
-                    'IP/SCTP': 'Ether(dst="02:00:00:00:00:00", src="%s")/Dot1Q(vlan=1)/IP(src="127.0.0.2")/SCTP()/("X"*48)' % smac,
-                    'IPv6/UDP': 'Ether(dst="02:00:00:00:00:00", src="%s")/Dot1Q(vlan=1)/IPv6(src="::2")/UDP()/("X"*46)' % smac,
-                    'IPv6/TCP': 'Ether(dst="02:00:00:00:00:00", src="%s")/Dot1Q(vlan=1)/IPv6(src="::2")/TCP()/("X"*46)' % smac}
+        pkts = {'IP/UDP': 'Ether(dst="02:00:00:00:00:00", src="%s")/Dot1Q(vlan=1)/IP(src="127.0.0.2")/UDP()/("X"*46)' % mac,
+                    'IP/TCP': 'Ether(dst="02:00:00:00:00:00", src="%s")/Dot1Q(vlan=1)/IP(src="127.0.0.2")/TCP()/("X"*46)' % mac,
+                    'IP/SCTP': 'Ether(dst="02:00:00:00:00:00", src="%s")/Dot1Q(vlan=1)/IP(src="127.0.0.2")/SCTP()/("X"*48)' % mac,
+                    'IPv6/UDP': 'Ether(dst="02:00:00:00:00:00", src="%s")/Dot1Q(vlan=1)/IPv6(src="::2")/UDP()/("X"*46)' % mac,
+                    'IPv6/TCP': 'Ether(dst="02:00:00:00:00:00", src="%s")/Dot1Q(vlan=1)/IPv6(src="::2")/TCP()/("X"*46)' % mac}
 
-        if self.nic == 'redrockcanyou':
+        if self.nic in ['redrockcanyou', 'atwood']:
             del pktsChkErr['IP/SCTP']
             del pkts['IP/SCTP']
 
         self.checksum_enablehw(self.dut_ports[0])
-        self.checksum_enablehw(self.dut_ports[1])
         self.dut.send_expect("start", "testpmd>")
         result = self.checksum_validate(pktsChkErr, pkts)
         self.dut.send_expect("stop", "testpmd>")
@@ -187,27 +186,25 @@ class TestChecksumOffload(TestCase):
         Verify that the same number of packet are correctly received on the
         traffic generator side.
         """
-        dmac = self.dut.get_mac_address(self.dut_ports[1])
-        smac = self.dut.get_mac_address(self.dut_ports[0])
+        mac = self.dut.get_mac_address(self.dut_ports[0])
 
-        pkts = {'IP/UDP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IP(chksum=0x0)/UDP(chksum=0xf)/("X"*46)' % dmac,
-                'IP/TCP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IP(chksum=0x0)/TCP(chksum=0xf)/("X"*46)' % dmac,
-                'IP/SCTP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IP(chksum=0x0)/SCTP(chksum=0xf)/("X"*48)' % dmac,
-                'IPv6/UDP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IPv6(src="::1")/UDP(chksum=0xf)/("X"*46)' % dmac,
-                'IPv6/TCP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IPv6(src="::1")/TCP(chksum=0xf)/("X"*46)' % dmac}
+        pkts = {'IP/UDP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IP(chksum=0x0)/UDP(chksum=0xf)/("X"*46)' % mac,
+                'IP/TCP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IP(chksum=0x0)/TCP(chksum=0xf)/("X"*46)' % mac,
+                'IP/SCTP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IP(chksum=0x0)/SCTP(chksum=0xf)/("X"*48)' % mac,
+                'IPv6/UDP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IPv6(src="::1")/UDP(chksum=0xf)/("X"*46)' % mac,
+                'IPv6/TCP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IPv6(src="::1")/TCP(chksum=0xf)/("X"*46)' % mac}
 
-        pkts_ref = {'IP/UDP': 'Ether(dst="02:00:00:00:00:00", src="%s")/IP(src="127.0.0.2")/UDP()/("X"*46)' % smac,
-                    'IP/TCP': 'Ether(dst="02:00:00:00:00:00", src="%s")/IP(src="127.0.0.2")/TCP()/("X"*46)' % smac,
-                    'IP/SCTP': 'Ether(dst="02:00:00:00:00:00", src="%s")/IP(src="127.0.0.2")/SCTP()/("X"*48)' % smac,
-                    'IPv6/UDP': 'Ether(dst="02:00:00:00:00:00", src="%s")/IPv6(src="::2")/UDP()/("X"*46)' % smac,
-                    'IPv6/TCP': 'Ether(dst="02:00:00:00:00:00", src="%s")/IPv6(src="::2")/TCP()/("X"*46)' % smac}
+        pkts_ref = {'IP/UDP': 'Ether(dst="02:00:00:00:00:00", src="%s")/IP(src="127.0.0.2")/UDP()/("X"*46)' % mac,
+                    'IP/TCP': 'Ether(dst="02:00:00:00:00:00", src="%s")/IP(src="127.0.0.2")/TCP()/("X"*46)' % mac,
+                    'IP/SCTP': 'Ether(dst="02:00:00:00:00:00", src="%s")/IP(src="127.0.0.2")/SCTP()/("X"*48)' % mac,
+                    'IPv6/UDP': 'Ether(dst="02:00:00:00:00:00", src="%s")/IPv6(src="::2")/UDP()/("X"*46)' % mac,
+                    'IPv6/TCP': 'Ether(dst="02:00:00:00:00:00", src="%s")/IPv6(src="::2")/TCP()/("X"*46)' % mac}
 
-        if self.nic == 'redrockcanyou':
+        if self.nic in ['redrockcanyou', 'atwood']:
             del pkts['IP/SCTP']
             del pkts_ref['IP/SCTP']
 
         self.checksum_enablehw(self.dut_ports[0])
-        self.checksum_enablehw(self.dut_ports[1])
 
         self.dut.send_expect("start", "testpmd>")
 
@@ -224,21 +221,20 @@ class TestChecksumOffload(TestCase):
         Verify that the same number of packet are correctly received on
         the traffic generator side.
         """
-        dmac = self.dut.get_mac_address(self.dut_ports[1])
-        smac = self.dut.get_mac_address(self.dut_ports[0])
+        mac = self.dut.get_mac_address(self.dut_ports[0])
         sndIP = '10.0.0.1'
         sndIPv6 = '::1'
-        sndPkts = {'IP/UDP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IP(src="%s",chksum=0x0)/UDP(chksum=0xf)/("X"*46)' % (dmac, sndIP),
-                   'IP/TCP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IP(src="%s",chksum=0x0)/TCP(chksum=0xf)/("X"*46)' % (dmac, sndIP),
-                   'IPv6/UDP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IPv6(src="%s")/UDP(chksum=0xf)/("X"*46)' % (dmac, sndIPv6),
-                   'IPv6/TCP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IPv6(src="%s")/TCP(chksum=0xf)/("X"*46)' % (dmac, sndIPv6)}
+        sndPkts = {'IP/UDP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IP(src="%s",chksum=0x0)/UDP(chksum=0xf)/("X"*46)' % (mac, sndIP),
+                   'IP/TCP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IP(src="%s",chksum=0x0)/TCP(chksum=0xf)/("X"*46)' % (mac, sndIP),
+                   'IPv6/UDP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IPv6(src="%s")/UDP(chksum=0xf)/("X"*46)' % (mac, sndIPv6),
+                   'IPv6/TCP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IPv6(src="%s")/TCP(chksum=0xf)/("X"*46)' % (mac, sndIPv6)}
 
         expIP = "10.0.0.2"
         expIPv6 = '::2'
-        expPkts = {'IP/UDP': 'Ether(dst="02:00:00:00:00:00", src="%s")/IP(src="%s")/UDP()/("X"*46)' % (smac, expIP),
-                   'IP/TCP': 'Ether(dst="02:00:00:00:00:00", src="%s")/IP(src="%s")/TCP()/("X"*46)' % (smac, expIP),
-                   'IPv6/UDP': 'Ether(dst="02:00:00:00:00:00", src="%s")/IPv6(src="%s")/UDP()/("X"*46)' % (smac, expIPv6),
-                   'IPv6/TCP': 'Ether(dst="02:00:00:00:00:00", src="%s")/IPv6(src="%s")/TCP()/("X"*46)' % (smac, expIPv6)}
+        expPkts = {'IP/UDP': 'Ether(dst="02:00:00:00:00:00", src="%s")/IP(src="%s")/UDP()/("X"*46)' % (mac, expIP),
+                   'IP/TCP': 'Ether(dst="02:00:00:00:00:00", src="%s")/IP(src="%s")/TCP()/("X"*46)' % (mac, expIP),
+                   'IPv6/UDP': 'Ether(dst="02:00:00:00:00:00", src="%s")/IPv6(src="%s")/UDP()/("X"*46)' % (mac, expIPv6),
+                   'IPv6/TCP': 'Ether(dst="02:00:00:00:00:00", src="%s")/IPv6(src="%s")/TCP()/("X"*46)' % (mac, expIPv6)}
 
         self.dut.send_expect("start", "testpmd>")
         result = self.checksum_validate(sndPkts, expPkts)
@@ -282,6 +278,9 @@ class TestChecksumOffload(TestCase):
         """
         Test checksum offload performance.
         """
+        # Verify that enough ports are available
+        self.verify(len(self.dut_ports) >= 2, "Insufficient ports for testing")
+
         # sizes = [64, 128, 256, 512, 1024]
         sizes = [64, 128]
         pkts = {'IP/UDP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IP()/UDP()/("X"*(%d-46))',
@@ -290,7 +289,7 @@ class TestChecksumOffload(TestCase):
                 'IPv6/UDP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IPv6()/UDP()/("X"* (lambda x: x - 66 if x > 66 else 0)(%d))',
                 'IPv6/TCP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IPv6()/TCP()/("X"* (lambda x: x - 78 if x > 78 else 0)(%d))'}
 
-        if self.nic == 'redrockcanyou':
+        if self.nic in ['redrockcanyou', 'atwood']:
             del pkts['IP/SCTP']
 
         lcore = "1S/2C/1T"

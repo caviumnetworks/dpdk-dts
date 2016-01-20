@@ -54,7 +54,7 @@ class TestWhitelist(TestCase):
         self.dutPorts = self.dut.get_ports()
         # Verify that enough ports are available
         self.verify(len(self.dutPorts) >= 1, "Insufficient ports")
-        portMask = dts.create_mask(self.dutPorts[:2])
+        portMask = dts.create_mask(self.dutPorts[:1])
 
         self.pmdout = PmdOutput(self.dut)
         self.pmdout.start_testpmd("Default", "--portmask=%s" % portMask)
@@ -98,7 +98,6 @@ class TestWhitelist(TestCase):
         # initialise first port without promiscuous mode
         fake_mac_addr = "00:01:01:00:00:00"
         portid = self.dutPorts[0]
-        txportid = self.dutPorts[1]
         self.dut.send_expect("set promisc %d off" % portid, "testpmd> ")
 
         self.dut.send_expect("clear port stats all", "testpmd> ")

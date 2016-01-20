@@ -42,12 +42,15 @@ import time
 #
 # Test class.
 #
+
+
 class TestScatter(TestCase):
     #
     #
     #
     # Test cases.
     #
+
     def set_up_all(self):
         """
         Run at the start of each test suite.
@@ -57,29 +60,38 @@ class TestScatter(TestCase):
         # Verify that enough ports are available
         self.verify(len(dutPorts) >= 1, "Insufficient ports")
         self.port = dutPorts[0]
+        tester_port = self.tester.get_local_port(self.port)
+        self.intf = self.tester.get_interface(tester_port)
+
         self.pmdout = PmdOutput(self.dut)
-        if self.nic in ["niantic", "sageville", "fortpark", "fortville_eagle", "fortville_spirit", "fortville_spirit_single", "redrockcanyou", "ironpond", "twinpond", "springfountain"]:
+        if self.nic in ["niantic", "sageville", "fortpark", "fortville_eagle",
+                        "fortville_spirit", "fortville_spirit_single",
+                        "redrockcanyou", "atwood",
+                        "ironpond", "twinpond", "springfountain"]:
             self.mbsize = 2048
         else:
             self.mbsize = 1024
+
+        if self.nic in ['redrockcanyou', 'atwood']:
+            self.dut.ports_info[self.port]['port'].enable_jumbo(framesize=9000)
+
+        self.tester.send_expect("ifconfig %s mtu 9000" % self.intf, "#")
 
     def scatter_pktgen_send_packet(self, pktsize):
         """
         Functional test for scatter packets.
         """
-        tester_port = self.tester.get_local_port(self.port)
-        intf = self.tester.get_interface(tester_port)
         dmac = self.dut.get_mac_address(self.port)
-        self.tester.send_expect("ifconfig %s mtu 9000" % intf, "#")
 
-        inst = sniff_packets(intf)
+        inst = sniff_packets(self.intf)
         pkt = Packet(pkt_type="IP_RAW", pkt_len=pktsize)
         pkt.config_layer('ether', {'dst': dmac})
-        pkt.send_pkt(tx_port=intf)
+        pkt.send_pkt(tx_port=self.intf)
         sniff_pkts = load_sniff_packets(inst)
 
-        res = strip_pktload(sniff_pkts[0], layer="L4")
-        self.tester.send_expect("ifconfig %s mtu 1500" % intf, "#")
+        res = ""
+        if len(sniff_pkts):
+            res = strip_pktload(sniff_pkts[0], layer="L4")
         return res
 
     def set_up(self):
@@ -92,9 +104,9 @@ class TestScatter(TestCase):
         """
         Scatter 2048 mbuf
         """
-        # set the mbuf size to 1024
         out = self.pmdout.start_testpmd(
-                "1S/2C/1T", "--mbcache=200 --mbuf-size=%d --portmask=0x1 --max-pkt-len=9000 --port-topology=loop" % (self.mbsize))
+            "1S/2C/1T", "--mbcache=200 --mbuf-size=%d --portmask=0x1 "
+            "--max-pkt-len=9000 --port-topology=loop" % (self.mbsize))
 
         self.verify("Error" not in out, "launch error 1")
 
@@ -103,7 +115,8 @@ class TestScatter(TestCase):
 
         for offset in [-1, 0, 1, 4, 5]:
             ret = self.scatter_pktgen_send_packet(self.mbsize + offset)
-            self.verify("58 58 58 58 58 58 58 58" in ret, "packet receive error")
+            self.verify(
+                "58 58 58 58 58 58 58 58" in ret, "packet receive error")
 
         self.dut.send_expect("stop", "testpmd> ")
         self.dut.send_expect("quit", "# ", 30)
@@ -118,4 +131,7 @@ class TestScatter(TestCase):
         """
         Run after each test suite.
         """
+        if self.nic in ['redrockcanyou', 'atwood']:
+            self.dut.ports_info[self.port]['port'].enable_jumbo(framesize=1518)
+        self.tester.send_expect("ifconfig %s mtu 1500" % self.intf, "#")
         pass

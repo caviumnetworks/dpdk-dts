@@ -417,14 +417,14 @@ class TestPmdrssHash(TestCase):
         """
 
         self.verify(self.nic in ["fortville_eagle", "fortville_spirit",
-                    "fortville_spirit_single", "redrockcanyou"],
+                    "fortville_spirit_single", "redrockcanyou", "atwood"],
                     "NIC Unsupported: " + str(self.nic))
         global reta_num
         if self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single"]:
             reta_num = 512
         elif self.nic in ["niantic"]:
             reta_num = 128
-        elif self.nic in ["redrockcanyou"]:
+        elif self.nic in ["redrockcanyou", "atwood"]:
             reta_num = 128
         else:
             self.verify(False, "NIC Unsupported:%s" % str(self.nic))

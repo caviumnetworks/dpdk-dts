@@ -63,8 +63,8 @@ class TestShutdownApi(TestCase):
         Run at the start of each test suite.
         """
         ports = self.dut.get_ports()
-        self.verify(len(ports) >= 2, "Insufficient number of ports.")
-        self.ports = ports[:2]
+        self.verify(len(ports) >= 1, "Insufficient number of ports.")
+        self.ports = ports[:1]
         self.ports_socket = self.dut.get_numa_id(self.ports[0])
 
         for port in self.ports:
@@ -88,11 +88,6 @@ class TestShutdownApi(TestCase):
         if len(ports) == 1:
             self.send_packet(ports[0], ports[0], pktSize, received, vlan, promisc)
             return
-
-        for i in range(len(ports)):
-            if i % 2 == 0:
-                self.send_packet(ports[i], ports[i + 1], pktSize, received, vlan, promisc)
-                self.send_packet(ports[i + 1], ports[i], pktSize, received, vlan, promisc)
 
     def send_packet(self, txPort, rxPort, pktSize=68, received=True, vlan=False, promisc=False):
         """
@@ -138,7 +133,7 @@ class TestShutdownApi(TestCase):
         rx_bytes_exp = pktSize
         tx_bytes_exp = pktSize
 
-        if self.nic in ['redrockcanyou']:
+        if self.nic in ['redrockcanyou', 'atwood']:
             # RRC will always strip rx/tx crc
             rx_bytes_exp -= 4
             tx_bytes_exp -= 4
@@ -167,7 +162,7 @@ class TestShutdownApi(TestCase):
         Check link status of the ports.
         """
         # RRC not support link speed change
-        if self.nic in ['redrockcanyou']:
+        if self.nic in ['redrockcanyou', 'atwood']:
             return
 
         for port in self.ports:
@@ -188,7 +183,7 @@ class TestShutdownApi(TestCase):
         """
         Stop and Restar.
         """
-        self.pmdout.start_testpmd("Default", "--portmask=%s" % dts.create_mask(self.ports), socket=self.ports_socket)
+        self.pmdout.start_testpmd("Default", "--portmask=%s  --port-topology=loop" % dts.create_mask(self.ports), socket=self.ports_socket)
 
         self.dut.send_expect("set fwd mac", "testpmd>")
         self.dut.send_expect("start", "testpmd> ")
@@ -207,16 +202,10 @@ class TestShutdownApi(TestCase):
         """
         Promiscuous mode.
         """
-        ports = []
-        # RRC is different with other type, inside a switch,
-        # so better to use one port to verify promisc mode
-        if self.nic == "redrockcanyou":
-            ports = [self.ports[0]]
-        else:
-            ports = [self.ports[0], self.ports[1]]
+        ports = [self.ports[0]]
 
         portmask = dts.create_mask(ports)
-        self.pmdout.start_testpmd("Default", "--portmask=%s" % portmask, socket = self.ports_socket)
+        self.pmdout.start_testpmd("Default", "--portmask=%s  --port-topology=loop" % portmask, socket = self.ports_socket)
 
         self.dut.send_expect("port stop all", "testpmd> ", 100)
         self.dut.send_expect("set promisc all off", "testpmd> ")
@@ -247,12 +236,9 @@ class TestShutdownApi(TestCase):
         """
         Reset RX/TX Queues.
         """
-        testerports = [self.tester.get_interface(self.tester.get_local_port(self.ports[0])),
-                       self.tester.get_interface(self.tester.get_local_port(self.ports[1]))
-                       ]
         testcorelist = self.dut.get_core_list("1S/8C/1T", socket=self.ports_socket)
 
-        self.pmdout.start_testpmd(testcorelist, "--portmask=%s" % dts.create_mask([self.ports[0], self.ports[1]]), socket=self.ports_socket)
+        self.pmdout.start_testpmd(testcorelist, "--portmask=%s  --port-topology=loop" % dts.create_mask([self.ports[0]]), socket=self.ports_socket)
         fwdcoremask = dts.create_mask(testcorelist[-3:])
 
         self.dut.send_expect("port stop all", "testpmd> ", 100)
@@ -272,7 +258,7 @@ class TestShutdownApi(TestCase):
         """
         Reconfigure All Ports With The Same Configurations (CRC)
         """
-        self.pmdout.start_testpmd("Default", "--portmask=%s" % dts.create_mask(self.ports), socket=self.ports_socket)
+        self.pmdout.start_testpmd("Default", "--portmask=%s --port-topology=loop" % dts.create_mask(self.ports), socket=self.ports_socket)
 
         self.dut.send_expect("port stop all", "testpmd> ", 100)
         self.dut.send_expect("port config all crc-strip on", "testpmd> ")
@@ -289,11 +275,11 @@ class TestShutdownApi(TestCase):
         """
         Change Link Speed.
         """
-        if self.nic == "redrockcanyou":
+        if self.nic in ["redrockcanyou", "atwood"]:
             print dts.RED("RRC not support\n")
             return
 
-        self.pmdout.start_testpmd("Default", "--portmask=%s" % dts.create_mask(self.ports), socket=self.ports_socket)
+        self.pmdout.start_testpmd("Default", "--portmask=%s --port-topology=loop" % dts.create_mask(self.ports), socket=self.ports_socket)
 
         out = self.tester.send_expect(
             "ethtool %s" % self.tester.get_interface(self.tester.get_local_port(self.ports[0])), "# ")
@@ -335,12 +321,12 @@ class TestShutdownApi(TestCase):
         """
         Enable/Disable Jumbo Frames.
         """
-        if self.nic == "redrockcanyou":
+        if self.nic in ["redrockcanyou", "atwood"]:
             print dts.RED("RRC not support\n")
             return
 
         jumbo_size = 2048
-        self.pmdout.start_testpmd("Default", "--portmask=%s" % dts.create_mask(self.ports), socket=self.ports_socket)
+        self.pmdout.start_testpmd("Default", "--portmask=%s --port-topology=loop" % dts.create_mask(self.ports), socket=self.ports_socket)
         self.dut.send_expect("port stop all", "testpmd> ", 100)
         self.dut.send_expect("vlan set strip off all", "testpmd> ")
         self.dut.send_expect("port config all max-pkt-len %d" % jumbo_size, "testpmd> ")
@@ -379,7 +365,7 @@ class TestShutdownApi(TestCase):
         """
         Enable/Disable RSS.
         """
-        self.pmdout.start_testpmd("Default", "--portmask=%s" % dts.create_mask(self.ports), socket=self.ports_socket)
+        self.pmdout.start_testpmd("Default", "--portmask=%s --port-topology=loop" % dts.create_mask(self.ports), socket=self.ports_socket)
 
         self.dut.send_expect("port stop all", "testpmd> ", 100)
         self.dut.send_expect("port config rss ip", "testpmd> ")
@@ -392,7 +378,7 @@ class TestShutdownApi(TestCase):
         """
         Change numbers of rxd and txd.
         """
-        self.pmdout.start_testpmd("Default", "--portmask=%s" % dts.create_mask(self.ports), socket=self.ports_socket)
+        self.pmdout.start_testpmd("Default", "--portmask=%s --port-topology=loop" % dts.create_mask(self.ports), socket=self.ports_socket)
 
         self.dut.send_expect("port stop all", "testpmd> ", 100)
         self.dut.send_expect("port config all rxd 1024", "testpmd> ")
@@ -411,7 +397,7 @@ class TestShutdownApi(TestCase):
         """
         Change the Number of rxd/txd.
         """
-        self.pmdout.start_testpmd("Default", "--portmask=%s" % dts.create_mask(self.ports), socket=self.ports_socket)
+        self.pmdout.start_testpmd("Default", "--portmask=%s --port-topology=loop" % dts.create_mask(self.ports), socket=self.ports_socket)
 
         self.dut.send_expect("port stop all", "testpmd> ", 100)
         self.dut.send_expect("port config all rxd 1024", "testpmd> ")
@@ -441,7 +427,7 @@ class TestShutdownApi(TestCase):
         """
         Change RX/TX thresholds
         """
-        self.pmdout.start_testpmd("Default", "--portmask=%s" % dts.create_mask(self.ports), socket=self.ports_socket)
+        self.pmdout.start_testpmd("Default", "--portmask=%s --port-topology=loop" % dts.create_mask(self.ports), socket=self.ports_socket)
 
         self.dut.send_expect("port stop all", "testpmd> ", 100)
         self.dut.send_expect("port config all txfreet 32", "testpmd> ")
@@ -477,7 +463,7 @@ class TestShutdownApi(TestCase):
         """
         stress_iterations = 10
 
-        self.pmdout.start_testpmd("Default", "--portmask=%s" % dts.create_mask(self.ports), socket=self.ports_socket)
+        self.pmdout.start_testpmd("Default", "--portmask=%s  --port-topology=loop" % dts.create_mask(self.ports), socket=self.ports_socket)
 
         tgenInput = []
         for port in self.ports:
@@ -498,11 +484,11 @@ class TestShutdownApi(TestCase):
         """
         port link stats test
         """
-        if self.nic == "redrockcanyou":
+        if self.nic in ["redrockcanyou", "atwood"]:
             print dts.RED("RRC not support\n")
             return
 
-        self.pmdout.start_testpmd("Default", "--portmask=%s" % dts.create_mask(self.ports), socket=self.ports_socket)
+        self.pmdout.start_testpmd("Default", "--portmask=%s --port-topology=loop" % dts.create_mask(self.ports), socket=self.ports_socket)
         self.dut.send_expect("set fwd mac", "testpmd>")
         self.dut.send_expect("start", "testpmd>")
 

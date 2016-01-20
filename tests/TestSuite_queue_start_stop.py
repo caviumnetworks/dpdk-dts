@@ -45,6 +45,7 @@ import os
 from test_case import TestCase
 from pmd_output import PmdOutput
 from settings import FOLDERS
+from packet import Packet, sniff_packets, load_sniff_packets, strip_pktload
 
 #
 #
@@ -64,7 +65,7 @@ class TestQueueStartStop(TestCase):
         Run at the start of each test suite.
         """
         self.ports = self.dut.get_ports(self.nic)
-        self.verify(len(self.ports) >= 2, "Insufficient number of ports.")
+        self.verify(len(self.ports) >= 1, "Insufficient number of ports.")
 
     def set_up(self):
         """
@@ -86,40 +87,29 @@ class TestQueueStartStop(TestCase):
         except Exception, e:
             raise IOError("dpdk setup failure: %s" % e)
 
-    def check_forwarding(self, ports, nic, testerports=[None, None], pktSize=64, received=True):
-        self.send_packet(ports[0], ports[1], self.nic, testerports[1], pktSize, received)
+    def check_forwarding(self, ports, nic, pktSize=64, received=True):
+        self.send_packet(ports[0], ports[1], self.nic, pktSize, received)
 
-    def send_packet(self, txPort, rxPort, nic, testerports=None, pktSize=64, received=True):
+    def send_packet(self, txPort, rxPort, nic, pktSize=64, received=True):
         """
         Send packages according to parameters.
         """
+        rxitf = self.tester.get_interface(self.tester.get_local_port(rxPort))
+        txitf = self.tester.get_interface(self.tester.get_local_port(txPort))
 
-        if testerports is None:
-            rxitf = self.tester.get_interface(self.tester.get_local_port(rxPort))
-            txitf = self.tester.get_interface(self.tester.get_local_port(txPort))
-        else:
-            itf = testerports
-        smac = self.tester.get_mac(self.tester.get_local_port(txPort))
         dmac = self.dut.get_mac_address(txPort)
 
-        self.tester.scapy_background()
-        self.tester.scapy_append('p=sniff(iface="%s",count=1,timeout=5)' % rxitf)
-        self.tester.scapy_append('RESULT=str(p)')
+        pkt = Packet(pkt_type="UDP", pkt_len=pktSize)
+        inst = sniff_packets(rxitf)
+        pkt.config_layer('ether', {'dst': dmac})
+        pkt.send_pkt(tx_port=txitf)
+        sniff_pkts = load_sniff_packets(inst)
 
-        self.tester.scapy_foreground()
-
-        pktlen = pktSize - 14
-        padding = pktlen - 20
-        self.tester.scapy_append('sendp([Ether(src="%s", dst="%s")/IP()/Raw(load="P"*%s)], iface="%s")' % (smac, dmac, padding, txitf))
-
-        self.tester.scapy_execute()
-        time.sleep(3)
-
-        out = self.tester.scapy_get_result()
         if received:
-            self.verify('PPP' in out, "start queue failed")
+            res = strip_pktload(sniff_pkts[0], layer="L4")
+            self.verify("58 58 58 58 58 58 58 58" in res, "receive queue not work as expected")
         else:
-            self.verify('PPP' not in out, "stop queue failed")
+            self.verify(len(sniff_pkts) == 0, "stop queue not work as expected")
 
     def patch_hotfix_dpdk(self, patch_dir, on = True):
         """
