@@ -341,6 +341,7 @@ def dts_run_target(crbInst, targets, test_suites, nic, scenario):
         scene.destroy_scene()
         scene = None
 
+    dut.stop_ports()
     dut.restore_interfaces()
     tester.restore_interfaces()
 

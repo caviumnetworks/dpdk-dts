@@ -64,6 +64,9 @@ class NetDevice(object):
         self.get_interface_name()
         self.socket = self.get_nic_socket()
 
+    def stop(self):
+        pass
+
     def close(self):
         pass
 

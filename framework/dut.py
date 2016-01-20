@@ -225,6 +225,23 @@ class Dut(Crb):
         self.send_expect("kldunload contigmem.ko", "#")
         self.send_expect("kldload if_ixgbe.ko", "#", 20)
 
+    def stop_ports(self):
+        """
+        After all execution done, some special nic like fm10k should be stop
+        """
+        for port in self.ports_info:
+            pci_bus = port['pci']
+            pci_id = port['type']
+            # get device driver
+            driver = settings.get_nic_driver(pci_id)
+            if driver is not None:
+                # unbind device driver
+                addr_array = pci_bus.split(':')
+                bus_id = addr_array[0]
+                devfun_id = addr_array[1]
+                port = GetNicObj(self, bus_id, devfun_id)
+                port.stop()
+
     def restore_interfaces_linux(self):
         """
         Restore Linux interfaces.
@@ -824,7 +841,7 @@ class Dut(Crb):
             dutpci = self.ports_info[dutPort]['pci']
             if peer is not None:
                 for remotePort in range(len(self.tester.ports_info)):
-                    if self.tester.ports_info[remotePort]['pci'] == peer:
+                    if self.tester.ports_info[remotePort]['pci'].lower() == peer.lower():
                         hits[remotePort] = True
                         self.ports_map[dutPort] = remotePort
                         break
