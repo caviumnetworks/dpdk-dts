@@ -48,7 +48,7 @@ from scapy.config import conf
 conf.use_pcap = True
 
 from scapy.all import conf
-from scapy.utils import struct, socket, wrpcap, rdpcap
+from scapy.utils import struct, socket, wrpcap, rdpcap, hexstr
 from scapy.layers.inet import Ether, IP, TCP, UDP, ICMP
 from scapy.layers.inet6 import IPv6, IPv6ExtHdrRouting, IPv6ExtHdrFragment
 from scapy.layers.l2 import Dot1Q, ARP, GRE

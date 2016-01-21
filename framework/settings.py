@@ -76,7 +76,7 @@ NICS = {
     'fortville_spirit_single': '8086:1584',
     'redrockcanyou': '8086:15a4',
     'fortpark':'8086:374c',
-    'fvl10g_vf':'8086:154c'
+    'fvl10g_vf':'8086:154c',
     'atwood': '8086:15d5',
 }
 
@@ -109,7 +109,7 @@ DRIVERS = {
     'fortville_spirit': 'i40e',
     'fortville_spirit_single': 'i40e',
     'redrockcanyou': 'fm10k',
-    'fvl10g_vf':'i40evf'
+    'fvl10g_vf':'i40evf',
     'atwood': 'fm10k',
 }
 
