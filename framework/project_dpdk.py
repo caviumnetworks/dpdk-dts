@@ -70,6 +70,12 @@ class DPDKdut(Dut):
         self.send_expect("export RTE_SDK=`pwd`", "#")
 
         self.set_rxtx_mode()
+
+        #Enable MLNX driver before installing dpdk
+        if dts.drivername == DRIVERS['ConnectX4']:
+            self.send_expect("sed -i -e 's/CONFIG_RTE_LIBRTE_MLX5_PMD=n/"
+                             + "CONFIG_RTE_LIBRTE_MLX5_PMD=y/' config/common_linuxapp" , "# ", 30)
+
         if not self.skip_setup:
             self.build_install_dpdk(target)
 
