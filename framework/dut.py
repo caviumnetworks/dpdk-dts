@@ -289,21 +289,27 @@ class Dut(Crb):
             return
         hugepages_size = self.send_expect("awk '/Hugepagesize/ {print $2}' /proc/meminfo", "# ")
         total_huge_pages = self.get_total_huge_pages()
+        force_socket = False
 
         if int(hugepages_size) < (1024 * 1024):
             if self.architecture == "x86_64":
                 arch_huge_pages = hugepages if hugepages > 0 else 4096
             elif self.architecture == "i686":
                 arch_huge_pages = hugepages if hugepages > 0 else 512
+                force_socket = True
             # set huge pagesize for x86_x32 abi target
             elif self.architecture == "x86_x32":
                 arch_huge_pages = hugepages if hugepages > 0 else 256
+                force_socket = True
 
             if total_huge_pages != arch_huge_pages:
-                 # before all hugepage  average distribution  by all socket, 
-                 # but sometimes crete mbuf pool on socket 0 failed when setup testpmd, 
+                 # before all hugepage average distribution  by all socket,
+                 # but sometimes create mbuf pool on socket 0 failed when setup testpmd,
                  # so set all huge page on socket 0
-                self.set_huge_pages(arch_huge_pages, 0)
+                if force_socket:
+                    self.set_huge_pages(arch_huge_pages, 0)
+                else:
+                    self.set_huge_pages(arch_huge_pages)
 
         self.mount_huge_pages()
         self.hugepage_path = self.strip_hugepage_path()
