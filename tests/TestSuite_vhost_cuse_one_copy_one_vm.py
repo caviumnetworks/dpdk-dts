@@ -47,11 +47,11 @@ from etgen import IxiaPacketGenerator
 from qemu_kvm import QEMUKvm
 
 
-class TestVhostCUSESample(TestCase, IxiaPacketGenerator):
+class TestVhostCuseOneCopyOneVm(TestCase, IxiaPacketGenerator):
 
     def set_up_all(self):
         # To Extend IXIA packet generator method, call the tester's method.
-        self.tester.extend_external_packet_generator(TestVhostCUSESample, self)
+        self.tester.extend_external_packet_generator(TestVhostCuseOneCopyOneVm, self)
 
         # Change config file to enable vhost-cuse compiled.
         self.dut.send_expect(
@@ -67,10 +67,16 @@ class TestVhostCUSESample(TestCase, IxiaPacketGenerator):
         self.dut.send_expect("cd ~/dpdk", "#", 30)
 
         # build the vhost sample in vhost-cuse mode.
-        self.dut.send_expect(
-            "sed -i -e 's/define MAX_QUEUES 512/define MAX_QUEUES 128/' "
-            "./examples/vhost/main.c",
-            "#")
+        if self.nic in ['niantic']:
+            self.dut.send_expect(
+                "sed -i -e 's/#define MAX_QUEUES.*$/#define MAX_QUEUES 128/' "
+                "./examples/vhost/main.c",
+                "#")
+        else:
+            self.dut.send_expect(
+                "sed -i -e 's/#define MAX_QUEUES.*$/#define MAX_QUEUES 512/' "
+                "./examples/vhost/main.c",
+                "#")
         out = self.dut.send_expect("make -C examples/vhost", "#")
         self.verify("Error" not in out, "compilation error")
         self.verify("No such file" not in out, "Not found file error")
@@ -107,9 +113,10 @@ class TestVhostCUSESample(TestCase, IxiaPacketGenerator):
         self.dst1 = "192.168.3.1"
         self.dst2 = "192.168.4.1"
         self.vm_dut = None
-        self.virtio_cmd_params = 'csum=off,gso=off,guest_csum=off,guest_tso4=off,guest_tso6=off,guest_ecn=off'
+        self.virtio_cmd_params = \
+        'csum=off,gso=off,guest_csum=off,guest_tso4=off,guest_tso6=off,guest_ecn=off'
         # Define the table columns
-        self.header_row = ["Test", "Mode", "Frame", "Mpps", "% linerate"]
+        self.header_row = ["FrameSize(B)", "RecvPackets(Mpps)", "SendPackets(Mpps)", "LineRate(%)"]
         self.memory_channel = 4
 
     def set_up(self):
@@ -120,23 +127,13 @@ class TestVhostCUSESample(TestCase, IxiaPacketGenerator):
 
         if "jumbo" in self.running_case:
             self.jumbo = 1
-            self.frame_sizes = [
-                68,
-                128,
-                256,
-                512,
-                1024,
-                1280,
-                1518,
-                2048,
-                5000,
-                9000]
+            self.frame_sizes = [64, 128, 256, 512, 1024, 1280, 1518, 2048, 5000, 9000]
             self.vm_testpmd = "./x86_64-native-linuxapp-gcc/app/testpmd -c 0x3 -n 3" \
                 + " -- -i --txqflags=0xf00 " \
                 + "--disable-hw-vlan-filter --max-pkt-len 9600"
         else:
             self.jumbo = 0
-            self.frame_sizes = [68, 128, 256, 512, 1024, 1280, 1518]
+            self.frame_sizes = [64, 128, 256, 512, 1024, 1280, 1518]
             self.vm_testpmd = "./x86_64-native-linuxapp-gcc/app/testpmd -c 0x3 -n 3" \
                 + " -- -i --txqflags=0xf00 --disable-hw-vlan-filter"
         self.dut.send_expect("rm -rf ./vhost.out", "#")
@@ -166,10 +163,10 @@ class TestVhostCUSESample(TestCase, IxiaPacketGenerator):
         time.sleep(30)
         try:
             print "Launch vhost sample\n"
-            out = self.dut.send_expect(
-                "cat ./vhost.out",
-                "VHOST_DATA: Procesing on",
-                20)
+            self.dut.session.copy_file_from("/root/dpdk/vhost.out")
+            fp = open('./vhost.out', 'r')
+            out = fp.read()
+            fp.close()
             if "Error" in out:
                 raise Exception("Launch vhost sample failed")
         except Exception as e:
@@ -180,7 +177,7 @@ class TestVhostCUSESample(TestCase, IxiaPacketGenerator):
         # Start One VM with 2 virtio devices
         #
 
-        self.vm = QEMUKvm(self.dut, 'vm0', 'vhost_sample')
+        self.vm = QEMUKvm(self.dut, 'vm0', 'vhost_cuse_sample')
         if "cuse" in self.running_case:
             vm_params = {}
             vm_params['driver'] = 'vhost-cuse'
@@ -192,7 +189,7 @@ class TestVhostCUSESample(TestCase, IxiaPacketGenerator):
             vm_params['opt_settings'] = self.virtio_cmd_params
             self.vm.set_vm_device(**vm_params)
         try:
-            self.vm_dut = self.vm.start(auto_portmap=False)
+            self.vm_dut = self.vm.start()
             if self.vm_dut is None:
                 raise Exception("Set up VM ENV failed")
         except Exception as e:
@@ -287,6 +284,57 @@ class TestVhostCUSESample(TestCase, IxiaPacketGenerator):
             self.vm_dut.send_expect("ip route show", "#")
             print self.vm_dut.send_expect("arp -a", "#")
 
+    def get_transmission_results(self, rx_port_list, tx_port_list, delay=5):
+        time.sleep(delay)
+        recvbpsRate = 0
+        recvRate = 0
+        txbpsRate = 0
+        txRate = 0
+        for port in tx_port_list:
+            self.stat_get_rate_stat_all_stats(port)
+            out = self.send_expect('stat cget -framesSent', '%', 10)
+            txRate += int(out.strip())
+            self.logger.info("Port %s: TX %f Mpps" % (port, (txRate * 1.0 / 1000000)))
+            out = self.send_expect('stat cget -bitsSent', '%', 10)
+            txbpsRate += int(out.strip())
+            self.logger.info("Port %s: TX %f Mbps" % (port, (txbpsRate * 1.0 / 1000000)))
+        for port in rx_port_list:
+            self.stat_get_rate_stat_all_stats(port)
+            out = self.send_expect('stat cget -framesReceived', '%', 10)
+            recvRate += int(out.strip())
+            out = self.send_expect('stat cget -oversize', '%', 10)
+            recvRate += int(out.strip())
+            self.logger.info("Port %s: RX %f Mpps" % (port, (recvRate * 1.0 / 1000000)))
+            out = self.send_expect('stat cget -bitsReceived', '%', 10)
+            recvbpsRate += int(out.strip())
+            self.logger.info("Port %s: RX %f Mbps" % (port, (recvbpsRate * 1.0 / 1000000)))
+
+        return (txRate,recvRate)
+
+    def send_verify(self, case, frame_sizes, vlan_id1=0):
+        dts.results_table_add_header(self.header_row)
+        for frame_size in frame_sizes:
+            info = "Running test %s, and %d frame size.\n" % (case, frame_size)
+            self.logger.info(info)
+            payload = frame_size - HEADER_SIZE['eth'] - HEADER_SIZE['ip']
+            flow = '[Ether(dst="%s")/Dot1Q(vlan=%s)/IP(src="%s",dst="%s")/("X"*%d)]' % (
+                self.virtio1_mac, vlan_id1, self.src1, self.dst1, payload)
+            self.tester.scapy_append('wrpcap("flow.pcap", %s)' % flow)
+            self.tester.scapy_execute()
+
+            tgenInput = []
+            port = self.tester.get_local_port(self.pf)
+            tgenInput.append((port, port, "flow.pcap"))
+
+            recvpkt, sendpkt = self.tester.traffic_generator_throughput(
+                tgenInput, delay=15)
+            recvpkt /= 1000000.0
+            sendpkt /= 1000000.0
+            pct = sendpkt * 100 / recvpkt
+            data_row = [frame_size, str(recvpkt), str(sendpkt), str(pct)]
+            dts.results_table_add_row(data_row)
+        dts.results_table_print()
+
     def test_perf_cuse_one_vm_legacy_fwd(self):
         #
         # Test the performance of one vm with 2virtio devices in legacy fwd
@@ -296,16 +344,16 @@ class TestVhostCUSESample(TestCase, IxiaPacketGenerator):
         # Setup legacy env
         self.set_legacy_disablefw()
         self.set_onevm_legacy_fwd()
-
         time.sleep(5)
 
-        out1 = self.dut.get_session_output(timeout=2)
+        self.dut.get_session_output(timeout=2)
         # print "\nclean out1:", out1
-
-        out = self.dut.send_expect("cat ./vhost.out", "# ", 20)
-        print out
+        self.dut.session.copy_file_from("/root/dpdk/vhost.out")
+        fp = open('./vhost.out', 'r')
+        out = fp.read()
+        fp.close()
         # Get the VLAN ID for virtio
-        print "\ncheck the vlan info: \n"
+        print "Check the vlan info: \n"
         l1 = re.findall(
             'MAC_ADDRESS.*?%s.*?and.*?VLAN_TAG.*?(\d+).*?registered' %
             (str(self.virtio1_mac)), out)
@@ -319,41 +367,7 @@ class TestVhostCUSESample(TestCase, IxiaPacketGenerator):
             vlan_id2 = l2[0]
             print "vlan_id2 is ", vlan_id2
 
-        dts.results_table_add_header(self.header_row)
-
-        # Create pcap file and ixia traffic
-        for frame_size in self.frame_sizes:
-            info = "Running test %s, and %d frame size.\n" % (
-                self.running_case, frame_size)
-            self.logger.info(info)
-
-            payload_size = frame_size - HEADER_SIZE['eth'] - HEADER_SIZE['ip']
-            flow1 = '[Ether(dst="%s")/Dot1Q(vlan=%s)/IP(src="%s",dst="%s")/("X"*%d)]' % (
-                self.virtio1_mac, vlan_id1, self.src1, self.dst1, payload_size)
-            flow2 = '[Ether(dst="%s")/Dot1Q(vlan=%s)/IP(src="%s",dst="%s")/("X"*%d)]' % (
-                self.virtio2_mac, vlan_id2, self.src2, self.dst2, payload_size)
-
-            self.tester.scapy_append('wrpcap("flow1.pcap", %s)' % flow1)
-            self.tester.scapy_append('wrpcap("flow2.pcap",%s)' % flow2)
-            self.tester.scapy_execute()
-
-        # Capture the performance
-            tgenInput = []
-            port = self.tester.get_local_port(self.pf)
-            tgenInput.append((port, port, "flow2.pcap"))
-
-            _, pps = self.tester.traffic_generator_throughput(
-                tgenInput, delay=15)
-            pps /= 1000000.0
-            linerate = self.wirespeed(self.nic, frame_size, 1)
-            pct = pps * 100 / linerate
-            scenario = self.running_case
-            mode = "vhost cuse"
-            data_row = [scenario, mode, frame_size, str(pps), str(pct)]
-            dts.results_table_add_row(data_row)
-
-        dts.results_table_print()
-
+        self.send_verify(self.running_case, self.frame_sizes, vlan_id1)
         # Stop the Vhost sample
         self.dut.send_expect("killall -s INT vhost-switch", "#", 20)
 
@@ -366,10 +380,12 @@ class TestVhostCUSESample(TestCase, IxiaPacketGenerator):
         self.vm_testpmd_start()
         time.sleep(5)
         # Clean the output to make the next command can get correct answers
-        out_clean = self.dut.get_session_output(timeout=2)
-        out = self.dut.send_expect("cat ./vhost.out", "# ", 20)
+        self.dut.get_session_output(timeout=2)
+        self.dut.session.copy_file_from("/root/dpdk/vhost.out")
+        fp = open('./vhost.out', 'r')
+        out = fp.read()
+        fp.close()
         # Get the VLAN ID for virtio
-        print "\nout:", out
         print "\ncheck the vlan info: \n"
         l1 = re.findall(
             'MAC_ADDRESS.*?%s.*?and.*?VLAN_TAG.*?(\d+).*?registered' %
@@ -384,42 +400,10 @@ class TestVhostCUSESample(TestCase, IxiaPacketGenerator):
             vlan_id2 = l2[0]
             print vlan_id2
 
-        dts.results_table_add_header(self.header_row)
+        self.send_verify(self.running_case, self.frame_sizes, vlan_id1)
 
-        # Create pcap file and ixia traffic
-        for frame_size in self.frame_sizes:
-            info = "Running test %s, and %d frame size.\n" % (
-                self.running_case, frame_size)
-            self.logger.info(info)
-
-            payload_size = frame_size - HEADER_SIZE['eth'] - HEADER_SIZE['ip']
-            flow1 = '[Ether(dst="%s")/Dot1Q(vlan=%s)/IP(src="%s",dst="%s")/("X"*%d)]' % (
-                self.virtio1_mac, vlan_id1, self.src1, self.dst1, payload_size)
-            flow2 = '[Ether(dst="%s")/Dot1Q(vlan=%s)/IP(src="%s",dst="%s")/("X"*%d)]' % (
-                self.virtio2_mac, vlan_id2, self.src2, self.dst2, payload_size)
-            self.tester.scapy_append('wrpcap("flow1.pcap", %s)' % flow1)
-            self.tester.scapy_append('wrpcap("flow2.pcap",%s)' % flow2)
-            self.tester.scapy_execute()
-
-        # Capture the performance
-            tgenInput = []
-            port = self.tester.get_local_port(self.pf)
-            tgenInput.append((port, port, "flow1.pcap"))
-            tgenInput.append((port, port, "flow2.pcap"))
-
-            _, pps = self.tester.traffic_generator_throughput(
-                tgenInput, delay=15)
-            pps /= 1000000.0
-            linerate = self.wirespeed(self.nic, frame_size, 1)
-            pct = pps * 100 / linerate
-            scenario = self.running_case
-            mode = "vhost cuse"
-            data_row = [scenario, mode, frame_size, str(pps), str(pct)]
-            dts.results_table_add_row(data_row)
-
-        dts.results_table_print()
         # Stop testpmd
-        print self.vm_dut.send_expect("stop", "testpmd>")
+        self.vm_dut.send_expect("stop", "testpmd>")
         time.sleep(1)
         self.vm_dut.send_expect("quit", "# ")
 
