@@ -58,10 +58,8 @@ class TestUnitTestsRingPmd(TestCase):
         Nothing to do here.
         """
         self.ring_ports = [{'mode': 'tx', 'index': '0'},
-                           {'mode': 'rx', 'index': '0'},
                            {'mode': 'rxtx', 'index': '1'},
-                           {'mode': 'tx', 'index': '2'},
-                           {'mode': 'rx', 'index': '2'}]
+                           {'mode': 'tx', 'index': '2'}]
 
     def set_up(self):
         """
@@ -78,8 +76,6 @@ class TestUnitTestsRingPmd(TestCase):
         for port in self.ring_ports:
             if port['mode'] == 'tx':
                 dev_str += "--vdev='eth_ring%s,nodeaction=:0:CREATE' " % port['index']
-            elif port['mode'] == 'rx':
-                dev_str += "--vdev='eth_ring%s,nodeaction=:0:ATTACH' " % port['index']
             else:
                 dev_str += "--vdev='eth_ring%s,nodeaction=:0:CREATE' " % port['index']
 
