@@ -39,7 +39,7 @@ from crb import Crb
 from dut import Dut
 from tester import Tester
 from logger import getLogger
-from settings import IXIA
+from settings import IXIA, DRIVERS
 
 
 class DPDKdut(Dut):
