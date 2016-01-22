@@ -108,7 +108,7 @@ class TestVhostUserOneCopyOneVm(TestCase, IxiaPacketGenerator):
         self.dst2 = "192.168.4.1"
         self.vm_dut = None
 
-        self.header_row = ["FrameSize(B)", "RecvPackets(Mpps)", "SendPackets(Mpps)", "LineRate(%)"]
+        self.header_row = ["FrameSize(B)", "Injection(Mpps)", "Throughput(Mpps)", "LineRate(%)"]
         self.memory_channel = 4
 
     def set_up(self):
@@ -145,13 +145,15 @@ class TestVhostUserOneCopyOneVm(TestCase, IxiaPacketGenerator):
         self.dut.send_expect(self.vhostapp_testcmd, "# ", 40)
         time.sleep(30)
         try:
-            print "Launch vhost sample\n"
+            print "Launch vhost sample:"
             self.dut.session.copy_file_from("/root/dpdk/vhost.out")
             fp = open('./vhost.out', 'r')
             out = fp.read()
             fp.close()
             if "Error" in out:
                 raise Exception("Launch vhost sample failed")
+            else:
+                print "Launch vhost sample finished"
         except Exception as e:
             print dts.RED("Failed to launch vhost sample: %s" % str(e))
 
@@ -234,8 +236,8 @@ class TestVhostUserOneCopyOneVm(TestCase, IxiaPacketGenerator):
                     self.virtio1 = intf
                 if self.virtio2_mac in out_mac:
                     self.virtio2 = intf
-            print "\nvirtio1's intf is %s" % self.virtio1
-            print "\nvirtio2's intf is %s" % self.virtio2
+            print "Virtio1's intf is %s" % self.virtio1
+            print "Virtio2's intf is %s" % self.virtio2
             # Set the mtu 9000 if jumboframe is enabled.
             if self.jumbo == 1:
                 self.vm_dut.send_expect(
@@ -291,22 +293,29 @@ class TestVhostUserOneCopyOneVm(TestCase, IxiaPacketGenerator):
             recvbpsRate += int(out.strip())
             self.logger.info("Port %s: RX %f Mbps" % (port, (recvbpsRate * 1.0 / 1000000)))
 
+        self.hook_transmissoin_func()
+        self.send_expect("ixStopTransmit portList", "%", 30)
+
         return (txRate,recvRate)
 
-    def send_verify(self, case, frame_sizes, vlan_id1=0):
+    def send_verify(self, case, frame_sizes, vlan_id1=0, vlan_id2=0):
         dts.results_table_add_header(self.header_row)
         for frame_size in frame_sizes:
-            info = "Running test %s, and %d frame size.\n" % (case, frame_size)
+            info = "Running test %s, and %d frame size." % (case, frame_size)
             self.logger.info(info)
             payload = frame_size - HEADER_SIZE['eth'] - HEADER_SIZE['ip']
-            flow = '[Ether(dst="%s")/Dot1Q(vlan=%s)/IP(src="%s",dst="%s")/("X"*%d)]' % (
+            flow1 = '[Ether(dst="%s")/Dot1Q(vlan=%s)/IP(src="%s",dst="%s")/("X"*%d)]' % (
                 self.virtio1_mac, vlan_id1, self.src1, self.dst1, payload)
-            self.tester.scapy_append('wrpcap("flow.pcap", %s)' % flow)
+            flow2 = '[Ether(dst="%s")/Dot1Q(vlan=%s)/IP(src="%s",dst="%s")/("X"*%d)]' % (
+                self.virtio2_mac, vlan_id2, self.src2, self.dst2, payload)
+            self.tester.scapy_append('wrpcap("flow1.pcap", %s)' % flow1)
+            self.tester.scapy_append('wrpcap("flow2.pcap", %s)' % flow2)
             self.tester.scapy_execute()
 
             tgenInput = []
             port = self.tester.get_local_port(self.pf)
-            tgenInput.append((port, port, "flow.pcap"))
+            tgenInput.append((port, port, "flow1.pcap"))
+            tgenInput.append((port, port, "flow2.pcap"))
 
             recvpkt, sendpkt = self.tester.traffic_generator_throughput(
                 tgenInput, delay=15)
@@ -335,7 +344,7 @@ class TestVhostUserOneCopyOneVm(TestCase, IxiaPacketGenerator):
         out = fp.read()
         fp.close()
         # Get the VLAN ID for virtio
-        print "Check the vlan info: \n"
+        print "Check the vlan info: "
         l1 = re.findall(
             'MAC_ADDRESS.*?%s.*?and.*?VLAN_TAG.*?(\d+).*?registered' %
             (str(self.virtio1_mac)), out)
@@ -349,7 +358,7 @@ class TestVhostUserOneCopyOneVm(TestCase, IxiaPacketGenerator):
             vlan_id2 = l2[0]
             print "vlan_id2 is ", vlan_id2
 
-        self.send_verify(self.running_case, self.frame_sizes, vlan_id1)
+        self.send_verify(self.running_case, self.frame_sizes, vlan_id1, vlan_id2)
         # Stop the Vhost sample
         self.dut.send_expect("killall -s INT vhost-switch", "#", 20)
 
@@ -368,7 +377,7 @@ class TestVhostUserOneCopyOneVm(TestCase, IxiaPacketGenerator):
         out = fp.read()
         fp.close()
         # Get the VLAN ID for virtio
-        print "Check the vlan info: \n"
+        print "Check the vlan info: "
         l1 = re.findall(
             'MAC_ADDRESS.*?%s.*?and.*?VLAN_TAG.*?(\d+).*?registered' %
             (str(self.virtio1_mac)), out)
@@ -381,7 +390,8 @@ class TestVhostUserOneCopyOneVm(TestCase, IxiaPacketGenerator):
         if len(l2) > 0:
             vlan_id2 = l2[0]
             print vlan_id2
-        self.send_verify(self.running_case, self.frame_sizes, vlan_id1)
+
+        self.send_verify(self.running_case, self.frame_sizes, vlan_id1, vlan_id2)
         # Stop testpmd
         self.vm_dut.send_expect("stop", "testpmd>")
         time.sleep(1)
