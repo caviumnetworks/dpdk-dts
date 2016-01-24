@@ -110,6 +110,7 @@ DRIVERS = {
     'fortville_spirit': 'i40e',
     'fortville_spirit_single': 'i40e',
     'redrockcanyou': 'fm10k',
+    'fortpark':'i40e',
     'fvl10g_vf':'i40evf',
     'atwood': 'fm10k',
     'ConnectX4':'mlx5_core'
