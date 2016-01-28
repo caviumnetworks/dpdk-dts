@@ -42,6 +42,7 @@ from net_device import GetNicObj
 from etgen import IxiaPacketGenerator, SoftwarePacketGenerator
 from settings import IXIA
 import random
+from utils import GREEN
 
 
 class Tester(Crb):
@@ -216,7 +217,7 @@ class Tester(Crb):
         try:
             for (pci_bus, pci_id) in self.pci_devices_info:
                 addr_array = pci_bus.split(':')
-                port = NetDevice(self, addr_array[0], addr_array[1])
+                port = GetNicObj(self, addr_array[0], addr_array[1])
                 itf = port.get_interface_name()
                 self.enable_promisc(itf)
         except Exception as e:
@@ -483,6 +484,8 @@ class Tester(Crb):
         sniff_f = getattr(module, "sniff_packets")
         load_f = getattr(module, "load_sniff_packets")
         compare_f = getattr(module, "compare_pktload")
+        strip_f = getattr(module, "strip_pktload")
+        save_f = getattr(module, "save_packets")
         pkts = []
         # packet type random between tcp/udp/ipv6
         random_type = ['TCP', 'UDP', 'IPv6_TCP', 'IPv6_UDP']
@@ -492,6 +495,7 @@ class Tester(Crb):
         for txport, rxport in portList:
             txIntf = self.get_interface(txport)
             rxIntf = self.get_interface(rxport)
+            print GREEN("Preparing transmit packets, please wait few minutes...")
             for num in range(pktnum):
                 # chose random packet
                 pkt_type = random.choice(random_type)
@@ -511,6 +515,7 @@ class Tester(Crb):
                 pkts.append(pkt)
 
             # send and sniff packets
+            save_f(pkts=pkts, filename="/tmp/%s_tx.pcap" % txIntf)
             inst = sniff_f(intf=rxIntf, count=pktnum, timeout=timeout)
             send_f(intf=txIntf, pkts=pkts, interval=interval)
             recv_pkts = load_f(inst)
@@ -523,11 +528,14 @@ class Tester(Crb):
                     return False
 
             # check each received packet content
+            print GREEN("Comparing sniff packets, please wait few minutes...")
             for idx in range(len(recv_pkts)):
                 t_idx = recv_pkts[idx].strip_element_layer4('src')
                 if compare_f(pkts[t_idx], recv_pkts[idx], "L4") is False:
                     print "Pkt recevied index %d not match original " \
                           "index %d" % (idx, t_idx)
+                    print "Sent: %s" % strip_f(pkts[t_idx], "L4")
+                    print "Recv: %s" % strip_f(recv_pkts[idx], "L4")
                     return False
 
         return True
