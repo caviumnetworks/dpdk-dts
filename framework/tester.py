@@ -427,7 +427,7 @@ class Tester(Crb):
             return None
         return self.packet_gen.throughput(portList, rate_percent)
 
-    def run_rfc2544(self, portlist, delay=120):
+    def run_rfc2544(self, portlist, delay=120, permit_loss_rate=0):
         """
         zero_rate: dpdk will not lost packet in this line rate.
         loss_rate: dpdk will loss packet in this line rate.
@@ -443,7 +443,7 @@ class Tester(Crb):
                         lost, tx_num, rx_num = self.traffic_generator_loss(portlist, test_rate, delay)
                 else:
                         lost, _, _ = self.traffic_generator_loss(portlist, test_rate, delay)
-                if lost != 0:
+                if lost > permit_loss_rate:
                         loss_rate = test_rate
                         test_rate = (test_rate + zero_rate)/2
                 else:
