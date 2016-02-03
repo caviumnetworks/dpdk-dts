@@ -73,27 +73,27 @@ class TestCmdline(TestCase):
         """
 
         # add a test object with an IP address associated
-        out = self.dut.send_expect("add objtest 192.168.0.1", "example> ")
-        self.verify("Object objtest added, ip=192.168.0.1" in out, "add command error")
+        out = self.dut.send_expect("add object 192.168.0.1", "example> ")
+        self.verify("Object object added, ip=192.168.0.1" in out, "add command error")
 
         # verify the object existance
-        out = self.dut.send_expect("add objtest 192.168.0.1", "example> ")
-        self.verify("Object objtest already exist" in out, "double add command error")
+        out = self.dut.send_expect("add object 192.168.0.1", "example> ")
+        self.verify("Object object already exist" in out, "double add command error")
 
         # show the object result by 'show' command
-        out = self.dut.send_expect("show objtest", "example> ")
-        self.verify("Object objtest, ip=192.168.0.1" in out, "show command error")
+        out = self.dut.send_expect("show object", "example> ")
+        self.verify("Object object, ip=192.168.0.1" in out, "show command error")
 
         # delete the object in cmdline
-        out = self.dut.send_expect("del objtest", "example> ")
-        self.verify("Object objtest removed, ip=192.168.0.1" in out, "del command error")
+        out = self.dut.send_expect("del object", "example> ")
+        self.verify("Object object removed, ip=192.168.0.1" in out, "del command error")
 
         # double delete the object to verify the correctness
-        out = self.dut.send_expect("del objtest", "example> ", 1)
+        out = self.dut.send_expect("del object", "example> ", 1)
         self.verify("Bad arguments" in out, "double del command error")
 
         # verify no such object anymore
-        out = self.dut.send_expect("show objtest", "example> ", 1)
+        out = self.dut.send_expect("show object", "example> ", 1)
         self.verify("Bad arguments" in out, "final show command error")
 
         # verify the help command
