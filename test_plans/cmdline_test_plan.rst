@@ -76,34 +76,34 @@ Test Case: cmdline sample commands test
 
 Add a test object with an IP address associated to it::
     
-  example>add objtest 192.168.0.1
-    Object objtest added, ip=192.168.0.1 
+  example>add object 192.168.0.1
+    Object object added, ip=192.168.0.1 
 
 Verify the object existance::
         
-  example>add objtest 192.168.0.1
-    Object objtest already exist
+  example>add object 192.168.0.1
+    Object object already exist
 
 Show the object result by ``show`` command::
   
-  example>show objtest
-    Object objtest, ip=192.168.0.1
+  example>show object
+    Object object, ip=192.168.0.1
 
 Verify the output matchs the confiuration.
 
 Delete the object in cmdline and show the result again::
         
-  example>del objtest
-    Object objtest removed, ip=192.168.0.1
+  example>del object
+    Object object removed, ip=192.168.0.1
 
 Double delete the object to verify the correctness::
   
-  example>del objtest
+  example>del object
     Bad arguments
 
 Verify no such object exist now.::
 
-  example>show objtest
+  example>show object
     Bad arguments
 
 Verify the hidden command ? and help command::
