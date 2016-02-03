@@ -53,6 +53,7 @@ class TestCase(object):
             self.nic = self.nics[0]
         else:
             self.nic = ''
+        self.kdriver = self.get_nic_driver(self.nic)
 
     def set_up_all(self):
         pass
@@ -74,7 +75,7 @@ class TestCase(object):
         if nic_name in DRIVERS.keys():
             return DRIVERS[nic_name]
 
-        raise ValueError(nic_name)
+        return "Unknown"
 
     def get_nic_name(self, pci_id):
         for nic_name, pci in NICS.items():
