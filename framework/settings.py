@@ -78,7 +78,8 @@ NICS = {
     'fortpark':'8086:374c',
     'fvl10g_vf':'8086:154c',
     'atwood': '8086:15d5',
-    'ConnectX4':'15b3:1013'
+    'ConnectX4':'15b3:1013',
+    'boulderrapid': '8086:15d0',
 }
 
 DRIVERS = {
@@ -113,7 +114,8 @@ DRIVERS = {
     'fortpark':'i40e',
     'fvl10g_vf':'i40evf',
     'atwood': 'fm10k',
-    'ConnectX4':'mlx5_core'
+    'ConnectX4':'mlx5_core',
+    'boulderrapid': 'fm10k',
 }
 
 """
