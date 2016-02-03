@@ -169,7 +169,7 @@ class TestChecksumOffload(TestCase):
                     'IPv6/UDP': 'Ether(dst="02:00:00:00:00:00", src="%s")/Dot1Q(vlan=1)/IPv6(src="::2")/UDP()/("X"*46)' % mac,
                     'IPv6/TCP': 'Ether(dst="02:00:00:00:00:00", src="%s")/Dot1Q(vlan=1)/IPv6(src="::2")/TCP()/("X"*46)' % mac}
 
-        if self.nic in ['redrockcanyou', 'atwood']:
+        if self.kdriver == "fm10k":
             del pktsChkErr['IP/SCTP']
             del pkts['IP/SCTP']
 
@@ -200,7 +200,7 @@ class TestChecksumOffload(TestCase):
                     'IPv6/UDP': 'Ether(dst="02:00:00:00:00:00", src="%s")/IPv6(src="::2")/UDP()/("X"*46)' % mac,
                     'IPv6/TCP': 'Ether(dst="02:00:00:00:00:00", src="%s")/IPv6(src="::2")/TCP()/("X"*46)' % mac}
 
-        if self.nic in ['redrockcanyou', 'atwood']:
+        if self.kdriver == "fm10k":
             del pkts['IP/SCTP']
             del pkts_ref['IP/SCTP']
 
@@ -289,7 +289,7 @@ class TestChecksumOffload(TestCase):
                 'IPv6/UDP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IPv6()/UDP()/("X"* (lambda x: x - 66 if x > 66 else 0)(%d))',
                 'IPv6/TCP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IPv6()/TCP()/("X"* (lambda x: x - 78 if x > 78 else 0)(%d))'}
 
-        if self.nic in ['redrockcanyou', 'atwood']:
+        if self.kdriver == "fm10k":
             del pkts['IP/SCTP']
 
         lcore = "1S/2C/1T"

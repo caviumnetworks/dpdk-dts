@@ -133,7 +133,7 @@ class TestShutdownApi(TestCase):
         rx_bytes_exp = pktSize
         tx_bytes_exp = pktSize
 
-        if self.nic in ['redrockcanyou', 'atwood']:
+        if self.kdriver == "fm10k":
             # RRC will always strip rx/tx crc
             rx_bytes_exp -= 4
             tx_bytes_exp -= 4
@@ -162,7 +162,7 @@ class TestShutdownApi(TestCase):
         Check link status of the ports.
         """
         # RRC not support link speed change
-        if self.nic in ['redrockcanyou', 'atwood']:
+        if self.kdriver == "fm10k":
             return
 
         for port in self.ports:
@@ -275,7 +275,7 @@ class TestShutdownApi(TestCase):
         """
         Change Link Speed.
         """
-        if self.nic in ["redrockcanyou", "atwood"]:
+        if self.kdriver == "fm10k":
             print dts.RED("RRC not support\n")
             return
 
@@ -321,7 +321,7 @@ class TestShutdownApi(TestCase):
         """
         Enable/Disable Jumbo Frames.
         """
-        if self.nic in ["redrockcanyou", "atwood"]:
+        if self.kdriver == "fm10k":
             print dts.RED("RRC not support\n")
             return
 
@@ -484,7 +484,7 @@ class TestShutdownApi(TestCase):
         """
         port link stats test
         """
-        if self.nic in ["redrockcanyou", "atwood"]:
+        if self.kdriver == "fm10k":
             print dts.RED("RRC not support\n")
             return
 

@@ -119,7 +119,7 @@ class TestJumboframes(TestCase):
 
         self.port_mask = dts.create_mask([self.rx_port, self.tx_port])
 
-        if self.nic in ["redrockcanyou", "atwood"]:
+        if self.kdriver == "fm10k":
             netobj = self.dut.ports_info[self.tx_port]['port']
             netobj.enable_jumbo(framesize = ETHER_JUMBO_FRAME_MTU)
             netobj = self.dut.ports_info[self.rx_port]['port']
@@ -157,7 +157,7 @@ class TestJumboframes(TestCase):
         jumbo frame support.
         """
         # RRC has no ability to set the max pkt len to hardware
-        if self.nic in ["redrockcanyou", "atwood"]:
+        if self.kdriver == "fm10k":
             print dts.RED("fm10k not support this case\n")
             return
         self.pmdout.start_testpmd("Default", "--max-pkt-len=%d --port-topology=loop" % (ETHER_STANDARD_MTU))

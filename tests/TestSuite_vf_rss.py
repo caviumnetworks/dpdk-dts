@@ -188,7 +188,7 @@ class TestVfRss(TestCase):
         i = 0
         for tmp_reta_line in reta_lines:
             status = "false"
-            if(self.nic in ["niantic", "redrockcanyou"]):
+            if self.kdriver == "fm10k":
                 # compute the hash result of five tuple into the 7 LSBs value.
                 hash_index = int(tmp_reta_line["RSS hash"], 16) % 128
             else:
@@ -313,7 +313,7 @@ class TestVfRss(TestCase):
                     "set nbcore %d" % (queue + 1), "testpmd> ")
 
                 # configure the reta with specific mappings.
-                if(self.nic in ["niantic", "redrockcanyou"]):
+                if(self.nic in ["niantic", "redrockcanyou", "atwood", "boulderrapid"]):
                     for i in range(128):
                         reta_entries.insert(i, random.randint(0, queue - 1))
                         self.vm_dut_0.send_expect(

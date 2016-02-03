@@ -66,13 +66,13 @@ class TestScatter(TestCase):
         self.pmdout = PmdOutput(self.dut)
         if self.nic in ["niantic", "sageville", "fortpark", "fortville_eagle",
                         "fortville_spirit", "fortville_spirit_single",
-                        "redrockcanyou", "atwood",
+                        "redrockcanyou", "atwood", "boulderrapid",
                         "ironpond", "twinpond", "springfountain"]:
             self.mbsize = 2048
         else:
             self.mbsize = 1024
 
-        if self.nic in ['redrockcanyou', 'atwood']:
+        if self.kdriver == "fm10k":
             self.dut.ports_info[self.port]['port'].enable_jumbo(framesize=9000)
 
         self.tester.send_expect("ifconfig %s mtu 9000" % self.intf, "#")
@@ -131,7 +131,7 @@ class TestScatter(TestCase):
         """
         Run after each test suite.
         """
-        if self.nic in ['redrockcanyou', 'atwood']:
+        if self.kdriver == "fm10k":
             self.dut.ports_info[self.port]['port'].enable_jumbo(framesize=1518)
         self.tester.send_expect("ifconfig %s mtu 1500" % self.intf, "#")
         pass

@@ -75,14 +75,14 @@ class TestVlan(TestCase):
         self.dut.send_expect("set verbose 1", "testpmd> ")
         out = self.dut.send_expect("set fwd mac", "testpmd> ")
 
-        if self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single", "redrockcanyou"]:
+        if self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single"]:
             self.dut.send_expect("vlan set filter on %s" % dutRxPortId, "testpmd> ")
 
         self.dut.send_expect("vlan set strip off %s" % dutRxPortId, "testpmd> ")
         self.verify('Set mac packet forwarding mode' in out, "set fwd rxonly error")
         self.vlan = 51
 
-        if self.nic in ["redrockcanyou", "atwood"]:
+        if self.kdriver == "fm10k":
             netobj = self.dut.ports_info[dutRxPortId]['port']
             netobj.add_vlan(vlan_id = self.vlan)
 
@@ -132,7 +132,7 @@ class TestVlan(TestCase):
         Enable receipt of VLAN packets
         """
 
-        if self.nic in ["redrockcanyou", "atwood"]:
+        if self.kdriver == "fm10k":
             print dts.RED("fm10k not support this case\n")
             return
         self.dut.send_expect("rx_vlan add %d %s" % (self.vlan, dutRxPortId), "testpmd> ")
@@ -177,7 +177,7 @@ class TestVlan(TestCase):
 
     def test_vlan_strip_config_off(self):
 
-        if self.nic in ["redrockcanyou", "atwood"]:
+        if self.kdriver == "fm10k":
             print dts.RED("fm10k not support this case\n")
             return
         self.dut.send_expect("vlan set strip off %s" % dutRxPortId, "testpmd> ", 20)
@@ -195,7 +195,7 @@ class TestVlan(TestCase):
         """
         Enable VLAN header insertion in transmitted packets
         """
-        if self.nic in ["redrockcanyou", "atwood"]:
+        if self.kdriver == "fm10k":
             netobj = self.dut.ports_info[dutTxPortId]['port']
             netobj.add_vlan(vlan_id = self.vlan)
             netobj.add_txvlan(vlan_id = self.vlan)
@@ -214,7 +214,7 @@ class TestVlan(TestCase):
         self.dut.send_expect("tx_vlan reset %s" % dutTxPortId, "testpmd> ", 30)
         self.dut.send_expect("stop", "testpmd> ", 30)
 
-        if self.nic in ["redrockcanyou", "atwood"]:
+        if self.kdriver == "fm10k":
             netobj = self.dut.ports_info[dutTxPortId]['port']
             # not delete vlan for self.vlan will used later
             netobj.delete_txvlan(vlan_id = self.vlan)
@@ -230,7 +230,7 @@ class TestVlan(TestCase):
         Run after each test suite.
         """
         self.dut.kill_all()
-        if self.nic in ["redrockcanyou", "atwood"]:
+        if self.kdriver == "fm10k":
             netobj = self.dut.ports_info[dutRxPortId]['port']
             netobj.delete_txvlan(vlan_id = self.vlan)
             netobj.delete_vlan(vlan_id = self.vlan)
