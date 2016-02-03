@@ -835,6 +835,10 @@ def GetNicObj(crb, bus_id, devfun_id):
         # atwood nic need special initialization
         from atwood import Atwood
         obj = Atwood(crb, bus_id, devfun_id)
+    elif nic == 'boulderrapid':
+        # atwood nic need special initialization
+        from br import BoulderRapid
+        obj = BoulderRapid(crb, bus_id, devfun_id)
     else:
         obj = NetDevice(crb, bus_id, devfun_id)
 
