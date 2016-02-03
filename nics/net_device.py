@@ -829,7 +829,7 @@ def GetNicObj(crb, bus_id, devfun_id):
 
     if nic == 'redrockcanyou':
         # redrockcanyou nic need special initialization
-        from fm10k import RedRockCanyou
+        from rrc import RedRockCanyou
         obj = RedRockCanyou(crb, bus_id, devfun_id)
     elif nic == 'atwood':
         # atwood nic need special initialization
