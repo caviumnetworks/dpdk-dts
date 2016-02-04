@@ -417,14 +417,14 @@ class TestPmdrssHash(TestCase):
         """
 
         self.verify(self.nic in ["fortville_eagle", "fortville_spirit",
-                    "fortville_spirit_single", "redrockcanyou", "atwood"],
+                    "fortville_spirit_single", "redrockcanyou", "atwood", "boulderrapid"],
                     "NIC Unsupported: " + str(self.nic))
         global reta_num
         if self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single"]:
             reta_num = 512
         elif self.nic in ["niantic"]:
             reta_num = 128
-        elif self.nic in ["redrockcanyou", "atwood"]:
+        elif self.nic in ["redrockcanyou", "atwood", "boulderrapid"]:
             reta_num = 128
         else:
             self.verify(False, "NIC Unsupported:%s" % str(self.nic))
@@ -486,7 +486,7 @@ class TestPmdrssHash(TestCase):
 
                 self.send_packet(itf, iptype)
 
-            self.dut.send_expect("quit", "# ", 30)
+        self.dut.send_expect("quit", "# ", 30)
 
     def test_toeplitz_symmetric(self):
         dutPorts = self.dut.get_ports(self.nic)
@@ -541,7 +541,6 @@ class TestPmdrssHash(TestCase):
             self.dut.send_expect("quit", "# ", 30)
 
     def test_simple(self):
-
         dutPorts = self.dut.get_ports(self.nic)
         localPort = self.tester.get_local_port(dutPorts[0])
         itf = self.tester.get_interface(localPort)
@@ -577,10 +576,9 @@ class TestPmdrssHash(TestCase):
 
                 self.dut.send_expect("port stop all", "testpmd> ")
                 # some nic not support change hash algorithm
-                if self.nic not in ["redrockcanyou"]:
+                if self.kdriver not in ["fm10k"]:
                     self.dut.send_expect(
                         "set_hash_global_config 0 simple_xor %s enable" % iptype, "testpmd> ")
-                # self.dut.send_expect("port config all rss ip", "testpmd> ")
                 self.dut.send_expect("port start all", "testpmd> ")
                 self.dut.send_expect(
                     "port config all rss %s" % rsstype, "testpmd> ")
