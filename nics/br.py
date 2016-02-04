@@ -40,7 +40,7 @@ TP_BINARY = 'TestPoint'
 
 FUNC_RULES = [
             # disable cut through for jumbo frame case
-            'set port config 1,5 tx_cut_through off',
+            'set port config 0,11 tx_cut_through off',
             # disable mac learning
             'set port config 0..11 learning off',
             #redirect PEP0 to EPL0
