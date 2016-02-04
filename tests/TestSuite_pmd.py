@@ -38,37 +38,12 @@ import dts
 import re
 import time
 from test_case import TestCase
-from plotting import Plotting
 from time import sleep
 from settings import HEADER_SIZE
 from pmd_output import PmdOutput
 from etgen import IxiaPacketGenerator
 
 class TestPmd(TestCase,IxiaPacketGenerator):
-
-    def plot_results(self, number_ports):
-
-        cores_configs = []
-        percent_values = []
-
-        # Append the percentage results for the all the cores configs
-        for test_cycle in self.test_cycles:
-            cores_configs.append(test_cycle['cores'])
-            config_results = []
-            for frame_size in self.frame_sizes:
-                config_results.append(test_cycle['pct'][frame_size])
-
-            percent_values.append(config_results)
-
-        image_path = self.plotting.create_bars_plot(
-            'test_perf_pmd_%sports' % number_ports,
-            'PMD, %d ports' % number_ports,
-            self.frame_sizes,
-            percent_values,
-            ylabel='% linerate',
-            legend=cores_configs)
-
-        dts.results_plot_print(image_path)
 
     def set_up_all(self):
         """
@@ -103,8 +78,6 @@ class TestPmd(TestCase,IxiaPacketGenerator):
             'ip'] + HEADER_SIZE['udp']
 
         self.ports_socket = self.dut.get_numa_id(self.dut_ports[0])
-
-        self.plotting = Plotting(self.dut.crb['name'], self.target, self.nic)
 
         self.pmdout = PmdOutput(self.dut)
 
@@ -203,7 +176,6 @@ class TestPmd(TestCase,IxiaPacketGenerator):
 
             dts.results_table_add_row(table_row)
 
-        self.plot_results(number_ports=4)
         dts.results_table_print()
 
     def test_perf_pmd_performance_2ports(self):
@@ -282,7 +254,6 @@ class TestPmd(TestCase,IxiaPacketGenerator):
 
             dts.results_table_add_row(table_row)
 
-        self.plot_results(number_ports=2)
         dts.results_table_print()
 
     def test_checksum_checking(self):

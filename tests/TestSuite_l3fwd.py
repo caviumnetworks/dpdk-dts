@@ -37,7 +37,6 @@ Layer-3 forwarding test script.
 import dts
 import string
 import re
-from plotting import Plotting
 from test_case import TestCase
 from exception import VerifyFailure
 from settings import HEADER_SIZE
@@ -196,8 +195,6 @@ class TestL3fwd(TestCase,IxiaPacketGenerator):
 
         self.l3fwd_test_results = {'header': [],
                                    'data': []}
-
-        self.plotting = Plotting(self.dut.crb['name'], self.target, self.nic)
 
     def flows(self):
         """

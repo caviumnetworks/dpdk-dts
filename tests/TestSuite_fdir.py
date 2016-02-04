@@ -44,7 +44,6 @@ from scapy.utils import struct, socket, PcapWriter
 import dts
 from etgen import IxiaPacketGenerator
 from test_case import TestCase
-from plotting import Plotting
 from settings import HEADER_SIZE
 from pmd_output import PmdOutput
 
@@ -64,29 +63,6 @@ class TestFdir(TestCase, IxiaPacketGenerator):
     # Utility methods and other non-test code.
     #
     ###########################################################################
-    def plot_results(self, number_ports):
-
-        cores_configs = []
-        percent_values = []
-
-        # Append the percentage results for the all the cores configs
-        for test_cycle in self.test_cycles:
-            cores_configs.append(test_cycle['cores'])
-            config_results = []
-            for frame_size in self.frame_sizes:
-                config_results.append(test_cycle['pct'][frame_size])
-
-            percent_values.append(config_results)
-
-        image_path = self.plotting.create_bars_plot(
-            'test_perf_pmd_%sports' % number_ports,
-            'PMD, %d ports' % number_ports,
-            self.frame_sizes,
-            percent_values,
-            ylabel='% linerate',
-            legend=cores_configs)
-
-        dts.results_plot_print(image_path)
 
     def send_and_verify(self, condition, packet):
         """
@@ -217,8 +193,6 @@ class TestFdir(TestCase, IxiaPacketGenerator):
         for test_cycle in self.test_cycles:
             self.table_header.append("%s Mpps" % test_cycle['cores'])
             self.table_header.append("% linerate")
-
-        self.plotting = Plotting(self.dut.crb['name'], self.target, self.nic)
 
     def set_up(self):
         """
@@ -952,7 +926,6 @@ class TestFdir(TestCase, IxiaPacketGenerator):
 
             dts.results_table_add_row(table_row)
 
-        self.plot_results(number_ports=2)
         dts.results_table_print()
 
     def ip(self, port, frag, src, proto, tos, dst, chksum, len, version, flags, ihl, ttl, id, options=None):

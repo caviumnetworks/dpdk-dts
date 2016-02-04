@@ -36,33 +36,10 @@ Test Layer-2 Forwarding support
 
 import dts
 from test_case import TestCase
-from plotting import Plotting
 from settings import HEADER_SIZE
 
 
 class TestL2fwd(TestCase):
-
-    def plot_results(self):
-
-        queues = []
-        queues_results = []
-
-        for test_queues in self.test_queues:
-            queues.append(str(test_queues['queues']))
-            results = []
-            for frame_size in self.frame_sizes:
-                results.append(test_queues['pct'][frame_size])
-            queues_results.append(results)
-
-        image_path = self.plotting.create_bars_plot(
-            'test_perf_l2fwd',
-            'L2fwd, %d ports' % self.number_of_ports,
-            self.frame_sizes,
-            queues_results,
-            ylabel='% linerate',
-            legend=queues)
-
-        dts.results_plot_print(image_path)
 
     def set_up_all(self):
         """
@@ -101,7 +78,6 @@ class TestL2fwd(TestCase):
             self.table_header.append("% linerate")
 
         dts.results_table_add_header(self.table_header)
-        self.plotting = Plotting(self.dut.crb['name'], self.target, self.nic)
 
     def set_up(self):
         """
@@ -228,7 +204,7 @@ class TestL2fwd(TestCase):
                 self.verify(self.test_queues[n]['Mpps'][frame_size] > 0,
                             "No traffic detected")
 
-        # Prepare the results for table and plot printing
+        # Prepare the results for table
         for frame_size in self.frame_sizes:
             results_row = []
             results_row.append(frame_size)
@@ -238,7 +214,6 @@ class TestL2fwd(TestCase):
 
             dts.results_table_add_row(results_row)
 
-        self.plot_results()
         dts.results_table_print()
 
     def tear_down(self):
