@@ -38,9 +38,12 @@ import time
 
 import settings
 from crb import Crb
-from settings import TIMEOUT
+from settings import TIMEOUT, HEADER_SIZE
+from utils import RED
 
 NICS_LIST = []      # global list for save nic objects
+
+MIN_MTU = 68
 
 
 class NetDevice(object):
@@ -770,7 +773,22 @@ class NetDevice(object):
         """
         nic_pci_num = ':'.join(['0000', bus_id, devfun_id])
         cmd = "echo %s > /sys/bus/pci/devices/0000\:%s\:%s/driver/unbind"
-        self.send_expect(cmd % (nic_pci_num, bus_id, devfun_id), "# ")
+        self.__send_expect(cmd % (nic_pci_num, bus_id, devfun_id), "# ")
+
+    def _cal_mtu(self, framesize):
+        return framesize - HEADER_SIZE['eth']
+
+    def enable_jumbo(self, framesize=0):
+        if self.intf_name == "N/A":
+            print RED("Enable jumbo must based on kernel interface!!!")
+            return
+        if framesize < MIN_MTU:
+            print RED("Enable jumbo must over %d !!!" % MIN_MTU)
+            return
+
+        mtu = self._cal_mtu(framesize)
+        cmd = "ifconfig %s mtu %d"
+        self.__send_expect(cmd % (self.intf_name, mtu), "# ")
 
 
 def get_pci_id(crb, bus_id, devfun_id):
