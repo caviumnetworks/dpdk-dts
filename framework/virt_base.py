@@ -301,6 +301,7 @@ class VirtBase(object):
         crb['bypass core0'] = False
         vm_ip = self.get_vm_ip()
         crb['IP'] = vm_ip
+        crb['My IP'] = vm_ip
         username, password = self.get_vm_login()
         crb['user'] = username
         crb['pass'] = password
