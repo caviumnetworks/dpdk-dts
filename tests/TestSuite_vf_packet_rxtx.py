@@ -276,8 +276,6 @@ class TestVfPacketRxtx(TestCase):
         if self.setup_3vf_2vm_env_flag == 1:
             self.destroy_3vf_2vm_env()
 
-    def tear_down_all(self):
-
         if getattr(self, 'vm0', None):
             self.vm0.stop()
 
@@ -286,4 +284,7 @@ class TestVfPacketRxtx(TestCase):
 
         for port_id in self.dut_ports:
             self.dut.destroy_sriov_vfs_by_port(port_id)
+
+    def tear_down_all(self):
+        pass
 
