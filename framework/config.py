@@ -282,6 +282,8 @@ class IxiaConf(UserConf):
                             ixia_port["port"] = int(m.group(2))
                             ixia_ports.append(ixia_port)
                     ixia_group['Ports'] = ixia_ports
+                elif key == 'ixia_enable_rsfec':
+                    ixia_group['enable_rsfec'] = value
 
             if 'Version' not in ixia_group:
                 print 'ixia configuration file request ixia_version option!!!'

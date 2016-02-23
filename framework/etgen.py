@@ -155,6 +155,7 @@ class IxiaPacketGenerator(SSHConnection):
 
         self.ixiaVersion = ixiaPorts[ixiaRef]["Version"]
         self.ports = ixiaPorts[ixiaRef]["Ports"]
+        self.enable_rsfec = ixiaPorts[ixiaRef]['enable_rsfec']
 
         self.logger.info(self.ixiaVersion)
         self.logger.info(self.ports)
@@ -171,6 +172,11 @@ class IxiaPacketGenerator(SSHConnection):
             if not self.tcl_server_login():
                 self.close()
                 self.session = None
+            for port in self.ports:
+                port['speed'] = self.get_line_rate(self.chasId, port)
+
+    def get_line_rate(self, chasid, port):
+        return self.send_expect("stat getLineSpeed %s %s %s" % (chasid, port['card'], port['port']), '%')
 
     def get_ip_address(self):
         return self.tester.get_ip_address()
@@ -406,6 +412,13 @@ class IxiaPacketGenerator(SSHConnection):
         for item in pList:
             self.add_tcl_cmd("port setFactoryDefaults chasId %d %d" % (
                 item['card'], item['port']))
+            #if the line rate is 100G and we need this port work in 100G mode,
+            #we need to add some configure to make it so.
+            if int(self.get_line_rate(self.chasId, item).strip()) == 100000 and self.enable_rsfec == 'enable':
+                self.add_tcl_cmd("port config -ieeeL1Defaults 0")
+                self.add_tcl_cmd("port config -autonegotiate false")
+                self.add_tcl_cmd("port config -enableRsFec true")
+                self.add_tcl_cmd("port set %d %d %d" % (self.chasId, item['card'], item['port']))
 
             pl.append('[list %d %d %d]' % (self.chasId, item['card'], item['port']))
 
