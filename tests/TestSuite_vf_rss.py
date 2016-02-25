@@ -58,7 +58,7 @@ class TestVfRss(TestCase):
         self.tester.scapy_append('sys.path.append("./")')
         self.tester.scapy_append('from sctp import *')
         self.vm_dut_0.send_expect("start", "testpmd>")
-        mac = self.vm_dut_0.get_mac_address(0)
+        mac = self.vm0_testpmd.get_port_mac(0)
         # send packet with different source and dest ip
         if tran_type == "ipv4-other":
             for i in range(16):
@@ -124,12 +124,12 @@ class TestVfRss(TestCase):
                 time.sleep(.5)
         elif tran_type == "ipv6-sctp":
             for i in range(16):
-                packet = r'sendp([Ether(dst="%s")/IPv6(src="3ffe:2501:200:1fff::%d", dst="3ffe:2501:200:3::%d")/SCTP(sport=1024,dport=1025,tag=1)], iface="%s")' % (
+                packet = r'sendp([Ether(dst="%s")/IPv6(src="3ffe:2501:200:1fff::%d", dst="3ffe:2501:200:3::%d", nh=132)/SCTP(sport=1024,dport=1025,tag=1)], iface="%s")' % (
                     mac, i + 1, i + 2, itf)
                 self.tester.scapy_append(packet)
                 self.tester.scapy_execute()
                 time.sleep(.5)
-                packet = r'sendp([Ether(dst="%s")/IPv6(src="3ffe:2501:200:1fff::%d", dst="3ffe:2501:200:3::%d")/SCTP(sport=1025,dport=1024,tag=1)], iface="%s")' % (
+                packet = r'sendp([Ether(dst="%s")/IPv6(src="3ffe:2501:200:1fff::%d", dst="3ffe:2501:200:3::%d", nh=132)/SCTP(sport=1025,dport=1024,tag=1)], iface="%s")' % (
                     mac, i + 2, i + 1, itf)
                 self.tester.scapy_append(packet)
                 self.tester.scapy_execute()
@@ -221,6 +221,7 @@ class TestVfRss(TestCase):
         self.verify(len(self.dut_ports) >= 1, "Not enough ports available")
 
         self.vm0 = None
+        self.host_testpmd = None
         self.setup_1pf_1vf_1vm_env_flag = 0
         self.setup_1pf_1vf_1vm_env(driver='')
 
