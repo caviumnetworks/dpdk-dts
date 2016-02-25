@@ -129,11 +129,10 @@ class VirtDut(DPDKdut):
         # example apps by themselves and will fail otherwise.
         self.send_expect("export RTE_TARGET=" + target, "#")
         self.send_expect("export RTE_SDK=`pwd`", "#")
-
         if not self.skip_setup:
             self.build_install_dpdk(target)
 
-        self.setup_memory(hugepages=512)
+        self.setup_memory(hugepages=1024)
         self.setup_modules(target)
 
         if bind_dev:
