@@ -110,6 +110,9 @@ class TestVfPacketRxtx(TestCase):
         port_id_0 = 0
         self.vm0_testpmd = PmdOutput(self.vm_dut_0)
         self.vm0_testpmd.start_testpmd(VM_CORES_MASK)
+        self.vm0_testpmd.execute_cmd('port stop all')
+        self.vm0_testpmd.execute_cmd('port config all crc-strip on')
+        self.vm0_testpmd.execute_cmd('port start all')
         self.vm0_testpmd.execute_cmd('show port info all')
         pmd_vf0_mac = self.vm0_testpmd.get_port_mac(port_id_0)
         self.vm0_testpmd.execute_cmd('set fwd mac')
