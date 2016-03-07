@@ -56,7 +56,7 @@ class TestVhostUserOneCopyOneVm(TestCase, IxiaPacketGenerator):
         # Build target with modified config file
         self.dut.send_expect(
             "sed -i -e 's/CONFIG_RTE_LIBRTE_VHOST_USER=.*$/CONFIG_RTE_LIBRTE"
-            "_VHOST_USER=y/' ./config/common_linuxapp",
+            "_VHOST_USER=y/' ./config/common_base",
             "# ",
             30)
         self.dut.build_install_dpdk(self.target)

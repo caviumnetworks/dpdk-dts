@@ -33,7 +33,7 @@ class TestVmdq(TestCase, IxiaPacketGenerator):
 
         self.tester.extend_external_packet_generator(TestVmdq, self)
         
-        self.dut.send_expect("sed -i 's/CONFIG_RTE_MAX_QUEUES_PER_PORT=256/CONFIG_RTE_MAX_QUEUES_PER_PORT=1024/' ./config/common_linuxapp", "# ", 5)
+        self.dut.send_expect("sed -i 's/CONFIG_RTE_MAX_QUEUES_PER_PORT=256/CONFIG_RTE_MAX_QUEUES_PER_PORT=1024/' ./config/common_base", "# ", 5)
         
         self.dut.build_install_dpdk(self.target)
         # Update the max queue per port for Fortville.

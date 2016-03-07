@@ -152,8 +152,8 @@ class TestL3fwd(TestCase,IxiaPacketGenerator):
 
         pat = re.compile("P([0123])")
         # Update config file and rebuild to get best perf on FVL
-        self.dut.send_expect("sed -i -e 's/CONFIG_RTE_PCI_CONFIG=n/CONFIG_RTE_PCI_CONFIG=y/' ./config/common_linuxapp", "#", 20)
-        self.dut.send_expect("sed -i -e 's/CONFIG_RTE_PCI_EXTENDED_TAG=.*$/CONFIG_RTE_PCI_EXTENDED_TAG=\"on\"/' ./config/common_linuxapp", "#", 20)
+        self.dut.send_expect("sed -i -e 's/CONFIG_RTE_PCI_CONFIG=n/CONFIG_RTE_PCI_CONFIG=y/' ./config/common_base", "#", 20)
+        self.dut.send_expect("sed -i -e 's/CONFIG_RTE_PCI_EXTENDED_TAG=.*$/CONFIG_RTE_PCI_EXTENDED_TAG=\"on\"/' ./config/common_base", "#", 20)
         self.dut.build_install_dpdk(self.target)
 
 

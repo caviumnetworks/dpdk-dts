@@ -77,7 +77,7 @@ class TestVxlanSample(TestCase):
         # Change the config file to support vhost and recompile the package.
         self.dut.send_expect("sed -i -e 's/RTE_LIBRTE_VHOST=n$/"
                              + "RTE_LIBRTE_VHOST=y/' config/"
-                             + "common_linuxapp", "# ", 30)
+                             + "common_base", "# ", 30)
         # temporary disable skip_setup
         skip_setup = self.dut.skip_setup
         self.dut.skip_setup = False
@@ -623,7 +623,7 @@ class TestVxlanSample(TestCase):
         """
         # Restore the config file and recompile the package.
         self.dut.send_expect("sed -i -e 's/RTE_LIBRTE_VHOST=y$/"
-                             + "RTE_LIBRTE_VHOST=n/' config/common_linuxapp",
+                             + "RTE_LIBRTE_VHOST=n/' config/common_base",
                              "# ", 30)
         # temporary disable skip_setup
         skip_setup = self.dut.skip_setup

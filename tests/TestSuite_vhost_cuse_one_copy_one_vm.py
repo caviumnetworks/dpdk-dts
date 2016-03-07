@@ -56,7 +56,7 @@ class TestVhostCuseOneCopyOneVm(TestCase, IxiaPacketGenerator):
         # Change config file to enable vhost-cuse compiled.
         self.dut.send_expect(
             "sed -i -e 's/CONFIG_RTE_LIBRTE_VHOST_USER=.*$/CONFIG_RTE_LIBRTE"
-            "_VHOST_USER=n/' ./config/common_linuxapp",
+            "_VHOST_USER=n/' ./config/common_base",
             "# ",
             30)
         self.dut.build_install_dpdk(self.target)
@@ -439,7 +439,7 @@ class TestVhostCuseOneCopyOneVm(TestCase, IxiaPacketGenerator):
         # Restore the config file and recompile the package
         self.dut.send_expect(
             "sed -i -e 's/CONFIG_RTE_LIBRTE_VHOST_USER=.*$/CONFIG_RTE_LIBRTE_VHOST_USER=y/' "
-            "./config/common_linuxapp",
+            "./config/common_base",
             "# ",
             30)
         self.dut.build_install_dpdk(self.target)

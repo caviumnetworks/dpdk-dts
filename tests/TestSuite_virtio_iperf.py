@@ -70,11 +70,11 @@ class TestVirtioIperf(TestCase):
         if vhost == 'cuse':
             self.dut_execut_cmd(
                 "sed -i -e 's/CONFIG_RTE_LIBRTE_VHOST_USER=.*$/CONFIG_RTE_LIBRTE" +
-                "_VHOST_USER=n/' ./config/common_linuxapp")
+                "_VHOST_USER=n/' ./config/common_base")
         else:
             self.dut_execut_cmd(
                 "sed -i -e 's/CONFIG_RTE_LIBRTE_VHOST_USER=.*$/CONFIG_RTE_LIBRTE" +
-                "_VHOST_USER=y/' ./config/common_linuxapp")
+                "_VHOST_USER=y/' ./config/common_base")
         self.dut.build_install_dpdk(self.target)
         self.dut_execut_cmd("cd ./lib/librte_vhost")
         out = self.dut_execut_cmd("make")
