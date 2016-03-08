@@ -237,8 +237,8 @@ class Crb(object):
         Look for the NIC's information (PCI Id and card type).
         """
         out = self.send_expect(
-            "lspci -nn | grep -i eth", "# ", alt_session=True)
-        rexp = r"([\da-f]{2}:[\da-f]{2}.\d{1}) .*Eth.*?ernet .*?([\da-f]{4}:[\da-f]{4})"
+            "lspci -Dnn | grep -i eth", "# ", alt_session=True)
+        rexp = r"([\da-f]{4}:[\da-f]{2}:[\da-f]{2}.\d{1}) .*Eth.*?ernet .*?([\da-f]{4}:[\da-f]{4})"
         pattern = re.compile(rexp)
         match = pattern.findall(out)
         self.pci_devices_info = []
@@ -259,20 +259,20 @@ class Crb(object):
             card_type = "8086:%s" % match[i][1]
             self.pci_devices_info.append((match[i][0], card_type))
 
-    def get_pci_dev_driver(self, bus_id, devfun_id):
+    def get_pci_dev_driver(self, domain_id, bus_id, devfun_id):
         """
         Get the driver of specified pci device.
         """
         get_pci_dev_driver = getattr(
             self, 'get_pci_dev_driver_%s' % self.get_os_type())
-        return get_pci_dev_driver(bus_id, devfun_id)
+        return get_pci_dev_driver(domain_id, bus_id, devfun_id)
 
-    def get_pci_dev_driver_linux(self, bus_id, devfun_id):
+    def get_pci_dev_driver_linux(self, domain_id, bus_id, devfun_id):
         """
         Get the driver of specified pci device on linux.
         """
-        out = self.send_expect("cat /sys/bus/pci/devices/0000\:%s\:%s/uevent" %
-                               (bus_id, devfun_id), "# ", alt_session=True)
+        out = self.send_expect("cat /sys/bus/pci/devices/%s\:%s\:%s/uevent" %
+                               (domain_id, bus_id, devfun_id), "# ", alt_session=True)
         rexp = r"DRIVER=(.+?)\r"
         pattern = re.compile(rexp)
         match = pattern.search(out)
@@ -286,20 +286,20 @@ class Crb(object):
         """
         return True
 
-    def get_pci_dev_id(self, bus_id, devfun_id):
+    def get_pci_dev_id(self, domain_id, bus_id, devfun_id):
         """
         Get the pci id of specified pci device.
         """
         get_pci_dev_id = getattr(
             self, 'get_pci_dev_id_%s' % self.get_os_type())
-        return get_pci_dev_id(bus_id, devfun_id)
+        return get_pci_dev_id(domain_id, bus_id, devfun_id)
 
-    def get_pci_dev_id_linux(self, bus_id, devfun_id):
+    def get_pci_dev_id_linux(self, domain_id, bus_id, devfun_id):
         """
         Get the pci id of specified pci device on linux.
         """
-        out = self.send_expect("cat /sys/bus/pci/devices/0000\:%s\:%s/uevent" %
-                               (bus_id, devfun_id), "# ", alt_session=True)
+        out = self.send_expect("cat /sys/bus/pci/devices/%s\:%s\:%s/uevent" %
+                               (domain_id, bus_id, devfun_id), "# ", alt_session=True)
         rexp = r"PCI_ID=(.+)"
         pattern = re.compile(rexp)
         match = re.search(out)
@@ -307,21 +307,21 @@ class Crb(object):
             return None
         return match.group(1)
 
-    def get_device_numa(self, bus_id, devfun_id):
+    def get_device_numa(self, domain_id, bus_id, devfun_id):
         """
         Get numa number of specified pci device.
         """
         get_device_numa = getattr(
             self, "get_device_numa_%s" % self.get_os_type())
-        return get_device_numa(bus_id, devfun_id)
+        return get_device_numa(domain_id, bus_id, devfun_id)
 
-    def get_device_numa_linux(self, bus_id, devfun_id):
+    def get_device_numa_linux(self, domain_id, bus_id, devfun_id):
         """
         Get numa number of specified pci device on Linux.
         """
         numa = self.send_expect(
-            "cat /sys/bus/pci/devices/0000\:%s\:%s/numa_node" %
-            (bus_id, devfun_id), "# ", alt_session=True)
+            "cat /sys/bus/pci/devices/%s\:%s\:%s/numa_node" %
+            (domain_id, bus_id, devfun_id), "# ", alt_session=True)
 
         try:
             numa = int(numa)

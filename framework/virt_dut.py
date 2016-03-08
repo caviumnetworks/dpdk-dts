@@ -247,9 +247,10 @@ class VirtDut(DPDKdut):
             driver = settings.get_nic_driver(pci_id)
             if driver is not None:
                 addr_array = pci_bus.split(':')
-                bus_id = addr_array[0]
-                devfun_id = addr_array[1]
-                port = GetNicObj(self, bus_id, devfun_id)
+                domain_id = addr_array[0]
+                bus_id = addr_array[1]
+                devfun_id = addr_array[2]
+                port = GetNicObj(self, domain_id, bus_id, devfun_id)
                 itf = port.get_interface_name()
                 self.send_expect("ifconfig %s up" % itf, "# ")
                 time.sleep(30)

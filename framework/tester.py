@@ -203,7 +203,7 @@ class Tester(Crb):
         try:
             for (pci_bus, pci_id) in self.pci_devices_info:
                 addr_array = pci_bus.split(':')
-                port = GetNicObj(self, addr_array[0], addr_array[1])
+                port = GetNicObj(self, addr_array[0], addr_array[1], addr_array[2])
                 itf = port.get_interface_name()
                 self.enable_ipv6(itf)
                 self.send_expect("ifconfig %s up" % itf, "# ")
@@ -217,7 +217,7 @@ class Tester(Crb):
         try:
             for (pci_bus, pci_id) in self.pci_devices_info:
                 addr_array = pci_bus.split(':')
-                port = GetNicObj(self, addr_array[0], addr_array[1])
+                port = GetNicObj(self, addr_array[0], addr_array[1], addr_array[2])
                 itf = port.get_interface_name()
                 self.enable_promisc(itf)
         except Exception as e:
@@ -284,23 +284,24 @@ class Tester(Crb):
         for (pci_bus, pci_id) in self.pci_devices_info:
             # ignore unknown card types
             if pci_id not in NICS.values():
-                self.logger.info("Tester: [000:%s %s] %s" % (pci_bus, pci_id,
+                self.logger.info("Tester: [%s %s] %s" % (pci_bus, pci_id,
                                                              "unknow_nic"))
                 continue
 
             addr_array = pci_bus.split(':')
-            bus_id = addr_array[0]
-            devfun_id = addr_array[1]
+            domain_id = addr_array[0]
+            bus_id = addr_array[1]
+            devfun_id = addr_array[2]
 
-            port = GetNicObj(self, bus_id, devfun_id)
+            port = GetNicObj(self, domain_id, bus_id, devfun_id)
             intf = port.get_interface_name()
 
             if "No such file" in intf:
-                self.logger.info("Tester: [000:%s %s] %s" % (pci_bus, pci_id,
+                self.logger.info("Tester: [%s %s] %s" % (pci_bus, pci_id,
                                                              "unknow_interface"))
                 continue
 
-            self.logger.info("Tester: [000:%s %s] %s" % (pci_bus, pci_id, intf))
+            self.logger.info("Tester: [%s %s] %s" % (pci_bus, pci_id, intf))
             macaddr = port.get_mac_addr()
 
             ipv6 = port.get_ipv6_addr()
@@ -327,7 +328,7 @@ class Tester(Crb):
         Return tester local port numa.
         """
         pci = self.ports_info[port]['pci']
-        out = self.send_expect("cat /sys/bus/pci/devices/0000:%s/numa_node" % pci, "#")
+        out = self.send_expect("cat /sys/bus/pci/devices/%s/numa_node" % pci, "#")
         return int(out)
 
     def check_port_list(self, portList, ftype='normal'):

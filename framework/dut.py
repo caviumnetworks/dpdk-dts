@@ -237,9 +237,10 @@ class Dut(Crb):
             if driver is not None:
                 # unbind device driver
                 addr_array = pci_bus.split(':')
-                bus_id = addr_array[0]
-                devfun_id = addr_array[1]
-                port = GetNicObj(self, bus_id, devfun_id)
+                domain_id = addr_array[0]
+                bus_id = addr_array[1]
+                devfun_id = addr_array[2]
+                port = GetNicObj(self, domain_id, bus_id, devfun_id)
                 port.stop()
 
     def restore_interfaces_linux(self):
@@ -254,16 +255,17 @@ class Dut(Crb):
             if driver is not None:
                 # unbind device driver
                 addr_array = pci_bus.split(':')
-                bus_id = addr_array[0]
-                devfun_id = addr_array[1]
+                domain_id = addr_array[0]
+                bus_id = addr_array[1]
+                devfun_id = addr_array[2]
 
-                port = GetNicObj(self, bus_id, devfun_id)
+                port = GetNicObj(self, domain_id, bus_id, devfun_id)
 
-                self.send_expect('echo 0000:%s > /sys/bus/pci/devices/0000\:%s\:%s/driver/unbind'
-                                 % (pci_bus, bus_id, devfun_id), '# ')
+                self.send_expect('echo %s > /sys/bus/pci/devices/%s\:%s\:%s/driver/unbind'
+                                 % (pci_bus, domain_id, bus_id, devfun_id), '# ')
                 # bind to linux kernel driver
                 self.send_expect('modprobe %s' % driver, '# ')
-                self.send_expect('echo 0000:%s > /sys/bus/pci/drivers/%s/bind'
+                self.send_expect('echo %s > /sys/bus/pci/drivers/%s/bind'
                                  % (pci_bus, driver), '# ')
                 itf = port.get_interface_name()
                 self.send_expect("ifconfig %s up" % itf, "# ")
@@ -569,7 +571,7 @@ class Dut(Crb):
             port = port_info['port']
             intf = port.get_interface_name()
             if "No such file" in intf:
-                self.logger.info("DUT: [0000:%s] %s" % (pci_bus, unknow_interface))
+                self.logger.info("DUT: [%s] %s" % (pci_bus, unknow_interface))
                 continue
             out = self.send_expect("ip link show %s" % intf, "# ")
             if "DOWN" in out:
@@ -594,7 +596,7 @@ class Dut(Crb):
             port = port_info['port']
             intf = port.get_interface_name()
             if "No such file" in intf:
-                self.logger.info("DUT: [0000:%s] %s" % (pci_bus, unknow_interface))
+                self.logger.info("DUT: [%s] %s" % (pci_bus, unknow_interface))
                 continue
             self.send_expect("ifconfig %s up" % intf, "# ")
             time.sleep(5)
@@ -654,7 +656,7 @@ class Dut(Crb):
             port = GetNicObj(self, port_info['pci'], port_info['type'])
             intf = port.get_interface_name()
 
-            self.logger.info("DUT cached: [000:%s %s] %s" % (port_info['pci'],
+            self.logger.info("DUT cached: [%s %s] %s" % (port_info['pci'],
                              port_info['type'], intf))
 
             port_info['port'] = port
@@ -677,15 +679,16 @@ class Dut(Crb):
 
         for (pci_bus, pci_id) in self.pci_devices_info:
             if self.check_ports_available(pci_bus, pci_id) is False:
-                self.logger.info("DUT: [000:%s %s] %s" % (pci_bus, pci_id,
+                self.logger.info("DUT: [%s %s] %s" % (pci_bus, pci_id,
                                                           skipped))
                 continue
 
             addr_array = pci_bus.split(':')
-            bus_id = addr_array[0]
-            devfun_id = addr_array[1]
+            domain_id = addr_array[0]
+            bus_id = addr_array[1]
+            devfun_id = addr_array[2]
 
-            port = GetNicObj(self, bus_id, devfun_id)
+            port = GetNicObj(self, domain_id, bus_id, devfun_id)
             numa = port.socket
             # store the port info to port mapping
             self.ports_info.append(
@@ -758,9 +761,10 @@ class Dut(Crb):
         vfs_port = []
         for vf_pci in sriov_vfs_pci:
             addr_array = vf_pci.split(':')
-            bus_id = addr_array[0]
-            devfun_id = addr_array[1]
-            vf_port = GetNicObj(self, bus_id, devfun_id)
+            domain_id = addr_array[0]
+            bus_id = addr_array[1]
+            devfun_id = addr_array[2]
+            vf_port = GetNicObj(self, domain_id, bus_id, devfun_id)
             vfs_port.append(vf_port)
         self.ports_info[port_id]['vfs_port'] = vfs_port
 
