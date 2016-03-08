@@ -495,41 +495,25 @@ class Crb(object):
 
         cpuinfo = \
             self.send_expect(
-                "grep --color=never \"processor\\|physical id\\|core id\\|^$\" /proc/cpuinfo",
+                "lscpu -p|grep -v \#",
                 "#", alt_session=True)
 
-        if "processor" not in cpuinfo:              
-            # yocto not support --color=never, but ubuntu must need --color=never, 
-            # so check cpuinfo, before parsing cpuinfo, if cpuifo get error, delete --color=never
-            # and get cpuinfo again
-            cpuinfo = \
-                self.send_expect(
-                    r'grep "processor\|physical id\|core id\|^$" /proc/cpuinfo',
-                    "#", alt_session=True)
-
-        cpuinfo = cpuinfo.split('\r\n\r\n')
+        cpuinfo = cpuinfo.split()
         # haswell cpu on cottonwood core id not correct
         # need addtional coremap for haswell cpu
         core_id = 0
         coremap = {}
         for line in cpuinfo:
-            m = re.search("processor\t: (\d+)\r\n" +
-                          "physical id\t: (\d+)\r\n" +
-                          "core id\t\t: (\d+)", line)
+            (thread, core, socket) = line.split(',')[0:3]
 
-            if m:
-                thread = m.group(1)
-                socket = m.group(2)
-                core = m.group(3)
+            if core not in coremap.keys():
+                coremap[core] = core_id
+                core_id += 1
 
-                if core not in coremap.keys():
-                    coremap[core] = core_id
-                    core_id += 1
-
-                if self.crb['bypass core0'] and core == '0' and socket == '0':
-                    self.logger.info("Core0 bypassed")
-                    continue
-                self.cores.append(
+            if self.crb['bypass core0'] and core == '0' and socket == '0':
+                self.logger.info("Core0 bypassed")
+                continue
+            self.cores.append(
                     {'thread': thread, 'socket': socket, 'core': coremap[core]})
 
         self.number_of_cores = len(self.cores)
