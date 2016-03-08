@@ -521,7 +521,7 @@ class NetDevice(object):
         """
         Get numa number of specified pci device.
         """
-        self.crb.get_nic_numa(self.domain_id, self.bus_id, self.devfun_id)
+        self.crb.get_device_numa(self.domain_id, self.bus_id, self.devfun_id)
 
     def get_card_type(self):
         """
