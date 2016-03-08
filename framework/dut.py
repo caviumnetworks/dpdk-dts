@@ -301,6 +301,8 @@ class Dut(Crb):
             elif self.architecture == "x86_x32":
                 arch_huge_pages = hugepages if hugepages > 0 else 256
                 force_socket = True
+            elif self.architecture == "ppc_64":
+                arch_huge_pages = hugepages if hugepages > 0 else 512
 
             if total_huge_pages != arch_huge_pages:
                  # before all hugepage average distribution  by all socket,

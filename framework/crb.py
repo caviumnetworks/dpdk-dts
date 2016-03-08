@@ -161,18 +161,20 @@ class Crb(object):
         """
         Set numbers of huge pages
         """
+        page_size = self.send_expect("awk '/Hugepagesize/ {print $2}' /proc/meminfo", "# ")
+
         if numa == -1:
-            self.send_expect('echo %d > /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages' % huge_pages, '# ', 5)
+            self.send_expect('echo %d > /sys/kernel/mm/hugepages/hugepages-%skB/nr_hugepages' % (huge_pages, page_size), '# ', 5)
         else:
             #sometimes we set hugepage on kernel cmdline, so we need clear default hugepage
-            self.send_expect('echo 0 > /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages', '# ', 5)
+            self.send_expect('echo 0 > /sys/kernel/mm/hugepages/hugepages-%skB/nr_hugepages' % (page_size), '# ', 5)
             
             #some platform not support numa, example vm dut
             try:
-                self.send_expect('echo %d > /sys/devices/system/node/node%d/hugepages/hugepages-2048kB/nr_hugepages' % (huge_pages, numa), '# ', 5)
+                self.send_expect('echo %d > /sys/devices/system/node/node%d/hugepages/hugepages-%skB/nr_hugepages' % (huge_pages, numa, page_size), '# ', 5)
             except:
                 self.logger.warning("set %d hugepage on socket %d error" % (huge_pages, numa))
-                self.send_expect('echo %d > /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages' % huge_pages, '# ', 5)
+                self.send_expect('echo %d > /sys/kernel/mm/hugepages/hugepages-%skB/nr_hugepages' % (huge_pages. page_size), '# ', 5)
 
     def set_speedup_options(self, read_cache, skip_setup):
         """
