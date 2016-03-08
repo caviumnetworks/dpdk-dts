@@ -574,17 +574,13 @@ class Crb(object):
         # return thread list
         return map(str, thread_list)
 
-    def get_core_list(self, config, th=False, socket=-1):
+    def get_core_list(self, config, socket=-1):
         """
         Get lcore array according to the core config like "all", "1S/1C/1T".
         We can specify the physical CPU socket by paramter "socket".
         """
         if config == 'all':
-
-            if th:
-                return [n['thread'] for n in self.cores]
-            else:
-                return [n for n in range(0, self.number_of_cores - 1)]
+            return [n['thread'] for n in self.cores]
 
         m = re.match("([1234])S/([1-9]+)C/([12])T", config)
 
