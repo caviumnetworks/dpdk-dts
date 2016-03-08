@@ -207,6 +207,10 @@ class Tester(Crb):
                 itf = port.get_interface_name()
                 self.enable_ipv6(itf)
                 self.send_expect("ifconfig %s up" % itf, "# ")
+                if port.get_interface2_name():
+                    itf = port.get_interface2_name()
+                    self.enable_ipv6(itf)
+                    self.send_expect("ifconfig %s up" % itf, "# ")
 
         except Exception as e:
             self.logger.error("   !!! Restore ITF: " + e.message)
@@ -220,6 +224,9 @@ class Tester(Crb):
                 port = GetNicObj(self, addr_array[0], addr_array[1], addr_array[2])
                 itf = port.get_interface_name()
                 self.enable_promisc(itf)
+                if port.get_interface2_name():
+                    itf = port.get_interface2_name()
+                    self.enable_promisc(itf)
         except Exception as e:
             pass
 
@@ -303,6 +310,25 @@ class Tester(Crb):
 
             self.logger.info("Tester: [%s %s] %s" % (pci_bus, pci_id, intf))
             macaddr = port.get_mac_addr()
+
+            ipv6 = port.get_ipv6_addr()
+
+            # store the port info to port mapping
+            self.ports_info.append({'port': port,
+                                    'pci': pci_bus,
+                                    'type': pci_id,
+                                    'intf': intf,
+                                    'mac': macaddr,
+                                    'ipv6': ipv6})
+
+            # return if port is not connect x3
+            if not port.get_interface2_name():
+                continue
+
+            intf = port.get_interface2_name()
+
+            self.logger.info("Tester: [%s %s] %s" % (pci_bus, pci_id, intf))
+            macaddr = port.get_intf2_mac_addr()
 
             ipv6 = port.get_ipv6_addr()
 

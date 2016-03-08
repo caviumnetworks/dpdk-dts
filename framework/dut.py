@@ -569,15 +569,12 @@ class Dut(Crb):
 
         for port_info in self.ports_info:
             port = port_info['port']
-            intf = port.get_interface_name()
-            if "No such file" in intf:
-                self.logger.info("DUT: [%s] %s" % (pci_bus, unknow_interface))
-                continue
+            intf = port_info['intf']
             out = self.send_expect("ip link show %s" % intf, "# ")
             if "DOWN" in out:
                 self.send_expect("ip link set %s up" % intf, "# ")
                 time.sleep(5)
-            macaddr = port.get_mac_addr()
+            macaddr = port_info['mac']
             out = self.send_expect("ip -family inet6 address show dev %s | awk '/inet6/ { print $2 }'"
                                    % intf, "# ")
             ipv6 = out.split('/')[0]
@@ -585,8 +582,6 @@ class Dut(Crb):
             if ":" not in ipv6:
                 ipv6 = "Not connected"
 
-            port_info['mac'] = macaddr
-            port_info['intf'] = intf
             port_info['ipv6'] = ipv6
 
     def rescan_ports_uncached_freebsd(self):
@@ -689,10 +684,32 @@ class Dut(Crb):
             devfun_id = addr_array[2]
 
             port = GetNicObj(self, domain_id, bus_id, devfun_id)
+            intf = port.get_interface_name()
+            if "No such file" in intf:
+                self.logger.info("DUT: [%s] %s" % (pci_bus, unknow_interface))
+                continue
+
+            macaddr = port.get_mac_addr()
+            if "No such file" in intf:
+                self.logger.info("DUT: [%s] %s" % (pci_bus, unknow_interface))
+                continue
+
             numa = port.socket
             # store the port info to port mapping
             self.ports_info.append(
-                {'port': port, 'pci': pci_bus, 'type': pci_id, 'numa': numa})
+                {'port': port, 'pci': pci_bus, 'type': pci_id, 'numa': numa,
+                 'intf': intf, 'mac': macaddr})
+
+            if not port.get_interface2_name():
+                continue
+
+            intf = port.get_interface2_name()
+            macaddr = port.get_intf2_mac_addr()
+            numa = port.socket
+            # store the port info to port mapping
+            self.ports_info.append(
+                {'port': port, 'pci': pci_bus, 'type': pci_id, 'numa': numa,
+                 'intf': intf, 'mac': macaddr})
 
     def scan_ports_uncached_freebsd(self):
         """

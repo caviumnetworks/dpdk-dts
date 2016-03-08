@@ -150,8 +150,20 @@ class NetDevice(object):
             self.intf_name = 'N/A'
         else:
             self.intf_name = out
+            self.intf2_name = None
+
+        # not a complete fix for CX3.
+        if len(out.split()) > 1 and self.default_driver == 'mlx4_core':
+            self.intf_name = out.split()[0]
+            self.intf2_name = out.split()[1]
 
         return self.intf_name
+
+    def get_interface2_name(self):
+        """
+        Get interface name of second port of this pci device.
+        """
+        return self.intf2_name
 
     def get_interface_name_linux(self, domain_id, bus_id, devfun_id, driver):
         """
@@ -237,6 +249,18 @@ class NetDevice(object):
         """
         get_mac_addr = getattr(self, 'get_mac_addr_%s' % self.__get_os_type())
         out = get_mac_addr(self.intf_name, self.domain_id, self.bus_id, self.devfun_id, self.current_driver)
+        if "No such file or directory" in out:
+            return 'N/A'
+        else:
+            return out
+
+    @nic_has_driver
+    def get_intf2_mac_addr(self):
+        """
+        Get mac address of 2nd port of specified pci device.
+        """
+        get_mac_addr = getattr(self, 'get_mac_addr_%s' % self.__get_os_type())
+        out = get_mac_addr(self.get_interface2_name(), self.domain_id, self.bus_id, self.devfun_id, self.current_driver)
         if "No such file or directory" in out:
             return 'N/A'
         else:
@@ -733,6 +757,9 @@ class NetDevice(object):
         if driver == self.default_driver:
             itf = self.get_interface_name()
             self.__send_expect("ifconfig %s up" % itf, "# ")
+            if self.get_interface2_name():
+                itf = self.get_interface2_name()
+                self.__send_expect("ifconfig %s up" % itf, "# ")
 
     def bind_driver_linux_pci_stub(self, domain_id, bus_id, devfun_id):
         """
