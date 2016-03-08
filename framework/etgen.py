@@ -155,7 +155,11 @@ class IxiaPacketGenerator(SSHConnection):
 
         self.ixiaVersion = ixiaPorts[ixiaRef]["Version"]
         self.ports = ixiaPorts[ixiaRef]["Ports"]
-        self.enable_rsfec = ixiaPorts[ixiaRef]['enable_rsfec']
+
+        if ixiaPorts[ixiaRef].has_key('force100g'): 
+            self.enable100g = ixiaPorts[ixiaRef]['force100g']
+        else:
+            self.enable100g = 'disable' 
 
         self.logger.info(self.ixiaVersion)
         self.logger.info(self.ports)
@@ -414,7 +418,7 @@ class IxiaPacketGenerator(SSHConnection):
                 item['card'], item['port']))
             #if the line rate is 100G and we need this port work in 100G mode,
             #we need to add some configure to make it so.
-            if int(self.get_line_rate(self.chasId, item).strip()) == 100000 and self.enable_rsfec == 'enable':
+            if int(self.get_line_rate(self.chasId, item).strip()) == 100000 and self.enable100g == 'enable':
                 self.add_tcl_cmd("port config -ieeeL1Defaults 0")
                 self.add_tcl_cmd("port config -autonegotiate false")
                 self.add_tcl_cmd("port config -enableRsFec true")
