@@ -11,14 +11,15 @@ import re
 import time
 import os
 from pmd_output import PmdOutput
-import pdb
+from packet import IncreaseIP, IncreaseIPv6
 
+from socket import AF_INET6
 from scapy.utils import struct, socket, wrpcap, rdpcap
 from scapy.layers.inet import Ether, IP, TCP, UDP
 from scapy.layers.inet6 import IPv6
 from scapy.layers.l2 import Dot1Q
 from scapy.layers.sctp import SCTP, SCTPChunkData
-from scapy.layers.nvgre import NVGRE
+from nvgre import NVGRE
 from scapy.sendrecv import sniff
 from scapy.config import conf
 from scapy.route import *
@@ -51,8 +52,8 @@ class NvgreTestConfig(object):
         """
         Default nvgre packet format
         """
-        self.pcap_file = 'nvgre.pcap'
-        self.capture_file = 'capture.pcap'
+        self.pcap_file = '/root/nvgre.pcap'
+        self.capture_file = '/root/capture.pcap'
 
         """
         outer info
@@ -92,8 +93,8 @@ class NvgreTestConfig(object):
         self.outer_ip_dst = '192.168.1.2'
         self.outer_ip_invalid = 0
 
-        self.outer_ip6_src = 'fe80::21e:67ff:fe56:fe44'
-        self.outer_ip6_dst = 'fe80::21e:67ff:fe56:fe45'
+        self.outer_ip6_src = 'N/A'
+        self.outer_ip6_dst = 'N/A'
         self.outer_ip6_invalid = 0
         """
         gre info
@@ -149,8 +150,8 @@ class NvgreTestConfig(object):
         self.inner_ip_dst = '192.168.2.2'
         self.inner_ip_invalid = 0
 
-        self.inner_ip6_src = 'fe80::92e2:baff:fe4a:5548'
-        self.inner_ip6_dst = 'fe80::92e2:baff:fe4a:5549'
+        self.inner_ip6_src = 'N/A'
+        self.inner_ip6_dst = 'N/A'
         self.inner_ip6_invalid = 0
 
         self.inner_l4_type = 'UDP'
@@ -172,9 +173,9 @@ class NvgreTestConfig(object):
             else:
                 return 'Inner L3 type: IPV6_EXT_UNKNOWN'
 
-    def create_pcap(self, scp=True):
+    def create_pcap(self):
         """
-        Create pcap file and copy it to tester if configured
+        Create pcap file in config.pcap_file
         Return scapy packet object for later usage
         """
 
@@ -267,32 +268,30 @@ class NvgreTestConfig(object):
         else:
             self.pkt = outer / ("X" * self.payload_size)
 
-        if scp is True:
-            wrpcap(self.pcap_file, self.pkt)
-            self.test_case.tester.session.copy_file_to(self.pcap_file)
+        wrpcap(self.pcap_file, self.pkt)
 
         return self.pkt
 
-    def get_chksums(self, pcap=None, tester=False):
-
+    def get_chksums(self, pcap=None):
         chk_sums = {}
         if pcap is None:
-            if tester is True:
-                self.test_case.tester.session.copy_file_from(self.pcap_file)
             pkts = rdpcap(self.pcap_file)
         else:
-            if tester is True:
-                self.test_case.tester.session.copy_file_from(pcap)
             pkts = rdpcap(pcap)
 
         time.sleep(1)
 
-        if pkts[0].guess_payload_class(pkts[0]).name == "IP":
-            chk_sums['outer_ip'] = hex(pkts[0][IP].chksum)
+        if pkts[0].guess_payload_class(pkts[0]).name == "802.1Q":
+            payload = pkts[0][Dot1Q]
+        else:
+            payload = pkts[0]
 
-        if pkts[0].haslayer(NVGRE) is True:
+        if payload.guess_payload_class(payload).name == "IP":
+            chk_sums['outer_ip'] = hex(payload[IP].chksum)
+
+        if pkts[0].haslayer(NVGRE) == 1:
             inner = pkts[0][NVGRE]
-            if inner.haslayer(IP) is True:
+            if inner.haslayer(IP) == 1:
                 chk_sums['inner_ip'] = hex(inner[IP].chksum)
                 if inner[IP].proto == 6:
                     chk_sums['inner_tcp'] = hex(inner[TCP].chksum)
@@ -350,7 +349,7 @@ class TestNvgre(TestCase):
         nvgre Prerequisites
         """
         # this feature only enable in FVL now
-        self.verify(self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single"], "NVGRE Only supported by Fortville")
+        self.verify(self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single", "sageville", "sagepond"], "NVGRE Only supported by Fortville and Sageville")
         # Based on h/w type, choose how many ports to use
         ports = self.dut.get_ports(self.nic)
         self.portmask = dts.create_mask(self.dut.get_ports(self.nic))
@@ -436,9 +435,7 @@ class TestNvgre(TestCase):
         """
         out = self.dut.send_expect("./%s/app/testpmd -c %s -n %d -- -i --disable-rss --rxq=4 --txq=4 --nb-cores=4 --portmask=%s --txqflags=0"
                                    % (self.target, self.coremask, self.dut.get_memory_channels(), self.portmask), "testpmd>", 30)
-        print out
         out = self.dut.send_expect("set fwd rxonly", "testpmd>", 10)
-        print out
         self.dut.send_expect("set verbose 1", "testpmd>", 10)
 
         arg_str = ""
@@ -451,19 +448,17 @@ class TestNvgre(TestCase):
         # now cloud filter will default enable L2 mac filter, so dst mac must be same
         config.outer_mac_dst = self.dut_rx_port_mac
         config.create_pcap()
-        # time.sleep(10)
         self.dut.send_expect("start", "testpmd>", 10)
         config.send_pcap()
         # check whether detect nvgre type
         out = self.dut.get_session_output()
         print out
         self.verify(config.packet_type() in out, "Nvgre Packet not detected")
-        out = self.dut.send_expect("show port stats all", "testpmd>", 10)
-        print out
-        out = self.dut.send_expect("stop", "testpmd>", 10)
+        self.dut.send_expect("show port stats all", "testpmd>", 10)
+        self.dut.send_expect("stop", "testpmd>", 10)
         self.dut.send_expect("quit", "#", 10)
 
-    def nvgre_filter(self, filter_type="omac-imac-tenid", queue_id=1, vlan=False, remove=False):
+    def nvgre_filter(self, filter_type="omac-imac-tenid", queue_id=3, vlan=False, remove=False):
         """
         send nvgre packet and check whether receive packet in assigned queue
         """
@@ -516,7 +511,7 @@ class TestNvgre(TestCase):
 
     def nvgre_checksum(self, **kwargs):
 
-        # create pcap file with supplied arguments
+        # create pcap file with correct arguments
         args = {}
         for arg in kwargs:
             if "invalid" not in arg:
@@ -525,16 +520,29 @@ class TestNvgre(TestCase):
         config = NvgreTestConfig(self, **args)
         # now cloud filter will default enable L2 mac filter, so dst mac must be same
         config.outer_mac_dst = self.dut_rx_port_mac
+        # csum function will change outer ipv src address
+        if config.outer_ip6_src != "N/A":
+            config.outer_ip6_src = IncreaseIPv6(config.outer_ip6_src)
+        else:
+            config.outer_ip_src = IncreaseIP(config.outer_ip_src)
+
+        # csum function will auto change nvgre inner ipv src address
+        if config.inner_ip6_src != "N/A":
+            config.inner_ip6_src = IncreaseIPv6(config.inner_ip6_src)
+        else:
+            config.inner_ip_src = IncreaseIP(config.inner_ip_src)
 
         # create abnormal package with wrong checksum
         config.create_pcap()
-        chksums = config.get_chksums()
-        self.logger.info("chksums_wrong" + str(chksums))
+        chksums_default = config.get_chksums()
+        self.logger.info("chksums_ref:" + str(chksums_default))
 
         # start testpmd with 2queue/1port
         out = self.dut.send_expect("./%s/app/testpmd -c %s -n %d -- -i --disable-rss --rxq=4 --txq=4 --nb-cores=4 --portmask=%s --enable-rx-cksum --txqflags=0"
                                    % (self.target, self.coremask, self.dut.get_memory_channels(), self.portmask), "testpmd>", 30)
-        print out
+        # disable vlan filter
+        self.dut.send_expect('vlan set filter off %d' % self.dut_rx_port, "testpmd")
+
         # enable tx checksum offload
         self.dut.send_expect("set verbose 1", "testpmd>", 10)
         self.dut.send_expect("set fwd csum", "testpmd>", 10)
@@ -543,52 +551,39 @@ class TestNvgre(TestCase):
         self.dut.send_expect("csum set tcp hw %d" % (self.dut_tx_port), "testpmd>", 10)
         self.dut.send_expect("csum set sctp hw %d" % (self.dut_tx_port), "testpmd>", 10)
         self.dut.send_expect("csum set outer-ip hw %d" % (self.dut_tx_port), "testpmd>", 10)
-        self.dut.send_expect("csum parse_tunnel on %d" % (self.dut_rx_port), "testpmd>", 10)
+        self.dut.send_expect("csum parse_tunnel on %d" % (self.dut_tx_port), "testpmd>", 10)
 
         # log the nvgre format
         arg_str = ""
         for arg in kwargs:
             arg_str += "[%s = %s]" % (arg, kwargs[arg])
-
         self.logger.info("nvgre packet %s" % arg_str)
 
         out = self.dut.send_expect("start", "testpmd>", 10)
 
+        # create pcap file with supplied arguments
+        config = NvgreTestConfig(self, **kwargs)
+        config.outer_mac_dst = self.dut_rx_port_mac
+        config.create_pcap()
+
         # remove tempory files
-        self.tester.send_expect("rm -rf /root/%s" % config.capture_file, "# ")
+        self.tester.send_expect("rm -rf %s" % config.capture_file, "# ")
         # save the capture packet into pcap format
         self.tester.scapy_background()
         self.tester.scapy_append('p=sniff(iface="%s",count=1,timeout=5)' % self.tester_rx_iface)
-        self.tester.scapy_append('wrpcap(\"/root/%s\", p)' % config.capture_file)
+        self.tester.scapy_append('wrpcap(\"%s\", p)' % config.capture_file)
         self.tester.scapy_foreground()
 
         config.send_pcap()
         time.sleep(5)
 
-        out = self.dut.send_expect("show port stats all", "testpmd>", 10)
-        print out
         # extract the checksum offload from saved pcap file
-        chksums = config.get_chksums(pcap=config.capture_file, tester=True)
+        chksums = config.get_chksums(pcap=config.capture_file)
         os.remove(config.capture_file)
-        self.logger.info("chksums" + str(chksums))
+        self.logger.info("chksums_tx:" + str(chksums))
 
         out = self.dut.send_expect("stop", "testpmd>", 10)
 
-        # create correct package with normal checksum
-        config = NvgreTestConfig(self, **kwargs)
-        config.outer_ip_invalid = 0
-        config.outer_ip6_invalid = 0
-        config.inner_ip_invalid = 0
-        config.inner_ip6_invalid = 0
-        config.inner_l4_invalid = 0
-        config.outer_ip_src = config.outer_ip_dst
-        config.outer_ip6_src = config.outer_ip6_dst
-
-        config.create_pcap()
-        chksums_default = config.get_chksums()
-        self.logger.info("chksums_default" + str(chksums_default))
-
-        '''
         # verify detected l4 invalid checksum
         if "inner_l4_invalid" in kwargs and config.inner_l4_type is not 'UDP':
             self.verify(self.pmdout.get_pmd_value("Bad-l4csum:", out) == 1, "Failed to count inner l4 chksum error")
@@ -596,7 +591,6 @@ class TestNvgre(TestCase):
         # verify detected l3 invalid checksum
         if "inner_ip_invalid" in kwargs:
             self.verify(self.pmdout.get_pmd_value("Bad-ipcsum:", out) == 1, "Failed to count inner ip chksum error")
-        '''
 
         self.dut.send_expect("quit", "#", 10)
 
@@ -620,31 +614,6 @@ class TestNvgre(TestCase):
         self.nvgre_detect(outer_vlan=1)
         # check vlan nvgre + vlan inner packet
         self.nvgre_detect(outer_vlan=1, inner_vlan=1)
-
-    def test_nvgre_ipv6(self):
-
-        # check no nvgre packet
-        self.nvgre_detect(outer_l3_type="IPv6",
-                          outer_ip_proto=0xFF,
-                          outer_ip6_src="FE80:0:0:0:0:0:0:0",
-                          outer_ip6_dst="FE80:0:0:0:0:0:0:1")
-        # check ipv6 nvgre + UDP inner packet
-        self.nvgre_detect(outer_l3_type="IPv6",
-                          outer_ip6_src="FE80:0:0:0:0:0:0:0",
-                          outer_ip6_dst="FE80:0:0:0:0:0:0:1",
-                          inner_l4_type='UDP')
-        # check ipv6 nvgre + TCP inner packet
-        self.nvgre_detect(outer_l3_type="IPv6",
-                          outer_ip6_src="FE80:0:0:0:0:0:0:0",
-                          outer_ip6_dst="FE80:0:0:0:0:0:0:1",
-                          inner_l4_type='TCP')
-        # check ipv6 nvgre + SCTP inner packet
-        """
-        self.nvgre_detect(outer_l3_type="IPv6",
-                          outer_ip6_src="FE80:0:0:0:0:0:0:0",
-                          outer_ip6_dst="FE80:0:0:0:0:0:0:1",
-                          inner_l4_type='SCTP')
-        """
 
     def test_tunnel_filter(self):
 
@@ -713,7 +682,7 @@ class TestNvgre(TestCase):
         # check nvgre packet + inner tcp checksum invalid
         self.nvgre_checksum(inner_l4_invalid=1, inner_l4_type='TCP')
         # check nvgre packet + inner sctp checksum invalid
-        # self.nvgre_checksum(inner_l4_invalid=1, inner_l4_type='SCTP')
+        self.nvgre_checksum(inner_l4_invalid=1, inner_l4_type='SCTP')
         # check vlan nvgre packet + outer ip checksum invalid
         self.nvgre_checksum(outer_vlan=1, outer_ip_invalid=1)
         # check vlan nvgre packet + inner ip checksum invalid
@@ -733,90 +702,6 @@ class TestNvgre(TestCase):
         # check vlan nvgre packet + inner vlan + inner sctp checksum invalid
         self.nvgre_checksum(outer_vlan=1, inner_l4_invalid=1, inner_l4_type='SCTP')
 
-    def nvgre_ipv6_checksum_offload(self):
-
-        # verify nvgre packet checksum offload with ipv6 header
-        # not support ipv6 + sctp
-
-        # check normal ipv6 packet + ip checksum invalid
-        self.nvgre_checksum(outer_l3_type="IPv6",
-                            outer_ip6_src="FE80:0:0:0:0:0:0:0",
-                            outer_ip6_dst="FE80:0:0:0:0:0:0:1",
-                            outer_udp_dst=1234)
-        # check ipv6 nvgre packet + inner ip checksum invalid
-        self.nvgre_checksum(outer_l3_type="IPv6",
-                            outer_ip6_src="FE80:0:0:0:0:0:0:0",
-                            outer_ip6_dst="FE80:0:0:0:0:0:0:1",
-                            inner_ip_invalid=1)
-        # check ipv6 nvgre packet + inner udp checksum invalid
-        self.nvgre_checksum(outer_l3_type="IPv6",
-                            outer_ip6_src="FE80:0:0:0:0:0:0:0",
-                            outer_ip6_dst="FE80:0:0:0:0:0:0:1",
-                            inner_l4_invalid=1, inner_l4_type='UDP')
-        # check ipv6 nvgre packet + outer udp checksum invalid
-        self.nvgre_checksum(inner_l3_type="IPv6",
-                            inner_ip6_src="FE80:0:0:0:0:0:1:0",
-                            inner_ip6_dst="FE80:0:0:0:0:0:1:1",
-                            outer_udp_invalid=1)
-        self.nvgre_checksum(outer_l3_type="IPv6",
-                            outer_ip6_src="FE80:0:0:0:0:0:0:0",
-                            outer_ip6_dst="FE80:0:0:0:0:0:0:1",
-                            inner_l3_type="IPv6",
-                            inner_ip6_src="FE80:0:0:0:0:0:1:0",
-                            inner_ip6_dst="FE80:0:0:0:0:0:1:1")
-        # check ipv6 nvgre packet + inner udp checksum invalid
-        self.nvgre_checksum(outer_l3_type="IPv6",
-                            outer_ip6_src="FE80:0:0:0:0:0:0:0",
-                            outer_ip6_dst="FE80:0:0:0:0:0:0:1",
-                            inner_l3_type="IPv6",
-                            inner_ip6_src="FE80:0:0:0:0:0:1:0",
-                            inner_ip6_dst="FE80:0:0:0:0:0:1:1",
-                            inner_l4_invalid=1, inner_l4_type='UDP')
-        # check ipv6 nvgre packet + inner tcp checksum invalid
-        self.nvgre_checksum(outer_l3_type="IPv6",
-                            outer_ip6_src="FE80:0:0:0:0:0:0:0",
-                            outer_ip6_dst="FE80:0:0:0:0:0:0:1",
-                            inner_l3_type="IPv6",
-                            inner_ip6_src="FE80:0:0:0:0:0:1:0",
-                            inner_ip6_dst="FE80:0:0:0:0:0:1:1",
-                            inner_l4_invalid=1, inner_l4_type='TCP')
-        # check ipv6 vlan nvgre packet + inner udp checksum invalid
-        self.nvgre_checksum(outer_l3_type="IPv6",
-                            outer_ip6_src="FE80:0:0:0:0:0:0:0",
-                            outer_ip6_dst="FE80:0:0:0:0:0:0:1",
-                            inner_l3_type="IPv6",
-                            inner_ip6_src="FE80:0:0:0:0:0:1:0",
-                            inner_ip6_dst="FE80:0:0:0:0:0:1:1",
-                            inner_l4_invalid=1, inner_l4_type='UDP',
-                            outer_vlan=1)
-        # check ipv6 vlan nvgre packet + inner tcp checksum invalid
-        self.nvgre_checksum(outer_l3_type="IPv6",
-                            outer_ip6_src="FE80:0:0:0:0:0:0:0",
-                            outer_ip6_dst="FE80:0:0:0:0:0:0:1",
-                            inner_l3_type="IPv6",
-                            inner_ip6_src="FE80:0:0:0:0:0:1:0",
-                            inner_ip6_dst="FE80:0:0:0:0:0:1:1",
-                            inner_l4_invalid=1, inner_l4_type='TCP',
-                            outer_vlan=1)
-        # check ipv6 vlan nvgre packet + vlan + inner udp checksum invalid
-        self.nvgre_checksum(outer_l3_type="IPv6",
-                            outer_ip6_src="FE80:0:0:0:0:0:0:0",
-                            outer_ip6_dst="FE80:0:0:0:0:0:0:1",
-                            inner_l3_type="IPv6",
-                            inner_ip6_src="FE80:0:0:0:0:0:1:0",
-                            inner_ip6_dst="FE80:0:0:0:0:0:1:1",
-                            inner_l4_invalid=1, inner_l4_type='UDP',
-                            outer_vlan=1, inner_vlan=1)
-        # check ipv6 vlan nvgre packet + vlan + inner tcp checksum invalid
-        self.nvgre_checksum(outer_l3_type="IPv6",
-                            outer_ip6_src="FE80:0:0:0:0:0:0:0",
-                            outer_ip6_dst="FE80:0:0:0:0:0:0:1",
-                            inner_l3_type="IPv6",
-                            inner_ip6_src="FE80:0:0:0:0:0:1:0",
-                            inner_ip6_dst="FE80:0:0:0:0:0:1:1",
-                            inner_l4_invalid=1, inner_l4_type='TCP',
-                            outer_vlan=1, inner_vlan=1)
-
     def test_perf_nvgre_tunnelfilter_performance_2ports(self):
         dts.results_table_add_header(self.tunnel_header)
         core_list = self.dut.get_core_list('1S/%dC/1T' % (self.tunnel_multiqueue * 2), socket=self.ports_socket)
@@ -832,7 +717,7 @@ class TestNvgre(TestCase):
             config.inner_vlan = self.default_vlan
             config.outer_mac_dst = self.dut.get_mac_address(self.dut_port)
             # get frame size
-            config.create_pcap(scp=False)
+            config.create_pcap()
             frame_size = config.pcap_len()
 
             # restart testpmd in each performance config
@@ -848,7 +733,7 @@ class TestNvgre(TestCase):
                 config.payload_size = frame_size - HEADER_SIZE['eth'] - HEADER_SIZE['ip'] - HEADER_SIZE['udp']
 
             # add default pkt into pkt list
-            pkt = config.create_pcap(scp=False)
+            pkt = config.create_pcap()
             pkts.append(pkt)
 
             # add other pkts into pkt list when enable multi receive queues
@@ -862,7 +747,7 @@ class TestNvgre(TestCase):
                         config.vni = (queue + 2)
 
                     # add tunnel filter the same as pkt
-                    pkt = config.create_pcap(scp=False)
+                    pkt = config.create_pcap()
                     pkts.append(pkt)
                     out = self.dut.send_expect("tunnel_filter add %d %s %s %s %d vxlan %s %d %d"
                                                % (self.dut_port, config.outer_mac_dst, config.inner_mac_dst, config.inner_ip_dst, config.inner_vlan,
@@ -909,20 +794,20 @@ class TestNvgre(TestCase):
     def test_perf_nvgre_checksum_performance_2ports(self):
         config = NvgreTestConfig(self)
         config.outer_mac_dst = self.dut.get_mac_address(self.dut_port)
-        config.pcap_file = "vxlan1.pcap"
+        config.pcap_file = "nvgre1.pcap"
         config.create_pcap()
         config.outer_mac_dst = self.dut.get_mac_address(self.recv_port)
-        config.pcap_file = "vxlan2.pcap"
+        config.pcap_file = "nvgre.pcap"
         config.create_pcap()
 
         # configure flows
         tgen_input = []
         tgen_input.append((self.tester.get_local_port(self.dut_port),
                           self.tester.get_local_port(self.recv_port),
-                          "vxlan1.pcap"))
+                          "nvgre.pcap"))
         tgen_input.append((self.tester.get_local_port(self.recv_port),
                           self.tester.get_local_port(self.dut_port),
-                          "vxlan2.pcap"))
+                          "nvgre.pcap"))
 
         all_cores_mask = dts.create_mask(self.dut.get_core_list("all"))
 

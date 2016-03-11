@@ -589,7 +589,7 @@ class Packet(object):
         return self.pktgen.strip_layer4(element)
 
 
-def increment_ip_address(self, addr):
+def IncreaseIP(addr):
     """
     Returns the IP address from a given one, like
     192.168.1.1 ->192.168.1.2
@@ -601,7 +601,7 @@ def increment_ip_address(self, addr):
     return int2ip(x + 1)
 
 
-def increment_ipv6_address(self, addr):
+def IncreaseIPv6(addr):
     """
     Returns the IP address from a given one, like
     FE80:0:0:0:0:0:0:0 -> FE80::1
