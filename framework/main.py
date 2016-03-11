@@ -44,6 +44,7 @@ cwd = os.getcwd()
 sys.path.append(cwd + '/nics')
 sys.path.append(cwd + '/framework')
 sys.path.append(cwd + '/tests')
+sys.path.append(cwd + '/dep')
 
 import dts
 
