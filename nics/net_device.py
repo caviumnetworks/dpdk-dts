@@ -65,6 +65,9 @@ class NetDevice(object):
 
         if self.nic_is_pf():
             self.default_vf_driver = ''
+
+        self.intf_name = 'N/A'
+        self.intf2_name = None
         self.get_interface_name()
         self.socket = self.get_nic_socket()
 
@@ -150,7 +153,6 @@ class NetDevice(object):
             self.intf_name = 'N/A'
         else:
             self.intf_name = out
-            self.intf2_name = None
 
         # not a complete fix for CX3.
         if len(out.split()) > 1 and self.default_driver == 'mlx4_core':
