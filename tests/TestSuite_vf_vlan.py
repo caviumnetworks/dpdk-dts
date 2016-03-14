@@ -243,6 +243,7 @@ class TestVfVlan(TestCase):
         inst = sniff_packets(self.tester_intf0, timeout=5)
         self.vm0_testpmd.execute_cmd('set burst 1')
         self.vm0_testpmd.execute_cmd('start tx_first')
+        self.vm0_testpmd.execute_cmd('stop')
 
         # strip sniffered vlans
         pkts = load_sniff_packets(inst)
@@ -265,6 +266,11 @@ class TestVfVlan(TestCase):
         self.vm0_testpmd.execute_cmd('set verbose 1')
 
         for tx_vlan in tx_vlans:
+            # for fortville ,
+            # if you want insert tx_vlan,
+            # please enable rx_vlan at the same time
+            if self.kdriver == "i40e":
+                self.vm0_testpmd.execute_cmd('rx_vlan add %d 0' % tx_vlan)
             self.vm0_testpmd.execute_cmd('tx_vlan set 0 %d' % tx_vlan)
             self.tx_and_check(tx_vlan=tx_vlan)
 
@@ -280,7 +286,7 @@ class TestVfVlan(TestCase):
         self.vm0_testpmd.start_testpmd(VM_CORES_MASK)
         self.vm0_testpmd.execute_cmd('set fwd rxonly')
         self.vm0_testpmd.execute_cmd('set verbose 1')
-        self.vm0_testpmd.execute_cmd('vlan set strip off 0')
+        self.vm0_testpmd.execute_cmd('vlan set strip on 0')
         self.vm0_testpmd.execute_cmd('start')
 
         # send packet without vlan
@@ -295,6 +301,7 @@ class TestVfVlan(TestCase):
 
         for rx_vlan in rx_vlans:
             self.vm0_testpmd.execute_cmd('rx_vlan add %d 0' % rx_vlan)
+            time.sleep(1)
             # send packet with same vlan
             out = self.send_and_getout(vlan=rx_vlan, pkt_type="VLAN_UDP")
             vlan_hex = hex(rx_vlan)
@@ -312,7 +319,7 @@ class TestVfVlan(TestCase):
                 "received 1 packets" not in out, "Received filtered vlan packet!!!")
 
         for rx_vlan in rx_vlans:
-            self.vm0_testpmd.execute_cmd('rx_vlan rm 0 %d' % random_vlan)
+            self.vm0_testpmd.execute_cmd('rx_vlan rm 0 %d' % rx_vlan)
 
         # send packet with vlan 0
         out = self.send_and_getout(vlan=0, pkt_type="VLAN_UDP")
@@ -341,11 +348,12 @@ class TestVfVlan(TestCase):
         self.vm0_testpmd.start_testpmd(VM_CORES_MASK)
         self.vm0_testpmd.execute_cmd('set fwd rxonly')
         self.vm0_testpmd.execute_cmd('set verbose 1')
-        self.vm0_testpmd.execute_cmd('vlan set strip on 0')
         self.vm0_testpmd.execute_cmd('start')
 
         for rx_vlan in rx_vlans:
+            self.vm0_testpmd.execute_cmd('vlan set strip on 0')
             self.vm0_testpmd.execute_cmd('rx_vlan add %d 0' % rx_vlan)
+            time.sleep(1)
             out = self.send_and_getout(vlan=rx_vlan, pkt_type="VLAN_UDP")
             # enable strip, vlan will be in mbuf
             vlan_hex = hex(rx_vlan)
