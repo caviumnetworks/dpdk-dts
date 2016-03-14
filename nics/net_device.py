@@ -830,6 +830,14 @@ def get_from_list(host, bus_id, devfun_id):
                 return nic['port']
     return None
 
+def remove_from_list(host):
+    """
+    Remove network device object from global structure
+    Parameter will by host ip
+    """
+    for nic in NICS_LIST:
+        if host == nic['host']:
+            NICS_LIST.remove(nic)
 
 def GetNicObj(crb, bus_id, devfun_id):
     """
@@ -862,3 +870,9 @@ def GetNicObj(crb, bus_id, devfun_id):
 
     add_to_list(crb.crb['My IP'], obj)
     return obj
+
+def RemoveNicObj(crb):
+    """
+    Remove network device object.
+    """
+    remove_from_list(crb.crb['My IP'])

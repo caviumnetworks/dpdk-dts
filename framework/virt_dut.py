@@ -39,6 +39,7 @@ from settings import NICS, LOG_NAME_SEP, get_netdev
 from project_dpdk import DPDKdut
 from dut import Dut
 from net_device import GetNicObj
+from net_device import RemoveNicObj
 
 
 class VirtDut(DPDKdut):
@@ -77,8 +78,11 @@ class VirtDut(DPDKdut):
     def close(self):
         if self.session:
             self.session.close()
+            self.session = None
         if self.alt_session:
             self.alt_session.close()
+            self.alt_session = None
+        RemoveNicObj(self)
 
     def set_nic_type(self, nic_type):
         """
