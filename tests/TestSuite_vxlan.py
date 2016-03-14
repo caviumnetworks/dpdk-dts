@@ -11,13 +11,13 @@ import re
 import time
 import os
 from pmd_output import PmdOutput
+from packet import IncreaseIP, IncreaseIPv6
 
-from socket import AF_INET6
-from scapy.utils import struct, socket, wrpcap, rdpcap
+from scapy.utils import wrpcap, rdpcap
 from scapy.layers.inet import Ether, IP, TCP, UDP
 from scapy.layers.inet6 import IPv6
 from scapy.layers.l2 import Dot1Q
-from scapy.layers.vxlan import Vxlan
+from vxlan import Vxlan
 from scapy.layers.sctp import SCTP, SCTPChunkData
 from scapy.sendrecv import sniff
 from scapy.config import conf
@@ -56,8 +56,8 @@ class VxlanTestConfig(object):
         """
         Default vxlan packet format
         """
-        self.pcap_file = 'vxlan.pcap'
-        self.capture_file = 'capture.pcap'
+        self.pcap_file = '/root/vxlan.pcap'
+        self.capture_file = '/root/vxlan_capture.pcap'
         self.outer_mac_src = '00:00:10:00:00:00'
         self.outer_mac_dst = '11:22:33:44:55:66'
         self.outer_vlan = 'N/A'
@@ -99,7 +99,7 @@ class VxlanTestConfig(object):
             else:
                 return 'Inner L3 type: IPV4_EXT_UNKNOWN'
 
-    def create_pcap(self, scp=True):
+    def create_pcap(self):
         """
         Create pcap file and copy it to tester if configured
         Return scapy packet object for later usage
@@ -184,30 +184,28 @@ class VxlanTestConfig(object):
 
         wrpcap(self.pcap_file, self.pkt)
 
-        if scp is True:
-            self.test_case.tester.session.copy_file_to(self.pcap_file)
-
         return self.pkt
 
-    def get_chksums(self, pcap=None, tester=False):
+    def get_chksums(self, pcap=None):
         """
         get chksum values of Outer and Inner packet L3&L4
         Skip outer udp for it will be calculated by software
         """
         chk_sums = {}
         if pcap is None:
-            if tester is True:
-                self.test_case.tester.session.copy_file_from(self.pcap_file)
             pkts = rdpcap(self.pcap_file)
         else:
-            if tester is True:
-                self.test_case.tester.session.copy_file_from(pcap)
             pkts = rdpcap(pcap)
 
         time.sleep(1)
 
-        if pkts[0].guess_payload_class(pkts[0]).name == "IP":
-            chk_sums['outer_ip'] = hex(pkts[0][IP].chksum)
+        if pkts[0].guess_payload_class(pkts[0]).name == "802.1Q":
+            payload = pkts[0][Dot1Q]
+        else:
+            payload = pkts[0]
+
+        if payload.guess_payload_class(payload).name == "IP":
+            chk_sums['outer_ip'] = hex(payload[IP].chksum)
 
         if pkts[0].haslayer(Vxlan) == 1:
             inner = pkts[0][Vxlan]
@@ -260,8 +258,8 @@ class TestVxlan(TestCase, IxiaPacketGenerator):
         """
         # this feature only enable in FVL now
         self.verify(self.nic in ["fortville_eagle", "fortville_spirit",
-                                 "fortville_spirit_single"],
-                    "Vxlan Only supported by Fortville")
+                                 "fortville_spirit_single", "sagepond"],
+                    "Vxlan Only supported by Fortville and Sageville")
         # Based on h/w type, choose how many ports to use
         ports = self.dut.get_ports()
 
@@ -366,20 +364,6 @@ class TestVxlan(TestCase, IxiaPacketGenerator):
         send vxlan packet and check whether testpmd detect the correct
         packet type
         """
-        pmd_temp = "./%(TARGET)s/app/testpmd -c %(COREMASK)s -n " + \
-            "%(CHANNEL)d -- -i --disable-rss --rxq=4 --txq=4" + \
-            " --nb-cores=4 --portmask=%(PORT)s --txqflags=0x0"
-        pmd_cmd = pmd_temp % {'TARGET': self.target,
-                              'COREMASK': self.coremask,
-                              'CHANNEL': self.dut.get_memory_channels(),
-                              'PORT': self.portMask}
-        self.dut.send_expect(pmd_cmd, "testpmd>", 30)
-
-        self.dut.send_expect("set fwd rxonly", "testpmd>", 10)
-        self.dut.send_expect("set verbose 1", "testpmd>", 10)
-        self.enable_vxlan(self.dut_port)
-        self.enable_vxlan(self.recv_port)
-
         arg_str = ""
         for arg in kwargs:
             arg_str += "[%s = %s]" % (arg, kwargs[arg])
@@ -395,35 +379,9 @@ class TestVxlan(TestCase, IxiaPacketGenerator):
         config.send_pcap(self.tester_iface)
 
         # check whether detect vxlan type
-        out = self.dut.get_session_output()
+        out = self.dut.get_session_output(timeout=2)
+        print out
         self.verify(config.packet_type() in out, "Vxlan Packet not detected")
-        out = self.dut.send_expect("stop", "testpmd>", 10)
-        self.dut.send_expect("quit", "#", 10)
-
-    def increment_ip_address(self, addr):
-        """
-        Returns the IP address from a given one, like
-        192.168.1.1 ->192.168.1.2
-        If disable ip hw chksum, csum routine will increase ip
-        """
-        ip2int = lambda ipstr: struct.unpack('!I', socket.inet_aton(ipstr))[0]
-        x = ip2int(addr)
-        int2ip = lambda n: socket.inet_ntoa(struct.pack('!I', n))
-        return int2ip(x + 1)
-
-    def increment_ipv6_address(self, addr):
-        """
-        Returns the IP address from a given one, like
-        FE80:0:0:0:0:0:0:0 -> FE80::1
-        csum routine will increase ip
-        """
-        ipv6addr = struct.unpack('!8H', socket.inet_pton(AF_INET6, addr))
-        addr = list(ipv6addr)
-        addr[7] += 1
-        ipv6 = socket.inet_ntop(AF_INET6, struct.pack(
-            '!8H', addr[0], addr[1], addr[2], addr[3], addr[4], addr[5],
-            addr[6], addr[7]))
-        return ipv6
 
     def send_and_check(self, **kwargs):
         """
@@ -439,65 +397,32 @@ class TestVxlan(TestCase, IxiaPacketGenerator):
                 if "outer_ip6" in arg:
                     outer_ipv6 = True
 
+        # if packet outer L3 is ipv6, should not enable hardware checksum
+        if outer_ipv6:
+            self.csum_set_sw('outer-ip', self.dut_port)
+            self.csum_set_sw('outer-ip', self.recv_port)
+
         config = VxlanTestConfig(self, **args)
         # now cloud filter will default enable L2 mac filter, so dst mac must
         # be same
         config.outer_mac_dst = self.dut_port_mac
         # csum function will auto add outer ipv src address
         if config.outer_ip6_src != "N/A":
-            config.outer_ip6_src = self.increment_ipv6_address(
-                config.outer_ip6_src)
+            config.outer_ip6_src = IncreaseIPv6(config.outer_ip6_src)
         else:
-            config.outer_ip_src = self.increment_ip_address(
-                config.outer_ip_src)
+            config.outer_ip_src = IncreaseIP(config.outer_ip_src)
 
         # csum function will auto add vxlan inner ipv src address
         if config.outer_udp_dst == VXLAN_PORT:
             if config.inner_ip6_src != "N/A":
-                config.inner_ip6_src = self.increment_ipv6_address(
-                    config.inner_ip6_src)
+                config.inner_ip6_src = IncreaseIPv6(config.inner_ip6_src)
             else:
-                config.inner_ip_src = self.increment_ip_address(
-                    config.inner_ip_src)
+                config.inner_ip_src = IncreaseIP(config.inner_ip_src)
 
         # extract the checksum value of vxlan packet
         config.create_pcap()
         chksums_ref = config.get_chksums()
         self.logger.info("chksums_ref" + str(chksums_ref))
-
-        # start testpmd with 2queue/1port
-        pmd_temp = "./%(TARGET)s/app/testpmd -c %(COREMASK)s -n " + \
-            "%(CHANNEL)d -- -i --disable-rss --rxq=4 --txq=4" + \
-            " --nb-cores=4 --portmask=%(PORT)s --txqflags=0x0"
-        pmd_cmd = pmd_temp % {'TARGET': self.target,
-                              'COREMASK': self.coremask,
-                              'CHANNEL': self.dut.get_memory_channels(),
-                              'PORT': self.portMask}
-        self.dut.send_expect(pmd_cmd, "testpmd>", 30)
-
-        # enable tx checksum offload
-        self.dut.send_expect("set fwd csum", "testpmd>", 10)
-        self.csum_set_type('ip', self.dut_port)
-        # if packet outer L3 is ipv6, should not enable hardware checksum
-        if not outer_ipv6:
-            self.csum_set_type('outer-ip', self.dut_port)
-        self.csum_set_type('udp', self.dut_port)
-        self.csum_set_type('tcp', self.dut_port)
-        self.csum_set_type('sctp', self.dut_port)
-        self.csum_set_type('ip', self.recv_port)
-        # if packet outer L3 is ipv6, should not enable hardware checksum
-        if not outer_ipv6:
-            self.csum_set_type('outer-ip', self.recv_port)
-        self.csum_set_type('udp', self.recv_port)
-        self.csum_set_type('tcp', self.recv_port)
-        self.csum_set_type('sctp', self.recv_port)
-        self.dut.send_expect("csum parse_tunnel on %d" %
-                             self.dut_port, "testpmd>", 10)
-        self.dut.send_expect("csum parse_tunnel on %d" %
-                             self.recv_port, "testpmd>", 10)
-
-        self.enable_vxlan(self.dut_port)
-        self.enable_vxlan(self.recv_port)
 
         # log the vxlan format
         arg_str = ""
@@ -514,36 +439,37 @@ class TestVxlan(TestCase, IxiaPacketGenerator):
         config.create_pcap()
 
         # remove tempory files
-        self.tester.send_expect("rm -rf /root/%s" % config.capture_file, "# ")
+        self.tester.send_expect("rm -rf %s" % config.capture_file, "# ")
         # save the capture packet into pcap format
         self.tester.scapy_background()
         self.tester.scapy_append(
             'p=sniff(iface="%s",count=1,timeout=5)' % self.recv_iface)
         self.tester.scapy_append(
-            'wrpcap(\"/root/%s\", p)' % config.capture_file)
+            'wrpcap(\"%s\", p)' % config.capture_file)
         self.tester.scapy_foreground()
 
         config.send_pcap(self.tester_iface)
         time.sleep(5)
 
         # extract the checksum offload from saved pcap file
-        chksums = config.get_chksums(pcap=config.capture_file, tester=True)
+        chksums = config.get_chksums(pcap=config.capture_file)
         os.remove(config.capture_file)
         self.logger.info("chksums" + str(chksums))
 
         out = self.dut.send_expect("stop", "testpmd>", 10)
+        print out
 
         # verify detected l4 invalid checksum
-        if "inner_l4_invalid" in kwargs and config.inner_l4_type is not 'UDP':
+        if "inner_l4_invalid" in kwargs:
             self.verify(self.pmdout.get_pmd_value("Bad-l4csum:", out)
-                        == 1, "Failed to count inner l4 chksum error")
+                        == self.l4err_num + 1, "Failed to count inner l4 chksum error")
+            self.l4err_num += 1
 
         # verify detected l3 invalid checksum
         if "inner_ip_invalid" in kwargs:
             self.verify(self.pmdout.get_pmd_value("Bad-ipcsum:", out)
-                        == 1, "Failed to count inner ip chksum error")
-
-        self.dut.send_expect("quit", "#", 10)
+                        == self.iperr_num + 1, "Failed to count inner ip chksum error")
+            self.iperr_num += 1
 
         # verify saved pcap checksum same to expected checksum
         for key in chksums_ref:
@@ -555,20 +481,6 @@ class TestVxlan(TestCase, IxiaPacketGenerator):
         """
         send vxlan packet and check whether receive packet in assigned queue
         """
-        pmd_temp = "./%(TARGET)s/app/testpmd -c %(COREMASK)s -n " + \
-            "%(CHANNEL)d -- -i --disable-rss --rxq=4 --txq=4" + \
-            " --nb-cores=4 --portmask=%(PORT)s --txqflags=0x0"
-        pmd_cmd = pmd_temp % {'TARGET': self.target,
-                              'COREMASK': self.coremask,
-                              'CHANNEL': self.dut.get_memory_channels(),
-                              'PORT': self.portMask}
-        self.dut.send_expect(pmd_cmd, "testpmd>", 30)
-
-        self.dut.send_expect("set fwd rxonly", "testpmd>", 10)
-        self.dut.send_expect("set verbose 1", "testpmd>", 10)
-        self.enable_vxlan(self.dut_port)
-        self.enable_vxlan(self.recv_port)
-
         if vlan is not False:
             config = VxlanTestConfig(self, inner_vlan=vlan)
             vlan_id = vlan
@@ -598,7 +510,8 @@ class TestVxlan(TestCase, IxiaPacketGenerator):
         config.create_pcap()
         self.dut.send_expect("start", "testpmd>", 10)
         config.send_pcap(self.tester_iface)
-        out = self.dut.get_session_output()
+        out = self.dut.get_session_output(timeout=2)
+        print out
 
         queue = -1
         pattern = re.compile("- Receive queue=0x(\d)")
@@ -610,12 +523,25 @@ class TestVxlan(TestCase, IxiaPacketGenerator):
         self.verify(queue_id == int(queue), "invalid receive queue")
 
         self.dut.send_expect("stop", "testpmd>", 10)
-        self.dut.send_expect("quit", "#", 10)
 
     def test_vxlan_ipv4_detect(self):
         """
         verify vxlan packet detection
         """
+        pmd_temp = "./%(TARGET)s/app/testpmd -c %(COREMASK)s -n " + \
+            "%(CHANNEL)d -- -i --disable-rss --rxq=4 --txq=4" + \
+            " --nb-cores=4 --portmask=%(PORT)s --txqflags=0x0"
+        pmd_cmd = pmd_temp % {'TARGET': self.target,
+                              'COREMASK': self.coremask,
+                              'CHANNEL': self.dut.get_memory_channels(),
+                              'PORT': self.portMask}
+        self.dut.send_expect(pmd_cmd, "testpmd>", 30)
+
+        self.dut.send_expect("set fwd rxonly", "testpmd>", 10)
+        self.dut.send_expect("set verbose 1", "testpmd>", 10)
+        self.enable_vxlan(self.dut_port)
+        self.enable_vxlan(self.recv_port)
+
         # check normal packet
         self.send_and_detect(outer_udp_dst=1234)
         # check vxlan + UDP inner packet
@@ -629,10 +555,27 @@ class TestVxlan(TestCase, IxiaPacketGenerator):
         # check vlan vxlan + vlan inner packet
         self.send_and_detect(outer_vlan=1, inner_vlan=1)
 
+        out = self.dut.send_expect("stop", "testpmd>", 10)
+        self.dut.send_expect("quit", "#", 10)
+
     def test_vxlan_ipv6_detect(self):
         """
         verify vxlan packet detection with ipv6 header
         """
+        pmd_temp = "./%(TARGET)s/app/testpmd -c %(COREMASK)s -n " + \
+            "%(CHANNEL)d -- -i --disable-rss --rxq=4 --txq=4" + \
+            " --nb-cores=4 --portmask=%(PORT)s --txqflags=0x0"
+        pmd_cmd = pmd_temp % {'TARGET': self.target,
+                              'COREMASK': self.coremask,
+                              'CHANNEL': self.dut.get_memory_channels(),
+                              'PORT': self.portMask}
+        self.dut.send_expect(pmd_cmd, "testpmd>", 30)
+
+        self.dut.send_expect("set fwd rxonly", "testpmd>", 10)
+        self.dut.send_expect("set verbose 1", "testpmd>", 10)
+        self.enable_vxlan(self.dut_port)
+        self.enable_vxlan(self.recv_port)
+
         # check normal ipv6 packet
         self.send_and_detect(outer_ip6_src="FE80:0:0:0:0:0:0:0",
                              outer_ip6_dst="FE80:0:0:0:0:0:0:1",
@@ -650,10 +593,40 @@ class TestVxlan(TestCase, IxiaPacketGenerator):
                              outer_ip6_dst="FE80:0:0:0:0:0:0:1",
                              inner_l4_type='SCTP')
 
+        out = self.dut.send_expect("stop", "testpmd>", 10)
+        self.dut.send_expect("quit", "#", 10)
+
     def test_vxlan_ipv4_checksum_offload(self):
         """
         verify vxlan packet checksum offload
         """
+        # start testpmd with 2queue/1port
+        pmd_temp = "./%(TARGET)s/app/testpmd -c %(COREMASK)s -n " + \
+            "%(CHANNEL)d -- -i --portmask=%(PORT)s " + \
+            "--txqflags=0x0 --enable-rx-cksum"
+        pmd_cmd = pmd_temp % {'TARGET': self.target,
+                              'COREMASK': self.coremask,
+                              'CHANNEL': self.dut.get_memory_channels(),
+                              'PORT': self.portMask}
+        self.dut.send_expect(pmd_cmd, "testpmd>", 30)
+        self.iperr_num = 0
+        self.l4err_num = 0
+
+        # disable vlan filter
+        self.dut.send_expect('vlan set filter off %d' %self.dut_port, "testpmd")
+        # enable tx checksum offload
+        self.dut.send_expect("set fwd csum", "testpmd>", 10)
+        self.csum_set_type('ip', self.recv_port)
+        self.csum_set_type('outer-ip', self.recv_port)
+        self.csum_set_type('udp', self.recv_port)
+        self.csum_set_type('tcp', self.recv_port)
+        self.csum_set_type('sctp', self.recv_port)
+        self.dut.send_expect("csum parse_tunnel on %d" %
+                             self.recv_port, "testpmd>", 10)
+
+        self.enable_vxlan(self.dut_port)
+        self.enable_vxlan(self.recv_port)
+
         # check normal packet + ip checksum invalid
         self.send_and_check(outer_ip_invalid=1, outer_udp_dst=1234)
         # check vxlan packet + inner ip checksum invalid
@@ -693,11 +666,39 @@ class TestVxlan(TestCase, IxiaPacketGenerator):
         self.send_and_check(
             outer_vlan=1, inner_l4_invalid=1, inner_l4_type='SCTP')
 
+        self.dut.send_expect("quit", "#", 10)
+
     def test_vxlan_ipv6_checksum_offload(self):
         """
         verify vxlan packet checksum offload with ipv6 header
         not support ipv6 + sctp
         """
+        # start testpmd with 2queue/1port
+        pmd_temp = "./%(TARGET)s/app/testpmd -c %(COREMASK)s -n " + \
+            "%(CHANNEL)d -- -i --portmask=%(PORT)s " + \
+            "--txqflags=0x0 --enable-rx-cksum"
+        pmd_cmd = pmd_temp % {'TARGET': self.target,
+                              'COREMASK': self.coremask,
+                              'CHANNEL': self.dut.get_memory_channels(),
+                              'PORT': self.portMask}
+        self.dut.send_expect(pmd_cmd, "testpmd>", 30)
+        self.iperr_num = 0
+        self.l4err_num = 0
+
+        # disable vlan filter
+        self.dut.send_expect('vlan set filter off %d' %self.dut_port, "testpmd")
+        # enable tx checksum offload
+        self.dut.send_expect("set fwd csum", "testpmd>", 10)
+        self.csum_set_type('outer-ip', self.recv_port)
+        self.csum_set_type('udp', self.recv_port)
+        self.csum_set_type('tcp', self.recv_port)
+        self.csum_set_type('sctp', self.recv_port)
+        self.dut.send_expect("csum parse_tunnel on %d" %
+                             self.recv_port, "testpmd>", 10)
+
+        self.enable_vxlan(self.dut_port)
+        self.enable_vxlan(self.recv_port)
+
         # check normal ipv6 packet
         self.send_and_check(outer_ip6_src="FE80:0:0:0:0:0:0:0",
                             outer_ip6_dst="FE80:0:0:0:0:0:0:1")
@@ -742,10 +743,26 @@ class TestVxlan(TestCase, IxiaPacketGenerator):
                             inner_l4_invalid=1, inner_l4_type='TCP',
                             outer_vlan=1, inner_vlan=1)
 
+        self.dut.send_expect("quit", "#", 10)
+
     def test_tunnel_filter(self):
         """
         verify tunnel filter feature
         """
+        pmd_temp = "./%(TARGET)s/app/testpmd -c %(COREMASK)s -n " + \
+            "%(CHANNEL)d -- -i --disable-rss --rxq=4 --txq=4" + \
+            " --nb-cores=4 --portmask=%(PORT)s --txqflags=0x0"
+        pmd_cmd = pmd_temp % {'TARGET': self.target,
+                              'COREMASK': self.coremask,
+                              'CHANNEL': self.dut.get_memory_channels(),
+                              'PORT': self.portMask}
+        self.dut.send_expect(pmd_cmd, "testpmd>", 30)
+
+        self.dut.send_expect("set fwd rxonly", "testpmd>", 10)
+        self.dut.send_expect("set verbose 1", "testpmd>", 10)
+        self.enable_vxlan(self.dut_port)
+        self.enable_vxlan(self.recv_port)
+
         # check inner mac + inner vlan filter can work
         self.filter_and_check(filter_type="imac-ivlan", vlan=1)
         # check inner mac + inner vlan + tunnel id filter can work
@@ -758,6 +775,8 @@ class TestVxlan(TestCase, IxiaPacketGenerator):
         self.filter_and_check(filter_type="omac-imac-tenid")
         # iip not supported by now
         # self.filter_and_check(filter_type="iip")
+
+        self.dut.send_expect("quit", "#", 10)
 
     def test_tunnel_filter_invalid(self):
         """
@@ -836,7 +855,7 @@ class TestVxlan(TestCase, IxiaPacketGenerator):
                 HEADER_SIZE['eth'] - HEADER_SIZE['ip'] - HEADER_SIZE['udp']
 
         # add default pkt into pkt list
-        pkt = config.create_pcap(scp=False)
+        pkt = config.create_pcap()
         pkts.append(pkt)
 
         # add other pkts into pkt list when enable multi receive queues
@@ -851,7 +870,7 @@ class TestVxlan(TestCase, IxiaPacketGenerator):
                     config.vni = (queue + 2)
 
                 # add tunnel filter the same as pkt
-                pkt = config.create_pcap(scp=False)
+                pkt = config.create_pcap()
                 pkts.append(pkt)
 
                 args = [dut_port, config.outer_mac_dst,
@@ -982,13 +1001,13 @@ class TestVxlan(TestCase, IxiaPacketGenerator):
         vxlan.outer_mac_dst = self.dut.get_mac_address(self.dut_port)
         vxlan.pcap_file = "vxlan1.pcap"
         vxlan.inner_mac_dst = "00:00:20:00:00:01"
-        vxlan.create_pcap(scp=False)
+        vxlan.create_pcap()
 
         vxlan_queue = VxlanTestConfig(self, payload_size=self.vxlan_payload)
         vxlan_queue.outer_mac_dst = self.dut.get_mac_address(self.dut_port)
         vxlan_queue.pcap_file = "vxlan1_1.pcap"
         vxlan_queue.inner_mac_dst = "00:00:20:00:00:02"
-        vxlan_queue.create_pcap(scp=False)
+        vxlan_queue.create_pcap()
 
         # socket/core/thread
         core_list = self.dut.get_core_list(
@@ -1083,6 +1102,12 @@ class TestVxlan(TestCase, IxiaPacketGenerator):
 
     def csum_set_type(self, proto, port):
         out = self.dut.send_expect("csum set %s hw %d" % (proto, port),
+                                   "testpmd>", 10)
+        self.verify("Bad arguments" not in out, "Failed to set vxlan csum")
+        self.verify("error" not in out, "Failed to set vxlan csum")
+
+    def csum_set_sw(self, proto, port):
+        out = self.dut.send_expect("csum set %s sw %d" % (proto, port),
                                    "testpmd>", 10)
         self.verify("Bad arguments" not in out, "Failed to set vxlan csum")
         self.verify("error" not in out, "Failed to set vxlan csum")
