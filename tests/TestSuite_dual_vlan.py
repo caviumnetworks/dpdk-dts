@@ -364,14 +364,15 @@ class TestDualVlan(TestCase):
         self.verify(self.nic not in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single", "hartwell"], "%s NIC not support tcpid " % self.nic)
 
         self.mode_config(filter="on", strip="on", qinq="on")
-        self.dut.send_expect("vlan set tpid 1234 %s" % dutRxPortId, "testpmd> ")
+        # nic only support inner model, except fortville nic
+        self.dut.send_expect("vlan set inner tpid 1234 %s" % dutRxPortId, "testpmd> ")
         self.vlan_send_packet(outvlan, invlan)
 
         out = self.get_tcpdump_package()
         self.verify("vlan %s" % outvlan in out, "vlan tpid disable error: " + out)
         self.verify("vlan %s" % invlan in out, "vlan tpid disable error: " + out)
 
-        self.dut.send_expect("vlan set tpid 0x8100 %s" % dutRxPortId, "testpmd> ")
+        self.dut.send_expect("vlan set inner tpid 0x8100 %s" % dutRxPortId, "testpmd> ")
         self.vlan_send_packet(outvlan, invlan)
 
         out = self.get_tcpdump_package()
