@@ -289,8 +289,8 @@ Check whether the mode is setted successfully::
       qinq(extend) on
 
 Set Tag Protocol ID ``0x1234`` on port ``0``::
-
-    testpmd> vlan set tpid 0x1234 0
+nic only support inner model, except fortville::
+    testpmd> vlan set inner tpid 0x1234 0
 
 Enable vlan packet filtering and strip on port ``0`` ::
 
@@ -304,7 +304,7 @@ received on port ``B``.
 
 Set Tag Protocol ID ``0x8100`` on port ``0``::
 
-    testpmd> vlan set tpid 0x8100 0
+    testpmd> vlan set inner tpid 0x8100 0
     
 Configure the traffic generator to send VLAN packet whose outer vlan tag is ``0x1``, 
 inter vlan tag is ``0x2`` and outer Tag Protocol ID is ``0x8100`` and send 1 packet 
