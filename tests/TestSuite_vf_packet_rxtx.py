@@ -100,11 +100,13 @@ class TestVfPacketRxtx(TestCase):
 
         self.setup_2pf_2vf_1vm_env_flag = 0
 
-######1. test case for kernel pf and dpdk vf 2pf_2vf_1vm scenario packet rx tx.
 
-    def test_kernel_2pf_2vf_1vm(self):
+    def packet_rx_tx(self, driver='default'):
 
-        self.setup_2pf_2vf_1vm_env(driver='')
+        if driver == 'igb_uio':
+            self.setup_2pf_2vf_1vm_env(driver='igb_uio')
+        else:
+            self.setup_2pf_2vf_1vm_env(driver='')
 
         self.vm0_dut_ports = self.vm_dut_0.get_ports('any')
         port_id_0 = 0
@@ -132,6 +134,17 @@ class TestVfPacketRxtx(TestCase):
 
         result = self.tester.check_random_pkts(tgen_ports, allow_miss=False, params=pkt_param)
         self.verify(result != False, "VF0 failed to forward packets to VF1")
+
+
+######1. test case for kernel pf and dpdk vf 2pf_2vf_1vm scenario packet rx tx.
+    def test_kernel_2pf_2vf_1vm(self):
+
+        self.packet_rx_tx(driver='')
+
+######2. test case for dpdk pf and dpdk vf 2pf_2vf_1vm scenario packet rx tx.
+    def test_dpdk_2pf_2vf_1vm(self):
+
+        self.packet_rx_tx(driver='igb_uio')
 
     def setup_3vf_2vm_env(self, driver='default'):
 
