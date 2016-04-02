@@ -171,7 +171,7 @@ First of all, you must create a file named execution.cfg as below.
 
 *   crbs: IP address of the DUT CRB. The detail information of this CRB is defined in file crbs.py.
 *   test_suites:  defines list of test suites, which will plan to be executed.
-*   gets: list of DPDK targets to be tested.
+*   targets: list of DPDK targets to be tested.
 *   parameters: you can define multiple keywords
 *   scenario: Senario of DPDK virtualization environment for this execution.
 
