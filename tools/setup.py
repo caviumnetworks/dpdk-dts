@@ -555,7 +555,7 @@ def main():
                                  'configurations',
                          'options': ['DUT&Tester crb', 'execution plan',
                                      'ixia port for performance',
-                                     'port config for manually assgin ports',
+                                     'port config for manually assign ports',
                                      'start running DTS'],
                          'default': def_opt}
 
