@@ -225,10 +225,6 @@ class DPDKdut(Dut):
 
             # enable core dump
             self.send_expect("ulimit -c unlimited", "#")
-            # copy the core files outside DPDK folder
-            self.send_expect("mkdir CORE_DUMP", "#")
-            self.send_expect("find %s/ -name core.* -exec cp {} CORE_DUMP \;" %
-                             self.base_dir, "#",30)
 
             # unpack the code and change to the working folder
             self.send_expect("rm -rf %s" % self.base_dir, "#")
