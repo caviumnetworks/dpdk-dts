@@ -59,6 +59,7 @@ Python Module “matplotlib”: this module is used to produce quality 2D test r
 Python Module “pexpect”: this module provides API to automate interactive SSH sessions.
 Python Module “docutils”: Docutils is a modular system for processing documentation into useful formats, such as HTML, XML, and LaTeX.
 Python Module “pcapy”: Pcapy is a Python extension module that interfaces with the libpcap packet capture library. Pcapy enables python scripts to capture packets on the network.
+Python Module “xlrd”: Xlrd is a Python module that extracts data from Excel spreadsheets.
 
 Please see installation instruction as the following:
 
@@ -71,7 +72,7 @@ Please see installation instruction as the following:
    yum install python-matplotlib
    yum install python-docutils
    yum install pcapy
-
+   yum install python-xlrd
 
 Setup and configure Scapy
 ~~~~~~~~~~~~~~~~~~~~~~~~~
