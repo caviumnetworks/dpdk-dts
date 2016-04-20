@@ -48,12 +48,13 @@ from etgen import IxiaPacketGenerator
 from qemu_kvm import QEMUKvm
 from TestSuite_vxlan import VxlanTestConfig
 from pmd_output import PmdOutput
+from packet import IncreaseIP, IncreaseIPv6
 
-from scapy.utils import struct, socket, wrpcap, rdpcap
+from scapy.utils import wrpcap, rdpcap
 from scapy.layers.inet import Ether, IP, TCP, UDP
 from scapy.layers.inet6 import IPv6
 from scapy.layers.l2 import Dot1Q
-from scapy.layers.vxlan import Vxlan
+from vxlan import Vxlan
 from scapy.layers.sctp import SCTP, SCTPChunkData
 from scapy.sendrecv import sniff
 from scapy.config import conf
@@ -345,7 +346,7 @@ class TestVxlanSample(TestCase):
 
             # create vxlan pcap file and tranfer it to tester
             vxlan_pkt = VxlanTestConfig(self, **params)
-            vxlan_pkt.create_pcap(scp=True)
+            vxlan_pkt.create_pcap()
 
             # start capture
             self.start_capture(tester_iface, pkt_dmac=params['inner_mac_dst'])
@@ -380,7 +381,7 @@ class TestVxlanSample(TestCase):
 
             # create vxlan pcap file and tranfer it to tester
             vxlan_pkt = VxlanTestConfig(self, **params)
-            vxlan_pkt.create_pcap(scp=True)
+            vxlan_pkt.create_pcap()
 
             # start capture
             self.start_capture(tester_iface, pkt_smac=self.pf_mac)
@@ -422,19 +423,19 @@ class TestVxlanSample(TestCase):
             vxlan_pkt = VxlanTestConfig(self, **params)
             vxlan_pkt.create_pcap()
             chksums_ref = vxlan_pkt.get_chksums()
+            print dts.GREEN("Checksum reference: %s" % chksums_ref)
 
             params['inner_ip_invalid'] = 1
             params['inner_l4_invalid'] = 1
 
             # create vxlan pcap file and tranfer it to tester
             vxlan_pkt = VxlanTestConfig(self, **params)
-            vxlan_pkt.create_pcap(scp=True)
+            vxlan_pkt.create_pcap()
 
             # start capture
             self.start_capture(tester_iface, pkt_smac=self.pf_mac)
             vxlan_pkt.send_pcap(tester_iface)
             time.sleep(5)
-
             # transfer capture pcap to dts server
             pkts = self.transfer_capture_file()
             # check packet number and payload
@@ -442,6 +443,7 @@ class TestVxlanSample(TestCase):
             self.verify(pkts[0].haslayer(Vxlan) == 1,
                         "Packet not encapsulated")
             chksums = vxlan_pkt.get_chksums(pcap='vxlan_cap.pcap')
+            print dts.GREEN("Checksum : %s" % chksums)
             for key in chksums_ref:
                 if 'inner' in key:  # only check inner packet chksum
                     self.verify(chksums[key] == chksums_ref[key],
@@ -551,7 +553,7 @@ class TestVxlanSample(TestCase):
 
             # create vxlan pcap file and tranfer it to tester
             vxlan_pkt = VxlanTestConfig(self, **params)
-            vxlan_pkt.create_pcap(scp=False)
+            vxlan_pkt.create_pcap()
 
             if perf_cfg['VirtIO'] == "Two Ports":
                 # create vxlan packet pf mac + vni=1000 + inner virtIO port0
