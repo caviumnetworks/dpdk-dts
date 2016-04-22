@@ -11,6 +11,7 @@ from scapy.layers.l2 import Ether
 
 vxlanmagic = "0x8"
 
+VXLAN_PORT=4789
 
 class Vxlan(Packet):
     name = "Virtual eXtensible Local Area Network"
@@ -29,5 +30,5 @@ class Vxlan(Packet):
         return self.sprintf("VXLAN (vni=%VXLAN.vni%)")
 
 split_layers(UDP, DNS, sport=53)
-bind_layers(UDP, Vxlan, dport=4789)
+bind_layers(UDP, Vxlan, dport=VXLAN_PORT)
 bind_layers(Vxlan, Ether)
