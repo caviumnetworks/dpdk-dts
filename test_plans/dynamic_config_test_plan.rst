@@ -1,4 +1,4 @@
-.. Copyright (c) <2010, 2011>, Intel Corporation
+.. Copyright (c) <2010, 2016>, Intel Corporation
    All rights reserved.
    
    Redistribution and use in source and binary forms, with or without
@@ -194,6 +194,61 @@ Send a packet with with destination MAC address equal with the port 8 address.::
 
 Verify that the packet was received (RX-packets incremented).
 
+Test Case: Disable Promiscuous Mode boardcast
+===================================
 
+Disable promiscuous mode and verify that the packets are received boardcast packet.::
+  
+  testpmd> set promisc all off
+  testpmd> set fwd io
+  testpmd> clear port stats all
+Send a packet with destination MAC address different than the port 0 address.::
 
+  testpmd> show port stats 1
+
+    ######################## NIC statistics for port 1  ########################
+    RX-packets: 0          RX-errors: 0         RX-bytes: 0
+    TX-packets: 0          TX-errors: 0         TX-bytes: 0
+    ############################################################################
+
+Verify that no packet was fwd (port 1 TX-packets is 0).
+  testpmd> clear port stats all
+Send a boardcast packet .::
+
+    ######################## NIC statistics for port 1  ########################
+    RX-packets: 0          RX-errors: 0         RX-bytes: 0
+    TX-packets: 1          TX-errors: 0         TX-bytes: 80
+    ############################################################################
+
+Verify that the packet was received and fwd(TX-packets is 1).
+
+Test Case: Disable Promiscuous Mode mutlicast
+===================================
+
+Disable promiscuous mode and verify that the packets are received mutlicast packet.::
+  
+  testpmd> set promisc all off
+  testpmd> set fwd io
+  testpmd> clear port stats all
+  testpmd> set allmulti all off
+Send a packet with destination MAC is mutlicast mac eg: 01:00:00:33:00:01.::
+
+  testpmd> show port stats 1
+
+    ######################## NIC statistics for port 1  ########################
+    RX-packets: 0          RX-errors: 0         RX-bytes: 0
+    TX-packets: 0          TX-errors: 0         TX-bytes: 0
+    ############################################################################
+
+Verify that no packet was fwd (port 1 TX-packets is 0).
+  testpmd> clear port stats all
+  testpmd> set allmulti all on
+Send a packet with destination MAC is mutlicast mac eg: 01:00:00:33:00:01.::
+
+    ######################## NIC statistics for port 1  ########################
+    RX-packets: 0          RX-errors: 0         RX-bytes: 0
+    TX-packets: 1          TX-errors: 0         TX-bytes: 80
+    ############################################################################
+
+Verify that the packet was received and fwd(TX-packets is 1).
  
