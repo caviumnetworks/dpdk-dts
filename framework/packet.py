@@ -60,27 +60,26 @@ from scapy.route import *
 from scapy.packet import bind_layers, Raw
 from scapy.sendrecv import sendp
 
-
 # load extension layers
+exec_file = os.path.realpath(__file__)
+DTS_PATH = exec_file.replace('/framework/packet.py', '')
+DEP_FOLDER = DTS_PATH + '/dep'
+sys.path.append(DEP_FOLDER)
+
 from vxlan import Vxlan
-bind_layers(UDP, Vxlan, dport=4789)
-bind_layers(Vxlan, Ether)
 from nvgre import NVGRE, IPPROTO_NVGRE
-bind_layers(IP, NVGRE, proto=IPPROTO_NVGRE)
-bind_layers(NVGRE, Ether)
 from lldp import LLDP, LLDPManagementAddress
-bind_layers(Ether, LLDP, type=0x88cc)
 
 # packet generator type should be configured later
 PACKETGEN = "scapy"
 
 LayersTypes = {
-    "L2": ['ether', 'dot1q', '1588', 'arp', 'lldp'],
+    "L2": ['ether', 'vlan', '1588', 'arp', 'lldp'],
     # ipv4_ext_unknown, ipv6_ext_unknown
     "L3": ['ipv4', 'ipv4ihl', 'ipv6', 'ipv4_ext', 'ipv6_ext', 'ipv6_ext2', 'ipv6_frag'],
     "L4": ['tcp', 'udp', 'frag', 'sctp', 'icmp', 'nofrag'],
     "TUNNEL": ['ip', 'gre', 'vxlan', 'nvgre', 'geneve', 'grenat'],
-    "INNER L2": ['inner_mac', 'inner_mac&vlan'],
+    "INNER L2": ['inner_mac', 'inner_vlan'],
     # inner_ipv4_unknown, inner_ipv6_unknown
     "INNER L3": ['inner_ipv4', 'inner_ipv4_ext', 'inner_ipv6', 'inner_ipv6_ext'],
     "INNER L4": ['inner_tcp', 'inner_udp', 'inner_frag', 'inner_sctp', 'inner_icmp', 'inner_nofrag'],
@@ -98,7 +97,7 @@ PKTGEN_PIDS = {}
 class scapy(object):
     SCAPY_LAYERS = {
         'ether': Ether(dst="ff:ff:ff:ff:ff:ff"),
-        'dot1q': Dot1Q(),
+        'vlan': Dot1Q(),
         '1588': Ether(type=0x88f7),
         'arp': ARP(),
         'ipv4': IP(),
@@ -116,7 +115,7 @@ class scapy(object):
         'vxlan': Vxlan(),
 
         'inner_mac': Ether(),
-        'inner_mac&vlan': Ether() / Dot1Q(),
+        'inner_vlan': Dot1Q(),
         'inner_ipv4': IP(),
         'inner_ipv4_ext': IP(),
         'inner_ipv6': IPv6(src="::1"),
@@ -153,19 +152,23 @@ class scapy(object):
             else:
                 self.pkt = self.SCAPY_LAYERS[layer]
 
-    def ether(self, dst="ff:ff:ff:ff:ff:ff", src="00:00:20:00:00:00", type=None):
-        self.pkt[Ether].dst = dst
-        self.pkt[Ether].src = src
+    def ether(self, pkt_layer, dst="ff:ff:ff:ff:ff:ff", src="00:00:20:00:00:00", type=None):
+        if pkt_layer.name != "Ethernet":
+            return
+        pkt_layer.dst = dst
+        pkt_layer.src = src
         if type is not None:
-            self.pkt[Ether].type = type
+            pkt_layer.type = type
 
-    def dot1q(self, vlan, prio=0, type=None):
-        self.pkt[Dot1Q].vlan = int(vlan)
-        self.pkt[Dot1Q].prio = prio
+    def vlan(self, pkt_layer, vlan, prio=0, type=None):
+        if pkt_layer.name != "802.1Q":
+           return
+        pkt_layer.vlan = int(vlan)
+        pkt_layer.prio = prio
         if type is not None:
-            self.pkt[Dot1Q].type = type
+            pkt_layer.type = type
 
-    def strip_dot1q(self, element):
+    def strip_vlan(self, element):
         value = None
 
         if self.pkt.haslayer('Dot1Q') is 0:
@@ -201,79 +204,65 @@ class scapy(object):
 
         return value
 
-    def ipv4(self, frag=0, src="127.0.0.1", proto=None, tos=0, dst="127.0.0.1", chksum=None, len=None, version=4, flags=None, ihl=None, ttl=64, id=1, options=None):
-        self.pkt[IP].frag = frag
-        self.pkt[IP].src = src
+    def ipv4(self, pkt_layer, frag=0, src="127.0.0.1", proto=None, tos=0, dst="127.0.0.1", chksum=None, len=None, version=4, flags=None, ihl=None, ttl=64, id=1, options=None):
+        pkt_layer.frag = frag
+        pkt_layer.src = src
         if proto is not None:
-            self.pkt[IP].proto = proto
-        self.pkt[IP].tos = tos
-        self.pkt[IP].dst = dst
+            pkt_layer.proto = proto
+        pkt_layer.tos = tos
+        pkt_layer.dst = dst
         if chksum is not None:
-            self.pkt[IP].chksum = chksum
+            pkt_layer.chksum = chksum
         if len is not None:
-            self.pkt[IP].len = len
-        self.pkt[IP].version = version
+            pkt_layer.len = len
+        pkt_layer.version = version
         if flags is not None:
-            self.pkt[IP].flags = flags
+            pkt_layer.flags = flags
         if ihl is not None:
-            self.pkt[IP].ihl = ihl
-        self.pkt[IP].ttl = ttl
-        self.pkt[IP].id = id
+            pkt_layer.ihl = ihl
+        pkt_layer.ttl = ttl
+        pkt_layer.id = id
         if options is not None:
-            self.pkt[IP].options = options
+            pkt_layer.options = options
 
-    def ipv6(self, version=6, tc=0, fl=0, plen=0, nh=0, hlim=64, src="::1", dst="::1"):
+    def ipv6(self, pkt_layer, version=6, tc=0, fl=0, plen=0, nh=0, hlim=64, src="::1", dst="::1"):
         """
         Configure IPv6 protocal.
         """
-        self.pkt[IPv6].version = version
-        self.pkt[IPv6].tc = tc
-        self.pkt[IPv6].fl = fl
+        pkt_layer.version = version
+        pkt_layer.tc = tc
+        pkt_layer.fl = fl
         if plen:
-            self.pkt[IPv6].plen = plen
+            pkt_layer.plen = plen
         if nh:
-            self.pkt[IPv6].nh = nh
-        self.pkt[IPv6].src = src
-        self.pkt[IPv6].dst = dst
+            pkt_layer.nh = nh
+        pkt_layer.src = src
+        pkt_layer.dst = dst
 
-    def inner_ipv6(self, version=6, tc=0, fl=0, plen=0, nh=0, hlim=64, src="::1", dst="::1"):
-        """
-        Configure IPv6 protocal.
-        """
-        self.pkt[IPv6][Ether][IPv6].version = version
-        self.pkt[IPv6][Ether][IPv6].tc = tc
-        self.pkt[IPv6][Ether][IPv6].fl = fl
-        if plen:
-            self.pkt[IPv6][Ether][IPv6].plen = plen
-        if nh:
-            self.pkt[IPv6][Ether][IPv6].nh = nh
-        self.pkt[IPv6][Ether][IPv6].src = src
-        self.pkt[IPv6][Ether][IPv6].dst = dst
-
-    def tcp(self, src=53, dst=53, len=None, chksum=None):
-        self.pkt[TCP].sport = src
-        self.pkt[TCP].dport = dst
+    def tcp(self, pkt_layer, src=53, dst=53, len=None, chksum=None):
+        pkt_layer.sport = src
+        pkt_layer.dport = dst
         if len is not None:
-            self.pkt[TCP].len = len
+            pkt_layer.len = len
         if chksum is not None:
-            self.pkt[TCP].chksum = chksum
+            pkt_layer.chksum = chksum
 
-    def udp(self, src=53, dst=53, len=None, chksum=None):
-        self.pkt[UDP].sport = src
-        self.pkt[UDP].dport = dst
+    def udp(self, pkt_layer, src=53, dst=53, len=None, chksum=None):
+        pkt_layer.sport = src
+        pkt_layer.dport = dst
         if len is not None:
-            self.pkt[UDP].len = len
+            pkt_layer.len = len
         if chksum is not None:
-            self.pkt[UDP].chksum = chksum
+            pkt_layer.chksum = chksum
 
-    def raw(self, payload=None):
+    def raw(self, pkt_layer, payload=None):
         if payload is not None:
-            self.pkt[Raw].load = ''
-            for load in payload:
-                self.pkt[Raw].load += '%c' % int(load, 16)
+            pkt_layer.load = ''
+            for hex1, hex2 in payload:
+                pkt_layer.load += struct.pack("=B", int('%s%s' %(hex1, hex2), 16))
 
-    def vxlan(self, vni=0):
-        self.pkt[Vxlan].vni = vni
+    def vxlan(self, pkt_layer, vni=0):
+        pkt_layer.vni = vni
 
     def read_pcap(self, file):
         pcap_pkts = []
@@ -326,7 +315,7 @@ class Packet(object):
         'IP_RAW': {'layers': ['ether', 'ipv4', 'raw'], 'cfgload': True},
         'TCP': {'layers': ['ether', 'ipv4', 'tcp', 'raw'], 'cfgload': True},
         'UDP': {'layers': ['ether', 'ipv4', 'udp', 'raw'], 'cfgload': True},
-        'VLAN_UDP': {'layers': ['ether', 'dot1q', 'ipv4', 'udp', 'raw'], 'cfgload': True},
+        'VLAN_UDP': {'layers': ['ether', 'vlan', 'ipv4', 'udp', 'raw'], 'cfgload': True},
         'SCTP': {'layers': ['ether', 'ipv4', 'sctp', 'raw'], 'cfgload': True},
         'IPv6_TCP': {'layers': ['ether', 'ipv6', 'tcp', 'raw'], 'cfgload': True},
         'IPv6_UDP': {'layers': ['ether', 'ipv6', 'udp', 'raw'], 'cfgload': True},
@@ -401,7 +390,7 @@ class Packet(object):
                     payload.append('58')  # 'X'
 
             raw_confs['payload'] = payload
-            self._config_layer_raw(raw_confs)
+            self.config_layer('raw', raw_confs)
 
     def send_pkt(self, crb=None, tx_port='', auto_cfg=True):
         if tx_port == '':
@@ -456,7 +445,7 @@ class Packet(object):
     def _load_pkt_layers(self):
         name2type = {
             'MAC': 'ether',
-            'VLAN': 'dot1q',
+            'VLAN': 'vlan',
             'IP': 'ipv4',
             'IPihl': 'ipv4ihl',
             'IPFRAG': 'ipv4_ext',
@@ -525,51 +514,62 @@ class Packet(object):
         return the status of configure result
         """
         try:
-            # if inner in layer mean same layer in outer
-            if 'inner' in layer:
-                dup_layer = layer[6:]
-                if self.pkt_layers.count(dup_layer) != 2:
-                    raise
-            else:
-                idx = self.pkt_layers.index(layer)
+            idx = self.pkt_layers.index(layer)
         except Exception as e:
             print "INVALID LAYER ID %s" % layer
-            return -1
+            return False
 
         if self.check_layer_config(layer, config) is False:
-            return -1
+            return False
 
+        if 'inner' in layer:
+            layer = layer[6:]
+
+        pkt_layer = self.pktgen.pkt.getlayer(idx)
         layer_conf = getattr(self, "_config_layer_%s" % layer)
         setattr(self, 'configured_layer_%s' % layer, True)
 
-        return layer_conf(config)
+        return layer_conf(pkt_layer, config)
 
-    def _config_layer_ether(self, config):
-        return self.pktgen.ether(**config)
+    def config_layers(self, layers=None):
+        """
+        Configure packet with multi configurations
+        """
+        for layer in layers:
+            name, config = layer
+            if name not in self.pkt_layers:
+                print "[%s] is missing in packet!!!" % name
+                raise
+            if self.config_layer(name, config) is False:
+                print "[%s] failed to configure!!!" % name
+                raise
 
-    def _config_layer_dot1q(self, config):
-        return self.pktgen.dot1q(**config)
+    def _config_layer_ether(self, pkt_layer, config):
+        return self.pktgen.ether(pkt_layer, **config)
 
-    def _config_layer_ipv4(self, config):
-        return self.pktgen.ipv4(**config)
+    def _config_layer_mac(self, pkt_layer, config):
+        return self.pktgen.ether(pkt_layer, **config)
 
-    def _config_layer_ipv6(self, config):
-        return self.pktgen.ipv6(**config)
+    def _config_layer_vlan(self, pkt_layer, config):
+        return self.pktgen.vlan(pkt_layer, **config)
 
-    def _config_layer_inner_ipv6(self, config):
-        return self.pktgen.inner_ipv6(**config)
+    def _config_layer_ipv4(self, pkt_layer, config):
+        return self.pktgen.ipv4(pkt_layer, **config)
 
-    def _config_layer_udp(self, config):
-        return self.pktgen.udp(**config)
+    def _config_layer_ipv6(self, pkt_layer, config):
+        return self.pktgen.ipv6(pkt_layer, **config)
 
-    def _config_layer_tcp(self, config):
-        return self.pktgen.tcp(**config)
+    def _config_layer_udp(self, pkt_layer, config):
+        return self.pktgen.udp(pkt_layer, **config)
 
-    def _config_layer_raw(self, config):
-        return self.pktgen.raw(**config)
+    def _config_layer_tcp(self, pkt_layer, config):
+        return self.pktgen.tcp(pkt_layer, **config)
 
-    def _config_layer_vxlan(self, config):
-        return self.pktgen.vxlan(**config)
+    def _config_layer_raw(self, pkt_layer, config):
+        return self.pktgen.raw(pkt_layer, **config)
+
+    def _config_layer_vxlan(self, pkt_layer, config):
+        return self.pktgen.vxlan(pkt_layer, **config)
 
     def strip_layer_element(self, layer, element):
         """
@@ -583,8 +583,8 @@ class Packet(object):
     def strip_element_layer2(self, element):
         return self.pktgen.strip_layer2(element)
 
-    def strip_element_dot1q(self, element):
-        return self.pktgen.strip_dot1q(element)
+    def strip_element_vlan(self, element):
+        return self.pktgen.strip_vlan(element)
 
     def strip_element_layer4(self, element):
         return self.pktgen.strip_layer4(element)
@@ -703,6 +703,21 @@ def load_sniff_packets(index=''):
     return pkts
 
 
+def load_pcapfile(filename=""):
+    pkts = []
+    try:
+        cap_pkts = rdpcap(filename)
+        for pkt in cap_pkts:
+            # packet gen should be scapy
+            packet = Packet()
+            packet.pktgen.assign_pkt(pkt)
+            pkts.append(packet)
+    except:
+        pass
+
+    return pkts
+
+
 def compare_pktload(pkt1=None, pkt2=None, layer="L2"):
     l_idx = 0
     if layer == "L2":
@@ -755,15 +770,25 @@ if __name__ == "__main__":
     pkt = Packet(pkt_type='IPv6_SCTP')
     pkt.send_pkt(tx_port='lo')
     pkt = Packet(pkt_type='VLAN_UDP')
-    pkt.config_layer('dot1q', {'vlan': 2})
+    pkt.config_layer('vlan', {'vlan': 2})
     pkt.send_pkt(tx_port='lo')
 
     pkt = Packet()
-    pkt.assign_layers(['ether', 'dot1q', 'ipv4', 'udp',
+    pkt.assign_layers(['ether', 'vlan', 'ipv4', 'udp',
                        'vxlan', 'inner_mac', 'inner_ipv4', 'inner_udp', 'raw'])
     pkt.config_layer('ether', {'dst': '00:11:22:33:44:55'})
-    pkt.config_layer('dot1q', {'vlan': 2})
+    pkt.config_layer('vlan', {'vlan': 2})
     pkt.config_layer('ipv4', {'dst': '1.1.1.1'})
     pkt.config_layer('udp', {'src': 4789, 'dst': 4789, 'chksum': 0x1111})
     pkt.config_layer('vxlan', {'vni': 2})
     pkt.config_layer('raw', {'payload': ['58'] * 18})
+    pkt.send_pkt(tx_port='lo')
+
+    pkt = Packet()
+    pkt.assign_layers(['ether', 'vlan', 'ipv4', 'udp',
+                       'vxlan', 'inner_mac', 'inner_ipv4', 'inner_udp', 'raw'])
+    # config packet
+    pkt.config_layers([('ether', {'dst': '00:11:22:33:44:55'}), ('ipv4', {'dst': '1.1.1.1'}),
+                        ('vxlan', {'vni': 2}), ('raw', {'payload': ['01'] * 18})])
+
+    pkt.send_pkt(tx_port='lo')
