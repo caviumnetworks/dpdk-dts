@@ -122,6 +122,9 @@ class PmdOutput():
         return self.dut.send_expect('%s' % pmd_cmd, expected, timeout=timeout,
                                     alt_session=alt_session)
 
+    def get_output(self, timeout=1):
+        return self.dut.get_session_output(timeout=timeout)
+
     def get_value_from_string(self, key_str, regx_str, string):
         """
         Get some values from the given string by the regular expression.
