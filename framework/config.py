@@ -130,7 +130,7 @@ class PortConf(UserConf):
     def __init__(self, port_conf=PORTCONF):
         self.config_file = port_conf
         self.ports_cfg = {}
-        self.pci_regex = "([\da-f]{2}:[\da-f]{2}.\d{1})$"
+        self.pci_regex = "([\da-f]{4}:[\da-f]{2}:[\da-f]{2}.\d{1})$"
         try:
             self.port_conf = UserConf(self.config_file)
         except ConfigParseException:

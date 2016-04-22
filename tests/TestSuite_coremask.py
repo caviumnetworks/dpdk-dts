@@ -60,11 +60,11 @@ class TestCoremask(TestCase):
 
             out = self.dut.send_expect(command, "RTE>>", 10)
 
-            self.verify("EAL: Detected lcore %d as core" % core in out,
-                        "Core %d not detected" % core)
+            self.verify("EAL: Detected lcore %s as core" % core in out,
+                        "Core %s not detected" % core)
 
-            self.verify("EAL: Master lcore %d is ready" % core in out,
-                        "Core %d not ready" % core)
+            self.verify("EAL: Master lcore %s is ready" % core in out,
+                        "Core %s not ready" % core)
 
             self.dut.send_expect("quit", "# ", 10)
 
@@ -86,11 +86,11 @@ class TestCoremask(TestCase):
                     "Core 0 not detected")
 
         for core in self.all_cores[1:]:
-            self.verify("EAL: lcore %d is ready" % core in out,
-                        "Core %d not ready" % core)
+            self.verify("EAL: lcore %s is ready" % core in out,
+                        "Core %s not ready" % core)
 
-            self.verify("EAL: Detected lcore %d as core" % core in out,
-                        "Core %d not detected" % core)
+            self.verify("EAL: Detected lcore %s as core" % core in out,
+                        "Core %s not detected" % core)
 
         self.dut.send_expect("quit", "# ", 10)
 
@@ -135,8 +135,8 @@ class TestCoremask(TestCase):
 
         for core in self.all_cores[1:]:
 
-            self.verify("EAL: Detected lcore %d as core" % core in out,
-                        "Core %d not detected" % core)
+            self.verify("EAL: Detected lcore %s as core" % core in out,
+                        "Core %s not detected" % core)
 
         self.dut.send_expect("quit", "# ", 10)
 

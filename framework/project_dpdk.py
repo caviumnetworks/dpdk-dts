@@ -336,7 +336,7 @@ class DPDKdut(Dut):
         self.bind_interfaces_linux()
         for port in range(0, len(self.ports_info)):
             if(port not in dutPorts):
-                blacklist += '-b 0000:%s ' % self.ports_info[port]['pci']
+                blacklist += '-b %s ' % self.ports_info[port]['pci']
         return blacklist
 
     def get_blacklist_string_freebsd(self, target, nic):

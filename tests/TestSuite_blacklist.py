@@ -50,9 +50,9 @@ class TestBlackList(TestCase):
         [arch, machine, self.env, toolchain] = self.target.split('-')
 
         if self.env == 'bsdapp':
-            self.regexp_blacklisted_port = "EAL: PCI device 0000:%02x:%s on NUMA socket [-0-9]+[^\n]*\nEAL:   probe driver[^\n]*\nEAL:   Device is blacklisted, not initializing"
+            self.regexp_blacklisted_port = "EAL: PCI device %02x:%s on NUMA socket [-0-9]+[^\n]*\nEAL:   probe driver[^\n]*\nEAL:   Device is blacklisted, not initializing"
         else:
-            self.regexp_blacklisted_port = "EAL: PCI device 0000:%s on NUMA socket [-0-9]+[^\n]*\nEAL:   probe driver[^\n]*\nEAL:   Device is blacklisted, not initializing"
+            self.regexp_blacklisted_port = "EAL: PCI device %s on NUMA socket [-0-9]+[^\n]*\nEAL:   probe driver[^\n]*\nEAL:   Device is blacklisted, not initializing"
         self.pmdout = PmdOutput(self.dut)
 
     def set_up(self):
@@ -101,7 +101,7 @@ class TestBlackList(TestCase):
         Run testpmd with one port blacklisted.
         """
         self.dut.kill_all()
-        out = self.pmdout.start_testpmd("Default", eal_param="-b 0000:%s" % self.dut.ports_info[0]['pci'])
+        out = self.pmdout.start_testpmd("Default", eal_param="-b %s" % self.dut.ports_info[0]['pci'])
         self.check_blacklisted_ports(out, self.ports[1:])
 
     def test_bl_allbutoneportblacklisted(self):
@@ -112,7 +112,7 @@ class TestBlackList(TestCase):
         ports_to_blacklist = self.ports[:-1]
         cmdline = ""
         for port in ports_to_blacklist:
-            cmdline += " -b 0000:%s" % self.dut.ports_info[port]['pci']
+            cmdline += " -b %s" % self.dut.ports_info[port]['pci']
         out = self.pmdout.start_testpmd("Default", eal_param=cmdline)
         blacklisted_ports = self.check_blacklisted_ports(out,
                                               ports_to_blacklist, True)

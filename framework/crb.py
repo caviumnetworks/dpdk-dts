@@ -161,18 +161,20 @@ class Crb(object):
         """
         Set numbers of huge pages
         """
+        page_size = self.send_expect("awk '/Hugepagesize/ {print $2}' /proc/meminfo", "# ")
+
         if numa == -1:
-            self.send_expect('echo %d > /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages' % huge_pages, '# ', 5)
+            self.send_expect('echo %d > /sys/kernel/mm/hugepages/hugepages-%skB/nr_hugepages' % (huge_pages, page_size), '# ', 5)
         else:
             #sometimes we set hugepage on kernel cmdline, so we need clear default hugepage
-            self.send_expect('echo 0 > /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages', '# ', 5)
+            self.send_expect('echo 0 > /sys/kernel/mm/hugepages/hugepages-%skB/nr_hugepages' % (page_size), '# ', 5)
             
             #some platform not support numa, example vm dut
             try:
-                self.send_expect('echo %d > /sys/devices/system/node/node%d/hugepages/hugepages-2048kB/nr_hugepages' % (huge_pages, numa), '# ', 5)
+                self.send_expect('echo %d > /sys/devices/system/node/node%d/hugepages/hugepages-%skB/nr_hugepages' % (huge_pages, numa, page_size), '# ', 5)
             except:
                 self.logger.warning("set %d hugepage on socket %d error" % (huge_pages, numa))
-                self.send_expect('echo %d > /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages' % huge_pages, '# ', 5)
+                self.send_expect('echo %d > /sys/kernel/mm/hugepages/hugepages-%skB/nr_hugepages' % (huge_pages. page_size), '# ', 5)
 
     def set_speedup_options(self, read_cache, skip_setup):
         """
@@ -235,8 +237,8 @@ class Crb(object):
         Look for the NIC's information (PCI Id and card type).
         """
         out = self.send_expect(
-            "lspci -nn | grep -i eth", "# ", alt_session=True)
-        rexp = r"([\da-f]{2}:[\da-f]{2}.\d{1}) .*Eth.*?ernet .*?([\da-f]{4}:[\da-f]{4})"
+            "lspci -Dnn | grep -i eth", "# ", alt_session=True)
+        rexp = r"([\da-f]{4}:[\da-f]{2}:[\da-f]{2}.\d{1}) .*Eth.*?ernet .*?([\da-f]{4}:[\da-f]{4})"
         pattern = re.compile(rexp)
         match = pattern.findall(out)
         self.pci_devices_info = []
@@ -257,20 +259,20 @@ class Crb(object):
             card_type = "8086:%s" % match[i][1]
             self.pci_devices_info.append((match[i][0], card_type))
 
-    def get_pci_dev_driver(self, bus_id, devfun_id):
+    def get_pci_dev_driver(self, domain_id, bus_id, devfun_id):
         """
         Get the driver of specified pci device.
         """
         get_pci_dev_driver = getattr(
             self, 'get_pci_dev_driver_%s' % self.get_os_type())
-        return get_pci_dev_driver(bus_id, devfun_id)
+        return get_pci_dev_driver(domain_id, bus_id, devfun_id)
 
-    def get_pci_dev_driver_linux(self, bus_id, devfun_id):
+    def get_pci_dev_driver_linux(self, domain_id, bus_id, devfun_id):
         """
         Get the driver of specified pci device on linux.
         """
-        out = self.send_expect("cat /sys/bus/pci/devices/0000\:%s\:%s/uevent" %
-                               (bus_id, devfun_id), "# ", alt_session=True)
+        out = self.send_expect("cat /sys/bus/pci/devices/%s\:%s\:%s/uevent" %
+                               (domain_id, bus_id, devfun_id), "# ", alt_session=True)
         rexp = r"DRIVER=(.+?)\r"
         pattern = re.compile(rexp)
         match = pattern.search(out)
@@ -284,20 +286,20 @@ class Crb(object):
         """
         return True
 
-    def get_pci_dev_id(self, bus_id, devfun_id):
+    def get_pci_dev_id(self, domain_id, bus_id, devfun_id):
         """
         Get the pci id of specified pci device.
         """
         get_pci_dev_id = getattr(
             self, 'get_pci_dev_id_%s' % self.get_os_type())
-        return get_pci_dev_id(bus_id, devfun_id)
+        return get_pci_dev_id(domain_id, bus_id, devfun_id)
 
-    def get_pci_dev_id_linux(self, bus_id, devfun_id):
+    def get_pci_dev_id_linux(self, domain_id, bus_id, devfun_id):
         """
         Get the pci id of specified pci device on linux.
         """
-        out = self.send_expect("cat /sys/bus/pci/devices/0000\:%s\:%s/uevent" %
-                               (bus_id, devfun_id), "# ", alt_session=True)
+        out = self.send_expect("cat /sys/bus/pci/devices/%s\:%s\:%s/uevent" %
+                               (domain_id, bus_id, devfun_id), "# ", alt_session=True)
         rexp = r"PCI_ID=(.+)"
         pattern = re.compile(rexp)
         match = re.search(out)
@@ -305,21 +307,21 @@ class Crb(object):
             return None
         return match.group(1)
 
-    def get_device_numa(self, bus_id, devfun_id):
+    def get_device_numa(self, domain_id, bus_id, devfun_id):
         """
         Get numa number of specified pci device.
         """
         get_device_numa = getattr(
             self, "get_device_numa_%s" % self.get_os_type())
-        return get_device_numa(bus_id, devfun_id)
+        return get_device_numa(domain_id, bus_id, devfun_id)
 
-    def get_device_numa_linux(self, bus_id, devfun_id):
+    def get_device_numa_linux(self, domain_id, bus_id, devfun_id):
         """
         Get numa number of specified pci device on Linux.
         """
         numa = self.send_expect(
-            "cat /sys/bus/pci/devices/0000\:%s\:%s/numa_node" %
-            (bus_id, devfun_id), "# ", alt_session=True)
+            "cat /sys/bus/pci/devices/%s\:%s\:%s/numa_node" %
+            (domain_id, bus_id, devfun_id), "# ", alt_session=True)
 
         try:
             numa = int(numa)
@@ -493,41 +495,25 @@ class Crb(object):
 
         cpuinfo = \
             self.send_expect(
-                "grep --color=never \"processor\\|physical id\\|core id\\|^$\" /proc/cpuinfo",
+                "lscpu -p|grep -v \#",
                 "#", alt_session=True)
 
-        if "processor" not in cpuinfo:              
-            # yocto not support --color=never, but ubuntu must need --color=never, 
-            # so check cpuinfo, before parsing cpuinfo, if cpuifo get error, delete --color=never
-            # and get cpuinfo again
-            cpuinfo = \
-                self.send_expect(
-                    r'grep "processor\|physical id\|core id\|^$" /proc/cpuinfo',
-                    "#", alt_session=True)
-
-        cpuinfo = cpuinfo.split('\r\n\r\n')
+        cpuinfo = cpuinfo.split()
         # haswell cpu on cottonwood core id not correct
         # need addtional coremap for haswell cpu
         core_id = 0
         coremap = {}
         for line in cpuinfo:
-            m = re.search("processor\t: (\d+)\r\n" +
-                          "physical id\t: (\d+)\r\n" +
-                          "core id\t\t: (\d+)", line)
+            (thread, core, unused, socket) = line.split(',')[0:4]
 
-            if m:
-                thread = m.group(1)
-                socket = m.group(2)
-                core = m.group(3)
+            if core not in coremap.keys():
+                coremap[core] = core_id
+                core_id += 1
 
-                if core not in coremap.keys():
-                    coremap[core] = core_id
-                    core_id += 1
-
-                if self.crb['bypass core0'] and core == '0' and socket == '0':
-                    self.logger.info("Core0 bypassed")
-                    continue
-                self.cores.append(
+            if self.crb['bypass core0'] and core == '0' and socket == '0':
+                self.logger.info("Core0 bypassed")
+                continue
+            self.cores.append(
                     {'thread': thread, 'socket': socket, 'core': coremap[core]})
 
         self.number_of_cores = len(self.cores)
@@ -588,17 +574,13 @@ class Crb(object):
         # return thread list
         return map(str, thread_list)
 
-    def get_core_list(self, config, th=False, socket=-1):
+    def get_core_list(self, config, socket=-1):
         """
         Get lcore array according to the core config like "all", "1S/1C/1T".
         We can specify the physical CPU socket by paramter "socket".
         """
         if config == 'all':
-
-            if th:
-                return [n['thread'] for n in self.cores]
-            else:
-                return [n for n in range(0, self.number_of_cores - 1)]
+            return [n['thread'] for n in self.cores]
 
         m = re.match("([1234])S/([1-9]+)C/([12])T", config)
 

@@ -237,9 +237,10 @@ class Dut(Crb):
             if driver is not None:
                 # unbind device driver
                 addr_array = pci_bus.split(':')
-                bus_id = addr_array[0]
-                devfun_id = addr_array[1]
-                port = GetNicObj(self, bus_id, devfun_id)
+                domain_id = addr_array[0]
+                bus_id = addr_array[1]
+                devfun_id = addr_array[2]
+                port = GetNicObj(self, domain_id, bus_id, devfun_id)
                 port.stop()
 
     def restore_interfaces_linux(self):
@@ -254,16 +255,17 @@ class Dut(Crb):
             if driver is not None:
                 # unbind device driver
                 addr_array = pci_bus.split(':')
-                bus_id = addr_array[0]
-                devfun_id = addr_array[1]
+                domain_id = addr_array[0]
+                bus_id = addr_array[1]
+                devfun_id = addr_array[2]
 
-                port = GetNicObj(self, bus_id, devfun_id)
+                port = GetNicObj(self, domain_id, bus_id, devfun_id)
 
-                self.send_expect('echo 0000:%s > /sys/bus/pci/devices/0000\:%s\:%s/driver/unbind'
-                                 % (pci_bus, bus_id, devfun_id), '# ')
+                self.send_expect('echo %s > /sys/bus/pci/devices/%s\:%s\:%s/driver/unbind'
+                                 % (pci_bus, domain_id, bus_id, devfun_id), '# ')
                 # bind to linux kernel driver
                 self.send_expect('modprobe %s' % driver, '# ')
-                self.send_expect('echo 0000:%s > /sys/bus/pci/drivers/%s/bind'
+                self.send_expect('echo %s > /sys/bus/pci/drivers/%s/bind'
                                  % (pci_bus, driver), '# ')
                 itf = port.get_interface_name()
                 self.send_expect("ifconfig %s up" % itf, "# ")
@@ -301,6 +303,8 @@ class Dut(Crb):
             elif self.architecture == "x86_x32":
                 arch_huge_pages = hugepages if hugepages > 0 else 256
                 force_socket = True
+            elif self.architecture == "ppc_64":
+                arch_huge_pages = hugepages if hugepages > 0 else 512
 
             if total_huge_pages != arch_huge_pages:
                  # before all hugepage average distribution  by all socket,
@@ -565,15 +569,12 @@ class Dut(Crb):
 
         for port_info in self.ports_info:
             port = port_info['port']
-            intf = port.get_interface_name()
-            if "No such file" in intf:
-                self.logger.info("DUT: [0000:%s] %s" % (pci_bus, unknow_interface))
-                continue
+            intf = port_info['intf']
             out = self.send_expect("ip link show %s" % intf, "# ")
             if "DOWN" in out:
                 self.send_expect("ip link set %s up" % intf, "# ")
                 time.sleep(5)
-            macaddr = port.get_mac_addr()
+            macaddr = port_info['mac']
             out = self.send_expect("ip -family inet6 address show dev %s | awk '/inet6/ { print $2 }'"
                                    % intf, "# ")
             ipv6 = out.split('/')[0]
@@ -581,8 +582,6 @@ class Dut(Crb):
             if ":" not in ipv6:
                 ipv6 = "Not connected"
 
-            port_info['mac'] = macaddr
-            port_info['intf'] = intf
             port_info['ipv6'] = ipv6
 
     def rescan_ports_uncached_freebsd(self):
@@ -592,7 +591,7 @@ class Dut(Crb):
             port = port_info['port']
             intf = port.get_interface_name()
             if "No such file" in intf:
-                self.logger.info("DUT: [0000:%s] %s" % (pci_bus, unknow_interface))
+                self.logger.info("DUT: [%s] %s" % (pci_bus, unknow_interface))
                 continue
             self.send_expect("ifconfig %s up" % intf, "# ")
             time.sleep(5)
@@ -652,7 +651,7 @@ class Dut(Crb):
             port = GetNicObj(self, port_info['pci'], port_info['type'])
             intf = port.get_interface_name()
 
-            self.logger.info("DUT cached: [000:%s %s] %s" % (port_info['pci'],
+            self.logger.info("DUT cached: [%s %s] %s" % (port_info['pci'],
                              port_info['type'], intf))
 
             port_info['port'] = port
@@ -675,19 +674,42 @@ class Dut(Crb):
 
         for (pci_bus, pci_id) in self.pci_devices_info:
             if self.check_ports_available(pci_bus, pci_id) is False:
-                self.logger.info("DUT: [000:%s %s] %s" % (pci_bus, pci_id,
+                self.logger.info("DUT: [%s %s] %s" % (pci_bus, pci_id,
                                                           skipped))
                 continue
 
             addr_array = pci_bus.split(':')
-            bus_id = addr_array[0]
-            devfun_id = addr_array[1]
+            domain_id = addr_array[0]
+            bus_id = addr_array[1]
+            devfun_id = addr_array[2]
 
-            port = GetNicObj(self, bus_id, devfun_id)
+            port = GetNicObj(self, domain_id, bus_id, devfun_id)
+            intf = port.get_interface_name()
+            if "No such file" in intf:
+                self.logger.info("DUT: [%s] %s" % (pci_bus, unknow_interface))
+                continue
+
+            macaddr = port.get_mac_addr()
+            if "No such file" in intf:
+                self.logger.info("DUT: [%s] %s" % (pci_bus, unknow_interface))
+                continue
+
             numa = port.socket
             # store the port info to port mapping
             self.ports_info.append(
-                {'port': port, 'pci': pci_bus, 'type': pci_id, 'numa': numa})
+                {'port': port, 'pci': pci_bus, 'type': pci_id, 'numa': numa,
+                 'intf': intf, 'mac': macaddr})
+
+            if not port.get_interface2_name():
+                continue
+
+            intf = port.get_interface2_name()
+            macaddr = port.get_intf2_mac_addr()
+            numa = port.socket
+            # store the port info to port mapping
+            self.ports_info.append(
+                {'port': port, 'pci': pci_bus, 'type': pci_id, 'numa': numa,
+                 'intf': intf, 'mac': macaddr})
 
     def scan_ports_uncached_freebsd(self):
         """
@@ -756,9 +778,10 @@ class Dut(Crb):
         vfs_port = []
         for vf_pci in sriov_vfs_pci:
             addr_array = vf_pci.split(':')
-            bus_id = addr_array[0]
-            devfun_id = addr_array[1]
-            vf_port = GetNicObj(self, bus_id, devfun_id)
+            domain_id = addr_array[0]
+            bus_id = addr_array[1]
+            devfun_id = addr_array[2]
+            vf_port = GetNicObj(self, domain_id, bus_id, devfun_id)
             vfs_port.append(vf_port)
         self.ports_info[port_id]['vfs_port'] = vfs_port
 
