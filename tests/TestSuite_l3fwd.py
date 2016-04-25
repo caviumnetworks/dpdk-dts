@@ -50,7 +50,7 @@ class TestL3fwd(TestCase,IxiaPacketGenerator):
     test_cases_2_ports = [(1,"1S/1C/1T","%s -c %s -n %d -- -P -p %s  --config '(P0,0,C{1.1.0}), (P1,0,C{1.1.0})'"),
                           #"1S/1C/2T": "%s -c %s -n %d -- -p %s  --config '(P0,0,C{1.1.0}), (P1,0,C{1.1.1})'",
                           (1,"1S/2C/1T","%s -c %s -n %d -- -P -p %s  --config '(P0,0,C{1.1.0}), (P1,0,C{1.2.0})'"),
-                          #"1S/4C/1T": "%s -c %s -n %d -- -p %s  --config '(P0,0,C{1.1.0}), (P1,0,C{1.2.0}),(P0,1,C{1.3.0}), (P1,1,C{1.4.0})'",
+                          (1,"1S/4C/1T", "%s -c %s -n %d -- -p %s  --config '(P0,0,C{1.1.0}), (P1,0,C{1.2.0}),(P0,1,C{1.3.0}), (P1,1,C{1.4.0})'"),
                           #"2S/2C/1T": "%s -c %s -n %d -- -p %s  --config '(P0,0,C{0.1.0}), (P1,0,C{0.2.0}),(P0,1,C{1.3.0}), (P1,1,C{1.4.0})'",
                           ]
 
@@ -94,7 +94,7 @@ class TestL3fwd(TestCase,IxiaPacketGenerator):
         "{IPv4(13,101,0,0), 24, P3}",
     ]
 
-    frame_sizes = [64, 128, 256, 512, 2048]  # 65, 128
+    frame_sizes = [64, 72, 128, 256, 512, 1024, 2048]  # 65, 128
     methods = ['lpm']#, 'exact']
 
     #
@@ -309,7 +309,7 @@ class TestL3fwd(TestCase,IxiaPacketGenerator):
         """
         pass
 
-    def test_perf_l3fwd_4ports(self):
+    def no_test_perf_l3fwd_4ports(self):
         """
         L3fwd main 4 ports.
         """
@@ -360,7 +360,7 @@ class TestL3fwd(TestCase,IxiaPacketGenerator):
 
         dts.results_table_print()
 
-    def test_perf_l3fwd_2ports(self):
+    def no_test_perf_l3fwd_2ports(self):
         """
         L3fwd main 2 ports.
         """
@@ -395,6 +395,7 @@ class TestL3fwd(TestCase,IxiaPacketGenerator):
             repl1 = "C{" + str(self.port_socket)
 
             coreMask = {}
+            cmdlist = []
             rtCmdLines = {}
             cmdlist = TestL3fwd.test_cases_2_ports
             for cmdline_pat in cmdlist:
@@ -471,12 +472,12 @@ class TestL3fwd(TestCase,IxiaPacketGenerator):
 
         ports = self.dut.get_ports()
         ports_num = len(ports)
-        header_row = ["Frame", "mode", "S/C/T", "LR_tx_pkts(1min)", "LR_rx_pkts(1min)", "LR_loss_pkts(1min)", "% zero_loss_rate", "zero_loss_throughput(Mpps)"]
+        header_row = ["Frame_size(byte)", "mode", "S/C/T", "zero_loss_throughput(Mpps)", " % zero_loss_rate"]# "LR_tx_pkts(1min)", "LR_rx_pkts(1min)", "LR_loss_pkts(1min)", "% zero_loss_rate", "zero_loss_throughput(Mpps)"]
         self.l3fwd_test_results['header'] = header_row
         dts.results_table_add_header(header_row)
         self.l3fwd_test_results['data'] = []
 
-        for frame_size in [64, 128, 256, 512, 1024]:
+        for frame_size in TestL3fwd.frame_sizes:
 
             # Prepare traffic flow
             payload_size = frame_size -  \
@@ -501,10 +502,17 @@ class TestL3fwd(TestCase,IxiaPacketGenerator):
 
             coreMask = {}
             rtCmdLines = {}
+            cmdlist = []
             if ports_num == 4:
-                cmdlist = TestL3fwd.test_cases_4_ports
+                for i in TestL3fwd.test_cases_4_ports:
+                    cmdlist.append(i)
             else:
-                cmdlist = TestL3fwd.test_cases_2_ports
+                for i in TestL3fwd.test_cases_2_ports:
+                    cmdlist.append(i)
+                if 'eagle' in self.nic:
+                    del cmdlist[2]
+                else:
+                    del cmdlist[1]
             for cmdline_pat in cmdlist:
                 corelist = []
                 rtCmdLines[cmdline_pat[1]] = cmdline_pat[2]
@@ -561,14 +569,15 @@ class TestL3fwd(TestCase,IxiaPacketGenerator):
                         zero_loss_rate, tx_pkts, rx_pkts = self.tester.run_rfc2544(tgenInput, delay=60)
                         loss_pkts = tx_pkts - rx_pkts
                         self.dut.send_expect("^C", "#")
-                        linerate = self.wirespeed(self.nic, frame_size, 2)
+                        linerate = self.wirespeed(self.nic, frame_size, ports_num)
                         zero_loss_throughput = (linerate * zero_loss_rate) / 100
 
                         tx_pkts = human_read_number(tx_pkts)
                         rx_pkts = human_read_number(rx_pkts)
                         loss_pkts = human_read_number(loss_pkts)
 
-                        data_row = [frame_size, mode, cores, tx_pkts, rx_pkts, loss_pkts, zero_loss_rate, zero_loss_throughput]
+                        #data_row = [frame_size, mode, cores, tx_pkts, rx_pkts, loss_pkts, zero_loss_rate, zero_loss_throughput]
+                        data_row = [frame_size, mode, cores, zero_loss_throughput, zero_loss_rate]
                         dts.results_table_add_row(data_row)
                         self.l3fwd_test_results['data'].append(data_row)
                     else:
