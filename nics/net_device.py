@@ -582,7 +582,7 @@ class NetDevice(object):
                         "cat %s" %
                         os.path.join(virtfn, "uevent"), "# ")
                     vf_pci = re.search(
-                        r"PCI_SLOT_NAME=%s:([0-9a-f]+:[0-9a-f]+\.[0-9a-f]+)" %domain_id,
+                        r"PCI_SLOT_NAME=(%s+:[0-9a-f]+:[0-9a-f]+\.[0-9a-f]+)" %domain_id,
                         vf_uevent).group(1)
                     sriov_vfs_pci.append(vf_pci)
             except Exception as e:
