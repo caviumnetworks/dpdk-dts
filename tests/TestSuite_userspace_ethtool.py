@@ -38,12 +38,12 @@ import dts
 import time
 import re
 from test_case import TestCase
-from pmd_output import PmdOutput
 from packet import Packet, sniff_packets, load_sniff_packets
 import random
 from etgen import IxiaPacketGenerator
 from settings import HEADER_SIZE
 from settings import SCAPY2IXIA
+from utils import RED
 
 
 class TestUserspaceEthtool(TestCase, IxiaPacketGenerator):
@@ -127,6 +127,22 @@ class TestUserspaceEthtool(TestCase, IxiaPacketGenerator):
         else:
             return 1518
 
+    def resize_linux_eeprom_file(self, dpdk_eeprom_file, linux_eeprom_file):
+        basePath = self.dut.base_dir
+        with open( basePath + dpdk_eeprom_file, 'rb') as fpDpdk:
+            dpdk_bytes = fpDpdk.read()
+            dpdk_length = len(dpdk_bytes)
+
+        with open( basePath + linux_eeprom_file, 'rb') as fplinux:
+            linux_bytes = fplinux.read()
+            linux_length = len(linux_bytes)
+        
+        self.verify(dpdk_length <= linux_length, 
+                    "linux ethtool haven't dump out enough data as dpdk ethtool")
+
+        with open( basePath + linux_eeprom_file, 'wb') as fplinux:
+            fplinux.write(linux_bytes[:dpdk_length])
+
     def strip_md5(self, filename):
         md5_info = self.dut.send_expect("md5sum %s" % filename, "# ")
         md5_pattern = r"(\w+)  (\w+)"
@@ -155,30 +171,33 @@ class TestUserspaceEthtool(TestCase, IxiaPacketGenerator):
                 version = m.group(3)
                 print dts.GREEN("Detect port %s with %s driver\n" % (port, driver))
 
-        # check link status dump function
-        for port in self.ports:
-            tester_port = self.tester.get_local_port(port)
-            intf = self.tester.get_interface(tester_port)
-            self.tester.send_expect("ip link set dev %s down" % intf, "# ")
-        # wait for link stable
-        time.sleep(5)
-
-        out = self.dut.send_expect("link", "EthApp>", 60)
-        link_pattern = r"Port (\d+): (.*)"
-        link_infos = out.split("\r\n")
-        for link_info in link_infos:
-            m = re.match(link_pattern, link_info)
-            if m:
-                port = m.group(1)
-                status = m.group(2)
-                self.verify(status == "Down", "Userspace tool failed to detect link down")
-
-        for port in self.ports:
-            tester_port = self.tester.get_local_port(port)
-            intf = self.tester.get_interface(tester_port)
-            self.tester.send_expect("ip link set dev %s up" % intf, "# ")
-        # wait for link stable
-        time.sleep(5)
+        # ethtool doesn't support port disconnect by tools of linux 
+        # only detect physical link disconnect status
+        if self.nic.startswith("fortville") == False:  
+            # check link status dump function
+            for port in self.ports:
+                tester_port = self.tester.get_local_port(port)
+                intf = self.tester.get_interface(tester_port)
+                self.tester.send_expect("ip link set dev %s down" % intf, "# ")
+            # wait for link stable
+            time.sleep(5)
+    
+            out = self.dut.send_expect("link", "EthApp>", 60)
+            link_pattern = r"Port (\d+): (.*)"
+            link_infos = out.split("\r\n")
+            for link_info in link_infos:
+                m = re.match(link_pattern, link_info)
+                if m:
+                    port = m.group(1)
+                    status = m.group(2)
+                    self.verify(status == "Down", "Userspace tool failed to detect link down")
+    
+            for port in self.ports:
+                tester_port = self.tester.get_local_port(port)
+                intf = self.tester.get_interface(tester_port)
+                self.tester.send_expect("ip link set dev %s up" % intf, "# ")
+            # wait for link stable
+            time.sleep(5)
 
         # check port stats function
         pkt = Packet(pkt_type='UDP')
@@ -271,8 +290,10 @@ class TestUserspaceEthtool(TestCase, IxiaPacketGenerator):
 
         for index in range(len(self.ports)):
             md5 = self.strip_md5(portsinfo[index]['eeprom_file'])
+            self.resize_linux_eeprom_file( portsinfo[index]['eeprom_file'], portsinfo[index]['ethtool_eeprom'])
             md5_ref = self.strip_md5(portsinfo[index]['ethtool_eeprom'])
-            print dts.GREEN("Reference eeprom md5 %s" % md5_ref)
+            print dts.GREEN("Reference eeprom md5 %s" % md5)
+            print dts.GREEN("Reference eeprom md5_ref %s" % md5_ref)
             self.verify(md5 == md5_ref, "Dumped eeprom not same as linux dumped")
 
     def test_ring_parameter(self):
@@ -323,7 +344,6 @@ class TestUserspaceEthtool(TestCase, IxiaPacketGenerator):
             tester_port = self.tester.get_local_port(port)
             intf = self.tester.get_interface(tester_port)
             pkt.send_pkt(tx_port=intf)
-            time.sleep(2)
             rx_pkts, tx_pkts = self.strip_portstats(port)
             self.verify(rx_pkts == ori_rx_pkts + 1, "Failed to Rx vlan packet")
             self.verify(tx_pkts == ori_tx_pkts + 1, "Failed to Tx vlan packet")
@@ -372,8 +392,8 @@ class TestUserspaceEthtool(TestCase, IxiaPacketGenerator):
             inst = sniff_packets(intf, timeout=5)
             pkt.send_pkt(tx_port=intf)
             pkts = load_sniff_packets(inst)
-            self.verify(len(pkts) == 2, "Packet not forwarded as expected")
-            src_mac = pkts[1].strip_layer_element("layer2", "src")
+            self.verify(len(pkts) == 1, "Packet not forwarded as expected")
+            src_mac = pkts[0].strip_layer_element("layer2", "src")
             self.verify(src_mac == valid_mac, "Forwarded packet not match default mac")
 
         # check multicase will not be valid mac
@@ -405,9 +425,11 @@ class TestUserspaceEthtool(TestCase, IxiaPacketGenerator):
             rx_pkts, tx_pkts = self.strip_portstats(index)
             self.verify(rx_pkts == ori_rx_pkts, "Failed to stop port")
             # restart port and check packet can normally forwarded
+            time.sleep(2)
             self.dut.send_expect("open %d" % index, "EthApp>")
             # wait few time for port ready
-            time.sleep(0.5)
+            rx_pkts, tx_pkts = self.strip_portstats(index)
+            time.sleep(2)
             pkt.send_pkt(tx_port=intf)
             rx_pkts_open, tx_pkts_open = self.strip_portstats(index)
             self.verify(rx_pkts_open == rx_pkts + 1, "Failed to reopen port rx")
@@ -430,11 +452,12 @@ class TestUserspaceEthtool(TestCase, IxiaPacketGenerator):
             self.tester.send_expect("ifconfig %s mtu 9000" % (intf), "# ")
             for mtu in mtus:
                 self.dut.send_expect("mtu %d %d" % (index, mtu), "EthApp>")
+                ori_rx_pkts, _ = self.strip_portstats(index)
                 pkt_size = mtu + HEADER_SIZE['eth']
                 pkt = Packet(pkt_len=pkt_size)
                 pkt.send_pkt(tx_port=intf)
                 rx_pkts, _ = self.strip_portstats(index)
-                self.verify(rx_pkts == 1, "Packet match mtu not forwarded as expected")
+                self.verify(rx_pkts == ori_rx_pkts, "Packet match mtu not forwarded as expected")
                 pkt = Packet(pkt_len=mtu + 1)
                 pkt.send_pkt(tx_port=intf)
                 rx_pkts_over, _ = self.strip_portstats(index)
