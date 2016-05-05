@@ -1,6 +1,6 @@
 # BSD LICENSE
 #
-# Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
+# Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -67,18 +67,12 @@ class TestDynamicConfig(TestCase):
         print self.dut_ports
 
         # Verify that enough ports are available
-        if self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single"]:
-            self.verify(len(self.dut_ports) >= 2, "Insufficient ports")
-        else:
-            self.verify(len(self.dut_ports) >= 1, "Insufficient ports")
+        self.verify(len(self.dut_ports) >= 2, "Insufficient ports")
 
         # Prepare cores and ports
         cores = self.dut.get_core_list('1S/2C/2T')
         coreMask = dts.create_mask(cores)
-        if self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single"]:
-            portMask = dts.create_mask(self.dut_ports[:2])
-        else:
-            portMask = dts.create_mask([self.dut_ports[0]])
+        portMask = dts.create_mask(self.dut_ports[:2])
 
         # launch app
         cmd = "./%s/build/app/test-pmd/testpmd -c %s -n 3 -- -i --rxpt=0 \
@@ -99,8 +93,7 @@ class TestDynamicConfig(TestCase):
         self.verify(cmp(ret.lower(), self.dest) == 0, "MAC address wrong")
         self.verify("Promiscuous mode: enabled" in out,
                     "wrong default promiscuous value")
-        if self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single"]:
-            self.dut.send_expect("start", "testpmd> ", 120)
+        self.dut.send_expect("start", "testpmd> ", 120)
 
     def dynamic_config_send_packet(self, portid, destMac="00:11:22:33:44:55"):
         """
@@ -129,6 +122,7 @@ class TestDynamicConfig(TestCase):
         portid = self.dut_ports[0]
 
         # get the current rx statistic
+        out = self.dut.send_expect("clear port stats all" , "testpmd> ")
         out = self.dut.send_expect("show port stats %d" % portid, "testpmd> ")
         cur_rxpkt = dts.regexp(out, "RX-packets: ([0-9]+)")
 
@@ -212,6 +206,59 @@ class TestDynamicConfig(TestCase):
             self.verify(int(cur_rxpkt) == int(
                 pre_rxpkt) + 1, "2nd packet increasment error")
 
+    def test_dynamic_config_broadcast(self):
+        """
+        Dynamic config disable promiscuous, send a broadcast packet
+        dpdk will received packet and fwd by io model. send a general packet
+        and dst mac not port mac, dpdk will not received packet.
+        """
+        
+        self.dut.send_expect("set promisc all off", "testpmd> ")
+        self.dut.send_expect("set fwd io", "testpmd> ")
+        self.dut.send_expect("clear port stats all", "testpmd> ")
+
+        
+        self.dynamic_config_send_packet(self.dut_ports[0],"ff:ff:ff:ff:ff:ff")
+        out = self.dut.send_expect("show port stats %d" % self.dut_ports[1], "testpmd> ")
+          
+        cur_rxpkt = dts.regexp(out, "TX-packets: ([0-9]+)")
+        self.verify(int(cur_rxpkt) == 1, "not received broadcast packet")
+          
+        self.dut.send_expect("clear port stats all", "testpmd> ")
+
+        self.dynamic_config_send_packet(self.dut_ports[0])
+        out = self.dut.send_expect("show port stats %d" % self.dut_ports[1], "testpmd> ")
+          
+        cur_rxpkt = dts.regexp(out, "TX-packets: ([0-9]+)")
+        self.verify(int(cur_rxpkt) == 0, "disable promisc, received a dst mac not match packet")
+
+    def test_dynamic_config_allmulticast(self):
+        """
+        Dynamic config disable promiscuous,when dpdk enable multicast, send a 
+        mulicast packet, dpdk received this packet and fwd by io model. when dpdk
+        disable multicast, dpdk not received this packet
+        """
+
+        self.dut.send_expect("set promisc all off", "testpmd> ")
+        self.dut.send_expect("set fwd io", "testpmd> ")
+        self.dut.send_expect("clear port stats all", "testpmd> ")
+        self.dut.send_expect("set allmulti all on", "testpmd> ")
+        
+        self.dynamic_config_send_packet(self.dut_ports[0],"01:00:00:33:00:01")
+        out = self.dut.send_expect("show port stats %d" % self.dut_ports[1], "testpmd> ")
+            
+        cur_rxpkt = dts.regexp(out, "TX-packets: ([0-9]+)")
+        self.verify(int(cur_rxpkt) == 1, "enable allmulti switch, not received allmulti packet")
+           
+        self.dut.send_expect("clear port stats all", "testpmd> ")
+        self.dut.send_expect("set allmulti all off", "testpmd> ")
+        
+        self.dynamic_config_send_packet(self.dut_ports[0],"01:00:00:33:00:01")
+        out = self.dut.send_expect("show port stats %d" % self.dut_ports[1], "testpmd> ")
+ 
+        cur_rxpkt = dts.regexp(out, "TX-packets: ([0-9]+)")
+        self.verify(int(cur_rxpkt) == 0, "disable allmulti switch, received allmulti packet")
+           
     def test_dynamic_config_enable_promiscuous(self):
         """
         Dynamic config enable promiscuous test
