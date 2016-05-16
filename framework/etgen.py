@@ -236,7 +236,7 @@ class IxiaPacketGenerator(SSHConnection):
 
     def ether(self, port, src, dst, type):
         """
-        Configure Ether protocal.
+        Configure Ether protocol.
         """
         self.add_tcl_cmd("protocol config -ethernetType ethernetII")
         self.add_tcl_cmd('stream config -sa "%s"' % self.macToTclFormat(src))
@@ -244,7 +244,7 @@ class IxiaPacketGenerator(SSHConnection):
 
     def ip(self, port, frag, src, proto, tos, dst, chksum, len, version, flags, ihl, ttl, id, options=None):
         """
-        Configure IP protocal.
+        Configure IP protocol.
         """
         self.add_tcl_cmd("protocol config -name ip")
         self.add_tcl_cmd('ip config -sourceIpAddr "%s"' % src)
@@ -266,7 +266,7 @@ class IxiaPacketGenerator(SSHConnection):
 
     def ipv6(self, port, version, tc, fl, plen, nh, hlim, src, dst):
         """
-        Configure IPv6 protocal.
+        Configure IPv6 protocol.
         """
         self.add_tcl_cmd("protocol config -name ipV6")
         self.add_tcl_cmd('ipV6 setDefault')
@@ -284,7 +284,7 @@ class IxiaPacketGenerator(SSHConnection):
 
     def udp(self, port, dport, sport, len, chksum):
         """
-        Configure UDP protocal.
+        Configure UDP protocol.
         """
         self.add_tcl_cmd("udp setDefault")
         self.add_tcl_cmd("udp config -sourcePort %d" % sport)
@@ -302,7 +302,7 @@ class IxiaPacketGenerator(SSHConnection):
 
     def tcp(self, port, sport, dport, seq, ack, dataofs, reserved, flags, window, chksum, urgptr, options=None):
         """
-        Configure TCP protocal.
+        Configure TCP protocol.
         """
         self.add_tcl_cmd("tcp setDefault")
         self.add_tcl_cmd("tcp config -sourcePort %d" % sport)
@@ -311,7 +311,7 @@ class IxiaPacketGenerator(SSHConnection):
 
     def sctp(self, port, sport, dport, tag, chksum):
         """
-        Configure SCTP protocal.
+        Configure SCTP protocol.
         """
         self.add_tcl_cmd("tcp config -sourcePort %d" % sport)
         self.add_tcl_cmd("tcp config -destPort %d" % dport)
@@ -319,7 +319,7 @@ class IxiaPacketGenerator(SSHConnection):
 
     def dot1q(self, port, prio, id, vlan, type):
         """
-        Configure 8021Q protocal.
+        Configure 8021Q protocol.
         """
         self.add_tcl_cmd("protocol config -enable802dot1qTag true")
         self.add_tcl_cmd("vlan config -vlanID %d" % vlan)
