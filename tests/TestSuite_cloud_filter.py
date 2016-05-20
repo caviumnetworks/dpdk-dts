@@ -96,6 +96,10 @@ class CloudFilterConfig(object):
         ether_fmt = "ethtool -N %(PF)s flow-type ether dst %(OMAC)s m " + \
             "%(OMASK)s src %(IMAC)s m %(IMASK)s user-def %(VNI_VF)s " + \
             "action %(QUEUE)d loc %(ID)d"
+        ether_vlan_fmt = "ethtool -N %(PF)s flow-type ether dst %(OMAC)s m " + \
+            "%(OMASK)s src %(IMAC)s m %(IMASK)s vlan %(VLAN)d " + \
+            "user-def %(VNI_VF)s action %(QUEUE)d loc %(ID)d"
+
 
         # generate user define field
         vni_vf = '0x'
@@ -130,6 +134,16 @@ class CloudFilterConfig(object):
                                     'VNI_VF': vni_vf,
                                     'QUEUE': self.cf_rule['queue'],
                                     'ID': self.rule_idx}
+        elif 'ivlan' in self.cf_rule:
+            ethtool_cmd = ether_vlan_fmt % {'PF': self.pf_intf,
+                                       'OMAC': omac_str,
+                                       'OMASK': omac_mask,
+                                       'IMAC': imac_str,
+                                       'IMASK': imac_mask,
+                                       'VLAN': self.cf_rule['ivlan'],
+                                       'VNI_VF': vni_vf,
+                                       'QUEUE': self.cf_rule['queue'],
+                                       'ID': self.rule_idx}
         else:
             ethtool_cmd = ether_fmt % {'PF': self.pf_intf,
                                        'OMAC': omac_str,
