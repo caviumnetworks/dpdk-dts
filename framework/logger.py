@@ -66,7 +66,7 @@ logging.DTS_VIRTDUT_OUTPUT = logging.DEBUG + 6
 
 logging.addLevelName(logging.DTS_DUT_CMD, 'DTS_DUT_CMD')
 logging.addLevelName(logging.DTS_DUT_OUTPUT, 'DTS_DUT_OUTPUT')
-logging.addLevelName(logging.DTS_DUT_RESULT, 'DTS_DUT_RESUTL')
+logging.addLevelName(logging.DTS_DUT_RESULT, 'DTS_DUT_RESULT')
 
 logging.addLevelName(logging.DTS_TESTER_CMD, 'DTS_TESTER_CMD')
 logging.addLevelName(logging.DTS_TESTER_OUTPUT, 'DTS_TESTER_OUTPUT')
