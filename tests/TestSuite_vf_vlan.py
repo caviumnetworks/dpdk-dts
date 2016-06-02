@@ -319,7 +319,7 @@ class TestVfVlan(TestCase):
                 "received 1 packets" not in out, "Received filtered vlan packet!!!")
 
         for rx_vlan in rx_vlans:
-            self.vm0_testpmd.execute_cmd('rx_vlan rm 0 %d' % rx_vlan)
+            self.vm0_testpmd.execute_cmd('rx_vlan rm %d 0' % rx_vlan)
 
         # send packet with vlan 0
         out = self.send_and_getout(vlan=0, pkt_type="VLAN_UDP")
