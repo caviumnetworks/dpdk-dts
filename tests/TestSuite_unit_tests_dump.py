@@ -105,13 +105,16 @@ class TestUnitTestsDump(TestCase):
         self.dut.send_expect("./%s/app/test -n 1 -c ffff" % (self.target), "R.*T.*E.*>.*>", self.start_test_time)
         out = self.dut.send_expect("dump_mempool", "RTE>>", self.run_cmd_time * 2)
         self.dut.send_expect("quit", "# ")
-        elements = ['mempool', 'address', 'flags', 'ring', 'phys_addr', 'size', 'header_size', 'elt_size',
-                    'trailer_size', 'total_obj_size', 'private_data_size', 'pg_num', 'pg_shift', 'pg_mask',
-                    'elt_va_start', 'elt_va_end', 'elt_pa\[0\]', 'avg bytes/object'
-                    ]
+        elements = ['mempool', 'flags', 'ring', 'phys_addr', 'nb_mem_chunks', 'size', 'populated_size', 'header_size', 'elt_size',
+                    'trailer_size', 'total_obj_size', 'private_data_size', 'avg bytes/object',  'cache infos','cache_size', 'common_pool_count']
         match_regex = "mempool <(.*?)>@0x(.*?)\r\n"
-        for element in elements[2:]:
-            match_regex += "  %s=(.*?)\r\n" % element
+        for element in elements[1:]:
+            if element == 'cache_size':
+                match_regex += "    %s=(.*?)\r\n" % element
+            elif element == 'cache infos':
+                match_regex += "  %s:\r\n" % element
+            else:
+                match_regex += "  %s=(.*?)\r\n" % element
         m = re.compile(r"%s" % match_regex, re.S)
         result = m.search(out)
         mempool_info = dict(zip(elements, result.groups()))
