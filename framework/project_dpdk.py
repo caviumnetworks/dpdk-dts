@@ -165,11 +165,14 @@ class DPDKdut(Dut):
         """
         Build DPDK source code on linux with specified target.
         """
+        build_time = 300
+        if "icc" in target:
+            build_time = 900
         # clean all
         self.send_expect("rm -rf " + target, "#")
 
         # compile
-        out = self.send_expect("make -j install T=%s %s" % (target, extra_options), "# ", 300)
+        out = self.send_expect("make -j install T=%s %s" % (target, extra_options), "# ", build_time)
 
         if("Error" in out or "No rule to make" in out):
             self.logger.error("ERROR - try without '-j'")
