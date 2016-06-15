@@ -104,6 +104,8 @@ class TestCase(object):
             bitrate *= 40
         elif nic == 'fortville_eagle':
             bitrate *= 10
+        elif nic == 'fortpark_TLV':
+            bitrate *= 10
         elif nic == 'redrockcanyou':
             bitrate *= 40
 
