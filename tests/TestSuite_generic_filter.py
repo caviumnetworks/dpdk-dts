@@ -81,7 +81,7 @@ class TestGeneric_filter(TestCase):
         """
          set port queue mapping, fortville not support this function
         """
-        if self.nic not in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single"]:
+        if self.nic not in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single", "fortpark_TLV"]:
             self.dut.send_expect(
                 "set stat_qmap rx %s 0 0" % valports[0], "testpmd> ")
             self.dut.send_expect(
@@ -366,7 +366,7 @@ class TestGeneric_filter(TestCase):
 
         self.verify(self.nic in ["niantic", "kawela_4", "bartonhills", 
                            "powerville", "fortville_eagle", "fortville_spirit",
-                           "fortville_spirit_single"], "%s nic not support syn filter" % self.nic)
+                           "fortville_spirit_single", "fortpark_TLV"], "%s nic not support syn filter" % self.nic)
         self.pmdout.start_testpmd(
             "%s" % self.cores, "--disable-rss --rxq=4 --txq=4 --portmask=%s --nb-cores=4 --nb-ports=1" % portMask)
         self.port_config()
@@ -619,7 +619,7 @@ class TestGeneric_filter(TestCase):
             self.verify(False, "%s nic not support this test" % self.nic)
     def test_jumbo_frame_size(self):
         
-        self.verify(self.nic not in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single"], "%s nic not support this test" % self.nic)
+        self.verify(self.nic not in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single", "fortpark_TLV"], "%s nic not support this test" % self.nic)
         self.pmdout.start_testpmd(
             "%s" % self.cores, "--disable-rss --rxq=4 --txq=4 --portmask=%s --nb-cores=4 --nb-ports=1 --mbcache=200 --mbuf-size=2048 --max-pkt-len=9600" % portMask)
         port = self.tester.get_local_port(valports[0])

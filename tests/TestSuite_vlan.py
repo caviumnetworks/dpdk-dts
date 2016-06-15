@@ -75,7 +75,7 @@ class TestVlan(TestCase):
         self.dut.send_expect("set verbose 1", "testpmd> ")
         out = self.dut.send_expect("set fwd mac", "testpmd> ")
 
-        if self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single"]:
+        if self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single", "fortpark_TLV"]:
             self.dut.send_expect("vlan set filter on %s" % dutRxPortId, "testpmd> ")
 
         self.dut.send_expect("vlan set strip off %s" % dutRxPortId, "testpmd> ")

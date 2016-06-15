@@ -78,7 +78,7 @@ class TestFdir(TestCase, IxiaPacketGenerator):
         out = self.dut.get_session_output()
         self.dut.send_expect("stop", "testpmd>")
 
-        if(self.nic in ["kawela", "niantic", "fortville_eagle", "fortville_spirit", "fortville_spirit_single"]):
+        if(self.nic in ["kawela", "niantic", "fortville_eagle", "fortville_spirit", "fortville_spirit_single", "fortpark_TLV"]):
             if ("fwd" == self.fdir_type):
                 if condition:
                     self.queue = 2
@@ -205,7 +205,7 @@ class TestFdir(TestCase, IxiaPacketGenerator):
         Fdir Performance Benchmarking set rules
         """
         self.dut.send_expect("port stop %s" % self.dut_ports[0], "testpmd>")
-        if(self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single"]):
+        if(self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single", "fortpark_TLV"]):
             self.dut.send_expect("flow_director_flex_payload %s l2 (0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15)" % self.dut_ports[0], "testpmd>")
             self.dut.send_expect("flow_director_flex_payload %s l3 (0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15)" % self.dut_ports[0], "testpmd>")
             self.dut.send_expect("flow_director_flex_payload %s l4 (0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15)" % self.dut_ports[0], "testpmd>")
@@ -221,7 +221,7 @@ class TestFdir(TestCase, IxiaPacketGenerator):
         Fdir get flexbytes and payload according NIC
         """
 
-        if(self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single"]):
+        if(self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single", "fortpark_TLV"]):
             if not sctp:
                 self.flexbytes = "0x11,0x11,0x22,0x22,0x33,0x33,0x44,0x44,0x55,0x55,0x66,0x66,0x77,0x77,0x88,0x88"
             else:
@@ -297,7 +297,7 @@ class TestFdir(TestCase, IxiaPacketGenerator):
 
         # ipv4 frag
         # ip-frag only support in fortville
-        if (self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single"]):
+        if (self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single", "fortpark_TLV"]):
             self.dut.send_expect("flow_director_filter %s mode IP  add flow ipv4-other src 192.168.0.1 dst 192.168.0.2  tos 2 proto 20 ttl 40 vlan 0 flexbytes () fwd pf queue %d fd_id %d " % (self.dut_ports[0], 3, 1), "testpmd>")
             self.dut.send_expect("flow_director_filter %s mode IP  add flow ipv4-frag src 192.168.0.1 dst 192.168.0.2  tos 2   proto 20 ttl 40 vlan 0 flexbytes () fwd pf queue %d fd_id %d " % (self.dut_ports[0], 2, 1), "testpmd>")
             self.send_and_verify(True, 'sendp([Ether(src=get_if_hwaddr("%s"), dst="00:1B:21:8E:B2:30")/IP(src="192.168.0.1", dst="192.168.0.2", frag=1, flags="MF")/Raw(load="X"*46)], iface="%s")' % (self.dut_rx_interface, self.dut_rx_interface))
@@ -316,7 +316,7 @@ class TestFdir(TestCase, IxiaPacketGenerator):
         if self.nic in ["niantic"]:
             # Niantic ipv6 only support signature mode
             self.dut.send_expect("./%s/app/testpmd -c %s -n 4 -- -i --portmask=%s --disable-rss  --rxq=4 --txq=4 --nb-cores=4  --nb-ports=1 --pkt-filter-mode=signature" % (self.target, self.coreMask, dts.create_mask([self.dut_ports[0]])), "testpmd>", 120)
-        elif self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single"]:
+        elif self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single", "fortpark_TLV"]:
             # Fortville ipv6 support perfect mode
             self.dut.send_expect("./%s/app/testpmd -c %s -n 4 -- -i --portmask=%s --disable-rss  --rxq=4 --txq=4 --nb-cores=4  --nb-ports=1 --pkt-filter-mode=perfect" % (self.target, self.coreMask, dts.create_mask([self.dut_ports[0]])), "testpmd>", 120)
         self.dut.send_expect("set verbose 1", "testpmd>")
@@ -373,7 +373,7 @@ class TestFdir(TestCase, IxiaPacketGenerator):
 
         # ipv6 frag
         # ip-frag only support in fortville
-        if (self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single"]):
+        if (self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single", "fortpark_TLV"]):
             self.dut.send_expect("flow_director_filter %s mode IP  add flow ipv6-other src FE80:0:0:0:200:1FF:FE00:200 dst 3555:5555:6666:6666:7777:7777:8888:8888  tos 2 proto 20 ttl 40 vlan 0 flexbytes () fwd pf queue %d fd_id %d " % (self.dut_ports[0], 3, 1), "testpmd>")
             self.dut.send_expect("flow_director_filter %s mode IP  add flow ipv6-frag src FE80:0:0:0:200:1FF:FE00:200 dst 3555:5555:6666:6666:7777:7777:8888:8888  tos 2 proto 20 ttl 40 vlan 0 flexbytes () fwd pf queue %d fd_id %d " % (self.dut_ports[0], 2, 1), "testpmd>")
             self.send_and_verify(True, 'sendp([Ether(src=get_if_hwaddr("%s"), dst="00:1B:21:8E:B2:30")/IPv6(src="FE80:0:0:0:200:1FF:FE00:200", dst="3555:5555:6666:6666:7777:7777:8888:8888", nh=44)/IPv6ExtHdrFragment()/Raw(load="X"*46)], iface="%s")' % (self.dut_rx_interface, self.dut_rx_interface))
@@ -441,7 +441,7 @@ class TestFdir(TestCase, IxiaPacketGenerator):
 
         # ipv4 frag
         # ip-frag only support in fortville
-        if (self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single"]):
+        if (self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single", "fortpark_TLV"]):
             self.dut.send_expect("flow_director_filter %s mode IP  add flow ipv4-other src 192.168.0.1 dst 192.168.0.2  tos 2 proto 20 ttl 40 vlan 0 flexbytes () drop pf queue %d fd_id %d " % (self.dut_ports[0], 3, 1), "testpmd>")
             self.dut.send_expect("flow_director_filter %s mode IP  add flow ipv4-frag src 192.168.0.1 dst 192.168.0.2  tos 2 proto 20  ttl 40 vlan 0 flexbytes () drop pf queue %d fd_id %d " % (self.dut_ports[0], 2, 1), "testpmd>")
             self.dut.send_expect("flow_director_filter %s mode IP  add flow ipv4-frag src 192.168.0.1 dst 192.168.0.2  tos 2 proto 20  ttl 40 vlan 0 flexbytes () drop pf queue %d fd_id %d " % (self.dut_ports[0], 2, 1), "testpmd>")
@@ -460,7 +460,7 @@ class TestFdir(TestCase, IxiaPacketGenerator):
     def test_fdir_noflexword_drop_ipv6(self):
         # drop not support signature mode, niantic only can work in signature  mode with ipv6
         # Niantic is not support in drop ipv6
-        if self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single"]:
+        if self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single", "fortpark_TLV"]:
             # drop command testing
             self.dut.kill_all()
 
@@ -563,7 +563,7 @@ class TestFdir(TestCase, IxiaPacketGenerator):
 
         # ipv4 frag
         # ip-frag only support fortville
-        if (self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single"]):
+        if (self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single", "fortpark_TLV"]):
             self.dut.send_expect("flow_director_filter %s mode IP  add flow ipv4-other src 192.168.0.1 dst 192.168.0.2  tos 2 proto 20 ttl 40 vlan 0 flexbytes (%s) fwd pf queue %d fd_id %d " % (self.dut_ports[0], self.flexbytes, 3, 1), "testpmd>")
             self.dut.send_expect("flow_director_filter %s mode IP  add flow ipv4-frag src 192.168.0.1 dst 192.168.0.2  tos 2 proto 20  ttl 40 vlan 0 flexbytes (%s) fwd pf queue %d fd_id %d " % (self.dut_ports[0], self.flexbytes, 2, 1), "testpmd>")
             self.send_and_verify(True, 'sendp([Ether(src=get_if_hwaddr("%s"), dst="00:1B:21:8E:B2:30")/IP(src="192.168.0.1", dst="192.168.0.2", frag=1, flags="MF")/Raw(load="%s")], iface="%s")' % (self.dut_rx_interface, self.payload, self.dut_rx_interface))
@@ -601,7 +601,7 @@ class TestFdir(TestCase, IxiaPacketGenerator):
         if self.nic in ["niantic"]:
             # Niantic ipv6 only support signature mode
             self.dut.send_expect("./%s/app/testpmd -c %s -n 4 -- -i --portmask=%s --disable-rss  --rxq=4 --txq=4 --nb-cores=4  --nb-ports=1 --pkt-filter-mode=signature" % (self.target, self.coreMask, dts.create_mask([self.dut_ports[0]])), "testpmd>", 120)
-        elif self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single"]:
+        elif self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single", "fortpark_TLV"]:
             # fortville ipv6 support perfect mode
             self.dut.send_expect("./%s/app/testpmd -c %s -n 4 -- -i --portmask=%s --disable-rss --rxq=4 --txq=4 --nb-cores=4 --nb-ports=1 --pkt-filter-mode=perfect" % (self.target, self.coreMask, dts.create_mask([self.dut_ports[0]])), "testpmd>", 120)
         self.dut.send_expect("set verbose 1", "testpmd>")
@@ -657,7 +657,7 @@ class TestFdir(TestCase, IxiaPacketGenerator):
 
         # ipv6 frag
         # ip-frag only support fortville
-        if (self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single"]):
+        if (self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single", "fortpark_TLV"]):
             self.dut.send_expect("flow_director_filter %s mode IP  add flow ipv6-other src FE80:0:0:0:200:1FF:FE00:200 dst 3555:5555:6666:6666:7777:7777:8888:8888  tos 2 proto 20 ttl 40 vlan 0 flexbytes (%s) fwd pf queue %d fd_id %d " % (self.dut_ports[0], self.flexbytes, 3, 1), "testpmd>")
             self.dut.send_expect("flow_director_filter %s mode IP  add flow ipv6-frag src FE80:0:0:0:200:1FF:FE00:200 dst 3555:5555:6666:6666:7777:7777:8888:8888  tos 2 proto 20 ttl 40 vlan 0 flexbytes (%s) fwd pf queue %d fd_id %d " % (self.dut_ports[0], self.flexbytes, 2, 1), "testpmd>")
             self.send_and_verify(True, 'sendp([Ether(src=get_if_hwaddr("%s"), dst="00:1B:21:8E:B2:30")/IPv6(src="FE80:0:0:0:200:1FF:FE00:200", dst="3555:5555:6666:6666:7777:7777:8888:8888", nh=44)/IPv6ExtHdrFragment()/Raw(load="%s")], iface="%s")' % (self.dut_rx_interface, self.payload, self.dut_rx_interface))
@@ -707,7 +707,7 @@ class TestFdir(TestCase, IxiaPacketGenerator):
 
         # ipv4 frag
         # ip-frag only support fortville
-        if (self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single"]):
+        if (self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single", "fortpark_TLV"]):
             self.dut.send_expect("flow_director_filter %s mode IP  add flow ipv4-other src 192.168.0.1 dst 192.168.0.2  tos 2 proto 20 ttl 40 vlan 0 flexbytes (%s) drop pf queue %d fd_id %d " % (self.dut_ports[0], self.flexbytes, 3, 1), "testpmd>")
             self.dut.send_expect("flow_director_filter %s mode IP  add flow ipv4-frag src 192.168.0.1 dst 192.168.0.2  tos 2 proto 20  ttl 40 vlan 0 flexbytes (%s) drop pf queue %d fd_id %d " % (self.dut_ports[0], self.flexbytes, 2, 1), "testpmd>")
             self.dut.send_expect("flow_director_filter %s mode IP  add flow ipv4-frag src 192.168.0.1 dst 192.168.0.2  tos 2 proto 20  ttl 40 vlan 0 flexbytes (%s) drop pf queue %d fd_id %d " % (self.dut_ports[0], self.flexbytes, 2, 1), "testpmd>")
@@ -726,7 +726,7 @@ class TestFdir(TestCase, IxiaPacketGenerator):
     def test_fdir_flexword_drop_ipv6(self):
         # drop not support signature mode, niantic only can work in signature  mode with ipv6
         # Niantic is not support in drop ipv6
-        if (self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single"]):
+        if (self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single", "fortpark_TLV"]):
             # drop testing with flexword
             self.dut.send_expect("./%s/app/testpmd -c %s -n 4 -- -i --portmask=%s --disable-rss --rxq=4 --txq=4 --nb-cores=4 --nb-ports=1 --pkt-filter-mode=perfect" % (self.target, self.coreMask, dts.create_mask([self.dut_ports[0]])), "testpmd>", 120)
             self.dut.send_expect("set verbose 1", "testpmd>")

@@ -258,7 +258,7 @@ class TestVxlan(TestCase, IxiaPacketGenerator):
         """
         # this feature only enable in FVL now
         self.verify(self.nic in ["fortville_eagle", "fortville_spirit",
-                                 "fortville_spirit_single", "sagepond"],
+                                 "fortville_spirit_single", "sagepond","fortpark_TLV"],
                     "Vxlan Only supported by Fortville and Sageville")
         # Based on h/w type, choose how many ports to use
         ports = self.dut.get_ports()

@@ -55,7 +55,7 @@ class TestTSO(TestCase):
         self.verify(self.nic in ["kawela_2", "niantic", "bartonhills", "82545EM",
                                  "82540EM", "springfountain", "fortville_eagle",
                                  "fortville_spirit", "fortville_spirit_single",
-                                 "redrockcanyou", "atwood", "boulderrapid"],
+                                 "redrockcanyou", "atwood", "boulderrapid", "fortpark_TLV"],
                     "NIC Unsupported: " + str(self.nic))
 
         # Based on h/w type, choose how many ports to use

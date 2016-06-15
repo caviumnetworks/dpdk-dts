@@ -93,7 +93,7 @@ class TestUniPacket(TestCase):
         """
         Check whether L2 packet can be detected"
         """
-        self.verify("fortville" in self.nic,
+        self.verify(("fortville" in self.nic or "fortpark_TLV" in self.nic),
                     "L2 packet detect only support by Fortville")
         self.L2_types = {
             "TIMESYNC": "(outer) L2 type: ETHER_Timesync",
@@ -115,7 +115,7 @@ class TestUniPacket(TestCase):
         """
         checked that whether L3 and L4 packet can be normally detected.
         """
-        if "fortville" in self.nic.lower():
+        if "fortville" in self.nic.lower() or "fortpark_TLV" in self.nic.lower():
             outerL4Type = "(outer) L4 type: L4_NONFRAG"
         elif "niantic" in self.nic.lower() or "i350" in self.nic.lower():
             outerL4Type = "(outer) L4 type: Unknown"
@@ -132,7 +132,7 @@ class TestUniPacket(TestCase):
         }
 
         # delete the unsupported packet based on nic type
-        if "fortville" in self.nic.lower():
+        if "fortville" in self.nic.lower() or "fortpark_TLV" in self.nic.lower():
             pktType.pop("MAC_IPihl_PKT")
             pktType.pop("MAC_IPihl_SCTP_PKT")
         elif "niantic" in self.nic.lower() or "i350" in self.nic.lower():
@@ -145,7 +145,7 @@ class TestUniPacket(TestCase):
         """
         checked that whether IPv6 and L4 packet can be normally detected.
         """
-        if "fortville" in self.nic.lower():
+        if "fortville" in self.nic.lower() or "fortpark_TLV" in self.nic.lower():
             outerL4Type = "(outer) L4 type: L4_NONFRAG"
             outerL3Type = "(outer) L3 type: IPV6_EXT_UNKNOWN"
         elif "niantic" in self.nic.lower() or "i350" in self.nic.lower():
@@ -161,7 +161,7 @@ class TestUniPacket(TestCase):
         }
 
         # delete the unsupported packet based on nic type
-        if "fortville" in self.nic.lower():
+        if "fortville" in self.nic.lower() or "fortpark_TLV" in self.nic.lower():
             pktType.pop("MAC_IPv6FRAG_PKT_N")
         elif "niantic" in self.nic.lower() or "i350" in self.nic.lower():
             pktType.pop("MAC_IPv6FRAG_PKT_F")
@@ -173,7 +173,7 @@ class TestUniPacket(TestCase):
         checked that whether IP in IPv4 tunnel packet can be normally
         detected by Fortville.
         """
-        self.verify("fortville" in self.nic,
+        self.verify(("fortville" in self.nic or "fortpark_TLV" in self.nic),
                     "IP in IPv4 tunnel packet type detect only support by Fortville")
 
         pktType = {
@@ -216,7 +216,7 @@ class TestUniPacket(TestCase):
         checked that whether IP in IPv6 tunnel packet can be normally
         detected by Fortville.
         """
-        self.verify("fortville" in self.nic,
+        self.verify(("fortville" in self.nic or "fortpark_TLV" in self.nic),
                     "IP in IPv6 tunnel packet type detect only support by Fortville")
 
         pktType = {
@@ -240,7 +240,7 @@ class TestUniPacket(TestCase):
         checked that whether NVGRE tunnel packet can be normally detected
         by Fortville.
         """
-        self.verify("fortville" in self.nic,
+        self.verify(("fortville" in self.nic or "fortpark_TLV" in self.nic),
                     "NVGRE tunnel packet type detect only support by Fortville")
 
         pktType = {
@@ -267,7 +267,7 @@ class TestUniPacket(TestCase):
         checked that whether NVGRE in IPv6 tunnel packet can be normally
         detected by Fortville.
         """
-        self.verify("fortville" in self.nic,
+        self.verify(("fortville" in self.nic or "fortpark_TLV" in self.nic),
                     "NVGRE in IPv6 detect only support by Fortville")
 
         pkt_types = {
@@ -304,7 +304,7 @@ class TestUniPacket(TestCase):
         """
         checked that whether GRE tunnel packet can be normally detected by Fortville.
         """
-        self.verify("fortville" in self.nic,
+        self.verify(("fortville" in self.nic or "fortpark_TLV" in self.nic),
                     "GRE tunnel packet type detect only support by Fortville")
 
         pktType = {
@@ -323,7 +323,7 @@ class TestUniPacket(TestCase):
         checked that whether Vxlan tunnel packet can be normally detected by
         Fortville.
         """
-        self.verify("fortville" in self.nic,
+        self.verify(("fortville" in self.nic or "fortpark_TLV" in self.nic),
                     "Vxlan tunnel packet type detect only support by Fortville")
 
         self.dut.send_expect("rx_vxlan_port add 4789 0", "testpmd>", 10)

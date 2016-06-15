@@ -228,7 +228,7 @@ class TestPmdrssreta(TestCase):
             self.dut.send_expect("quit", "# ", 30)
 
     def test_rss_key_size(self):
-        nic_rss_key_size = {"fortville_eagle": 52, "fortville_spirit": 52, "fortville_spirit_single": 52, "niantic": 40, "e1000": 40, "redrockcanyou": 40, "atwood": 40,  "boulderrapid": 40}
+        nic_rss_key_size = {"fortville_eagle": 52, "fortville_spirit": 52, "fortville_spirit_single": 52, "niantic": 40, "e1000": 40, "redrockcanyou": 40, "atwood": 40,  "boulderrapid": 40, "fortpark_TLV": 52}
         self.verify(self.nic in nic_rss_key_size.keys(), "Not supporte rss key on %s" % self.nic)
 
         dutPorts = self.dut.get_ports(self.nic)
