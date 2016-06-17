@@ -1,7 +1,7 @@
 """
 DPDK Test suite.
 
-Test IPv4 fragmentation features in DPDK.
+Test Cloud Filters features in DPDK.
 
 """
 
