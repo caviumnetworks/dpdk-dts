@@ -53,7 +53,7 @@ from test_result import Result
 from stats_reporter import StatsReporter
 from excel_reporter import ExcelReporter
 from utils import *
-from exception import TimeoutException, ConfigParseException
+from exception import TimeoutException, ConfigParseException, VerifyFailure
 from logger import getLogger
 import logger
 import debugger
@@ -89,6 +89,7 @@ Package = ''
 Patches = []
 drivername = ""
 interrupttypr = ""
+dts_commands = []
 
 
 def report(text, frame=False, annex=False):
@@ -106,9 +107,10 @@ def close_all_sessions():
     Close session to DUT and tester.
     """
     # close all nics
-    for port_info in dut.ports_info:
-        netdev = port_info['port']
-        netdev.close()
+    if getattr(dut, 'ports_info', None) and dut.ports_info:
+        for port_info in dut.ports_info:
+            netdev = port_info['port']
+            netdev.close()
     # close all session
     if dut is not None:
         dut.close()
@@ -183,6 +185,67 @@ def dts_parse_config(section):
     return duts[0], targets, test_suites, nic, scenario
 
 
+def dts_parse_commands(commands):
+    """
+    Parse command information from dts arguments
+    """
+    args_format = {"shell": 0,
+                   "crb": 1,
+                   "stage": 2,
+                   "check": 3,
+                   "max_num": 4}
+    global dts_commands
+    cmd_fmt = r"\[(.*)\]"
+    for command in commands:
+        args = command.split(':')
+        if len(args) != args_format['max_num']:
+            log_handler.error("Command [%s] is lack of arguments" % command)
+            raise VerifyFailure("commands input is not corrected")
+            continue
+        dts_command = {}
+
+        m = re.match(cmd_fmt, args[0])
+        if m:
+            cmds = m.group(1).split(',')
+            shell_cmd = ""
+            for cmd in cmds:
+                shell_cmd += cmd
+                shell_cmd += ' '
+            dts_command['command'] = shell_cmd[:-1]
+        else:
+            dts_command['command'] = args[0]
+        if args[1] == "tester":
+            dts_command['host'] = "tester"
+        else:
+            dts_command['host'] = "dut"
+        if args[2] == "post-init":
+            dts_command['stage'] = "post-init"
+        else:
+            dts_command['stage'] = "pre-init"
+        if args[3] == "ignore":
+            dts_command["verify"] = False
+        else:
+            dts_command["verify"] = True
+
+        dts_commands.append(dts_command)
+
+
+def dts_run_commands(crb):
+    """
+    Run dts input commands
+    """
+    global dts_commands
+    for dts_command in dts_commands:
+        command = dts_command['command']
+        if crb.NAME == dts_command['host']:
+            if crb.stage == dts_command['stage']:
+                ret = crb.send_expect(command, expected="# ", verify=True)
+                if type(ret) is int:
+                    log_handler.error("[%s] return failure" % command)
+                    if dts_command['verify'] is True:
+                        raise VerifyFailure("Command execution failed")
+
+
 def get_project_obj(project_name, super_class, crbInst, serializer):
     """
     Load project module and return crb instance.
@@ -254,10 +317,10 @@ def dts_crbs_init(crbInst, skip_setup, read_cache, project, base_dir, nic, virtt
     serializer.load_from_file()
 
     dutInst = copy.copy(crbInst)
-    dutInst['My IP'] =  crbInst['IP']
+    dutInst['My IP'] = crbInst['IP']
     dut = get_project_obj(project, Dut, dutInst, serializer)
     testInst = copy.copy(crbInst)
-    testInst['My IP'] =  crbInst['tester IP']
+    testInst['My IP'] = crbInst['tester IP']
     tester = get_project_obj(project, Tester, testInst, serializer)
     dts_log_execution(log_handler)
     dut.tester = tester
@@ -286,8 +349,12 @@ def dts_run_prerequisties(pkgName, patch):
     Run dts prerequisties function.
     """
     try:
+        dts_run_commands(tester)
         tester.prerequisites(performance_only)
+        dts_run_commands(tester)
+        dts_run_commands(dut)
         dut.prerequisites(pkgName, patch)
+        dts_run_commands(dut)
 
         serializer.save_to_file()
     except Exception as ex:
@@ -311,7 +378,7 @@ def dts_run_target(crbInst, targets, test_suites, nic, scenario):
     if scene:
         scene.load_config()
         scene.create_scene()
-    
+
     for target in targets:
         log_handler.info("\nTARGET " + target)
         result.target = target
@@ -400,7 +467,8 @@ def dts_run_suite(crbInst, test_suites, target, nic, scene):
 
 def run_all(config_file, pkgName, git, patch, skip_setup,
             read_cache, project, suite_dir, test_cases,
-            base_dir, output_dir, verbose, virttype, debug, debugcase):
+            base_dir, output_dir, verbose, virttype, debug,
+            debugcase, commands):
     """
     Main process of DTS, it will run all test suites in the config file.
     """
@@ -458,6 +526,9 @@ def run_all(config_file, pkgName, git, patch, skip_setup,
     load_cfg = config.read(config_file)
     if len(load_cfg) == 0:
         raise ConfigParseException(config_file)
+
+    # parse commands
+    dts_parse_commands(commands)
 
     # register exit action
     atexit.register(close_all_sessions)
@@ -772,6 +843,7 @@ def save_all_results():
     """
     excel_report.save(result)
     stats.save(result)
+
 
 def accepted_nic(pci_id):
     """
