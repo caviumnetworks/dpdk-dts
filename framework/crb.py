@@ -57,6 +57,7 @@ class Crb(object):
         self.serializer = serializer
         self.ports_info = None
         self.sessions = []
+        self.stage = 'pre-init'
 
         self.logger = getLogger(name)
         self.session = SSHConnection(self.get_ip_address(), name,

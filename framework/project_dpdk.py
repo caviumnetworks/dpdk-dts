@@ -260,6 +260,7 @@ class DPDKdut(Dut):
         """
         self.prepare_package(pkgName, patch)
         self.dut_prerequisites()
+        self.stage = "post-init"
 
     def extra_nic_setup(self):
         """
@@ -398,6 +399,8 @@ class DPDKtester(Tester):
                 out = self.send_expect("ls /root/igb_uio.ko", "# ")
                 assert ("No such file or directory" not in out), "Can not find /root/igb_uio.ko for performance"
                 self.setup_memory()
+
+        self.stage = "post-init"
 
     def setup_memory(self, hugepages=-1):
         """
