@@ -189,6 +189,9 @@ def dts_parse_commands(commands):
     """
     Parse command information from dts arguments
     """
+    if commands is None:
+        return
+
     args_format = {"shell": 0,
                    "crb": 1,
                    "stage": 2,
@@ -196,6 +199,7 @@ def dts_parse_commands(commands):
                    "max_num": 4}
     global dts_commands
     cmd_fmt = r"\[(.*)\]"
+
     for command in commands:
         args = command.split(':')
         if len(args) != args_format['max_num']:
