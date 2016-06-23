@@ -178,6 +178,7 @@ class CloudFilterConfig(object):
         """
         Send packet match or not matched cloud filter rules
         """
+        ether_cfg = {'src': self.case.tester_mac}
         if match:
             if 'iip' in self.cf_rule.keys():
                 self.pkt.config_layer(
@@ -186,13 +187,14 @@ class CloudFilterConfig(object):
                 self.pkt.config_layer(
                     'inner_mac', {'dst': self.cf_rule['imac']})
             if 'omac' in self.cf_rule.keys():
-                self.pkt.config_layer('ether', {'dst': self.cf_rule['omac']})
+                ether_cfg['dst'] = self.cf_rule['omac']
             if 'ivlan' in self.cf_rule.keys():
                 self.pkt.config_layer(
                     'inner_vlan', {'vlan': self.cf_rule['ivlan']})
             if 'vni' in self.cf_rule.keys():
                 self.pkt.config_layer('vxlan', {'vni': self.cf_rule['vni']})
 
+        self.pkt.config_layer('ether', ether_cfg)
         self.pkt.config_layer('raw', {'payload': ['01'] * 18})
         self.pkt.send_pkt(tx_port=self.case.tester_intf)
 
@@ -230,6 +232,7 @@ class TestCloudFilter(TestCase):
         self.pf_intf = self.dut.ports_info[self.pf_port]['intf']
         tester_port = self.tester.get_local_port(self.pf_port)
         self.tester_intf = self.tester.get_interface(tester_port)
+        self.tester_mac = self.tester.get_mac(tester_port)
         pf_numa = self.dut.get_numa_id(self.pf_port)
 
         self.dut.generate_sriov_vfs_by_port(self.pf_port, 2, driver="default")
@@ -245,8 +248,8 @@ class TestCloudFilter(TestCase):
 
         # bind one vf device to dpdk
         self.vf_port0.bind_driver(driver='igb_uio')
-        self.vf_intf = self.vf_port0.intf_name
         self.vf_port1.bind_driver(driver='i40evf')
+        self.vf_intf = self.vf_port1.intf_name
 
         # bind vf0 to igb_uio and start testpmd
         core_num = self.vf_queues + 1
@@ -254,7 +257,7 @@ class TestCloudFilter(TestCase):
 
         self.pmdout = PmdOutput(self.dut)
         self.pmdout.start_testpmd(
-            cores, "--rxq=%d --txq=%d --portmask=0x1" %
+            cores, "--rxq=%d --txq=%d --portmask=0x1 --enable-rx-cksum" %
             (self.vf_queues, self.vf_queues), socket=pf_numa)
 
         # rxonly and verbose enabled
