@@ -98,8 +98,12 @@ class BoulderRapid(NetDevice):
     Class for BoulderRapid, inherit from NetDevice class
     """
 
-    def __init__(self, host, bus_id, devfun_id):
-        super(BoulderRapid, self).__init__(host, bus_id, devfun_id)
+    def __init__(self, host, domain_id, bus_id, devfun_id):
+        super(BoulderRapid, self).__init__(host, domain_id, bus_id, devfun_id)
+
+        if host.NAME == "tester":
+            return
+
         self.tp_path = "~"
         self.sec_port = False
         self.host = host

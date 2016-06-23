@@ -82,8 +82,8 @@ class Atwood(NetDevice):
     Class for RedRockCanyou, inherit from NetDevice class
     """
 
-    def __init__(self, host, bus_id, devfun_id):
-        super(Atwood, self).__init__(host, bus_id, devfun_id)
+    def __init__(self, host, domain_id, bus_id, devfun_id):
+        super(Atwood, self).__init__(host, domain_id, bus_id, devfun_id)
         self.tp_path = "~"
         self.host = host
 

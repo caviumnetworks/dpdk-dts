@@ -890,15 +890,15 @@ def GetNicObj(crb, domain_id, bus_id, devfun_id):
     if nic == 'redrockcanyou':
         # redrockcanyou nic need special initialization
         from rrc import RedRockCanyou
-        obj = RedRockCanyou(crb, bus_id, devfun_id)
+        obj = RedRockCanyou(crb, domain_id, bus_id, devfun_id)
     elif nic == 'atwood':
         # atwood nic need special initialization
         from atwood import Atwood
-        obj = Atwood(crb, bus_id, devfun_id)
+        obj = Atwood(crb, domain_id, bus_id, devfun_id)
     elif nic == 'boulderrapid':
         # atwood nic need special initialization
         from br import BoulderRapid
-        obj = BoulderRapid(crb, bus_id, devfun_id)
+        obj = BoulderRapid(crb, domain_id, bus_id, devfun_id)
     else:
         obj = NetDevice(crb, domain_id, bus_id, devfun_id)
 
