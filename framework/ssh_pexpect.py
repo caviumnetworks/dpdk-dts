@@ -1,6 +1,6 @@
 import time
 import pexpect
-import pxssh
+from pexpect import pxssh
 from debugger import ignore_keyintr, aware_keyintr
 from exception import TimeoutException, SSHConnectionException, SSHSessionDeadException
 from utils import RED, GREEN
