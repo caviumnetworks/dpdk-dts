@@ -40,8 +40,9 @@ from settings import DRIVERS, NICS, get_nic_name
 
 class TestCase(object):
 
-    def __init__(self, dut, tester, target, suite):
-        self.dut = dut
+    def __init__(self, duts, tester, target, suite):
+        self.dut = duts[0]
+        self.duts = duts
         self.tester = tester
         self.target = target
         self.suite = suite

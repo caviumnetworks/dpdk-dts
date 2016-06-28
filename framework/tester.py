@@ -62,7 +62,7 @@ class Tester(Crb):
         super(Tester, self).__init__(crb, serializer, self.NAME)
 
         self.bgProcIsRunning = False
-        self.dut = None
+        self.duts = None
         self.inBg = 0
         self.scapyCmds = []
         self.bgCmds = []
@@ -129,13 +129,21 @@ class Tester(Crb):
         """
         Return tester local port connect to specified dut port.
         """
-        return self.dut.ports_map[remotePort]
+        return self.duts[0].ports_map[remotePort]
 
     def get_local_port_type(self, remotePort):
         """
         Return tester local port type connect to specified dut port.
         """
         return self.ports_info[self.get_local_port(remotePort)]['type']
+
+    def get_local_port_bydut(self, remotePort, dutIp):
+        """
+        Return tester local port connect to specified port and specified dut.
+        """
+        for dut in self.duts:
+            if dut.crb['My IP'] == dutIP:
+                return self.dut.ports_map[remotePort]
 
     def get_local_index(self, pci):
         """

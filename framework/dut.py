@@ -62,7 +62,7 @@ class Dut(Crb):
     PCI_DEV_CACHE_KEY = 'dut_pci_dev_info'
 
     def __init__(self, crb, serializer):
-        self.NAME = 'dut'
+        self.NAME = 'dut' + LOG_NAME_SEP + '%s' % crb['My IP']
         super(Dut, self).__init__(crb, serializer, self.NAME)
 
         self.host_init_flag = False
