@@ -214,7 +214,10 @@ class TestVfPortStartStop(TestCase):
         self.vm0_dut_ports = self.vm_dut_0.get_ports('any')
 
         self.vm0_testpmd = PmdOutput(self.vm_dut_0)
-        self.vm0_testpmd.start_testpmd(VM_CORES_MASK)
+        if self.kdriver == "i40e":
+            self.vm0_testpmd.start_testpmd(VM_CORES_MASK, '--crc-strip')
+        else:
+            self.vm0_testpmd.start_testpmd(VM_CORES_MASK)
         self.vm0_testpmd.execute_cmd('set fwd mac')
 
         time.sleep(2)

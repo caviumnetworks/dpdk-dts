@@ -302,10 +302,14 @@ class TestVfRss(TestCase):
         self.vm_dut_0.kill_all()
 
         # test with different rss queues
+        if self.kdriver == "i40e":
+            eal_param = '--crc-strip'
+        else:
+            eal_param = ''
         for queue in testQueues:
 
             self.vm0_testpmd.start_testpmd(
-                "all", "--rxq=%d --txq=%d" % (queue, queue), socket=self.ports_socket)
+                "all", "--rxq=%d --txq=%d %s" % (queue, queue, eal_param), socket=self.ports_socket)
 
             for iptype in iptypes:
                 self.vm_dut_0.send_expect("set verbose 8", "testpmd> ")
@@ -346,11 +350,15 @@ class TestVfRss(TestCase):
 
         self.vm_dut_0.kill_all()
 
+        if self.kdriver == "i40e":
+            eal_param = '--crc-strip'
+        else:
+            eal_param = ''
         # test with different rss queues
         for queue in testQueues:
 
             self.vm0_testpmd.start_testpmd(
-                "all", "--rxq=%d --txq=%d" % (queue, queue), socket=self.ports_socket)
+                "all", "--rxq=%d --txq=%d %s" % (queue, queue, eal_param), socket=self.ports_socket)
 
             for iptype,rsstype in iptypes.items():
                 self.vm_dut_0.send_expect("set verbose 8", "testpmd> ")

@@ -155,7 +155,10 @@ class TestVF2VFBridge(TestCase):
     def test_2vf_d2d_pktgen_stream(self):
         self.vm0_ports = self.vm0_dut.get_ports('any')
         self.vm0_pmd = PmdOutput(self.vm0_dut)
-        self.vm0_pmd.start_testpmd('all')
+        if self.kdriver == "i40e":
+            self.vm0_pmd.start_testpmd('all', '--crc-strip')
+        else:
+            self.vm0_pmd.start_testpmd('all')
         self.vm0_pmd.execute_cmd('set fwd rxonly')
         self.vm0_pmd.execute_cmd('start')
 
@@ -214,7 +217,10 @@ class TestVF2VFBridge(TestCase):
     def test_2vf_k2d_scapy_stream(self):
         self.vm0_ports = self.vm0_dut.get_ports('any')
         self.vm0_pmd = PmdOutput(self.vm0_dut)
-        self.vm0_pmd.start_testpmd('all')
+        if self.kdriver == "i40e":
+            self.vm0_pmd.start_testpmd('all', '--crc-strip')
+        else:
+            self.vm0_pmd.start_testpmd('all')
         self.vm0_pmd.execute_cmd('set fwd rxonly')
         self.vm0_pmd.execute_cmd('start')
         self.vm0_pmd.execute_cmd('clear port stats all')

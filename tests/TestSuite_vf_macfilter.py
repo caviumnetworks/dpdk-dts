@@ -115,13 +115,13 @@ class TestVfMacFilter(TestCase):
 
         self.vm0_dut_ports = self.vm_dut_0.get_ports('any')
         self.vm0_testpmd = PmdOutput(self.vm_dut_0)
-        self.vm0_testpmd.start_testpmd(VM_CORES_MASK)
+        if self.kdriver == "i40e":
+            self.vm0_testpmd.start_testpmd(VM_CORES_MASK, '--crc-strip')
+        else:
+            self.vm0_testpmd.start_testpmd(VM_CORES_MASK)
         # Get VF's MAC
         pmd_vf0_mac = self.vm0_testpmd.get_port_mac(0)
         vf0_wrongmac = "00:11:22:33:48:55"
-        self.vm0_testpmd.execute_cmd('port stop all')
-        self.vm0_testpmd.execute_cmd('port config all crc-strip on')
-        self.vm0_testpmd.execute_cmd('port start all')
         self.vm0_testpmd.execute_cmd('set promisc all off')
         self.vm0_testpmd.execute_cmd('set fwd mac')
         self.vm0_testpmd.execute_cmd('start')
@@ -162,15 +162,15 @@ class TestVfMacFilter(TestCase):
 
         self.vm0_dut_ports = self.vm_dut_0.get_ports('any')
         self.vm0_testpmd = PmdOutput(self.vm_dut_0)
-        self.vm0_testpmd.start_testpmd(VM_CORES_MASK)
+        if self.kdriver == "i40e":
+            self.vm0_testpmd.start_testpmd(VM_CORES_MASK, '--crc-strip')
+        else:
+            self.vm0_testpmd.start_testpmd(VM_CORES_MASK)
         
         # Get VF0 port MAC address
         pmd_vf0_mac = self.vm0_testpmd.get_port_mac(0)
         vf0_setmac = "00:11:22:33:44:55"
         vf0_wrongmac = "00:11:22:33:48:55"
-        self.vm0_testpmd.execute_cmd('port stop all')
-        self.vm0_testpmd.execute_cmd('port config all crc-strip on')
-        self.vm0_testpmd.execute_cmd('port start all')
         self.vm0_testpmd.execute_cmd('set promisc all off')
         ret = self.vm0_testpmd.execute_cmd('mac_addr add 0 %s' %vf0_setmac)
         # check the operation is supported or not.

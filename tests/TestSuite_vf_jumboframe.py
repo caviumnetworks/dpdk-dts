@@ -190,12 +190,10 @@ class TestVfJumboFrame(TestCase):
             self.dutobj.enable_jumbo(framesize=ETHER_STANDARD_MTU)
             time.sleep(2)
 
-        self.vm_testpmd.start_testpmd("Default", "--max-pkt-len=%d --port-topology=loop --txqflags=0x0" % (ETHER_STANDARD_MTU))
         if self.kdriver == "i40e":
-            # forville vf crc setting alias with host
-            self.vm_testpmd.execute_cmd("port stop all")
-            self.vm_testpmd.execute_cmd("port config all crc-strip on")
-            self.vm_testpmd.execute_cmd("port start all")
+            self.vm_testpmd.start_testpmd("Default", "--max-pkt-len=%d --port-topology=loop --crc-strip --txqflags=0x0" % (ETHER_STANDARD_MTU))
+        else:
+            self.vm_testpmd.start_testpmd("Default", "--max-pkt-len=%d --port-topology=loop --txqflags=0x0" % (ETHER_STANDARD_MTU))
 
         self.vm_testpmd.execute_cmd("set fwd mac")
         self.vm_testpmd.execute_cmd("start")
@@ -217,12 +215,10 @@ class TestVfJumboFrame(TestCase):
             self.dutobj.enable_jumbo(framesize=ETHER_JUMBO_FRAME_MTU)
             time.sleep(2)
 
-        self.vm_testpmd.start_testpmd("Default", "--max-pkt-len=%s --port-topology=loop --txqflags=0x0" % (ETHER_JUMBO_FRAME_MTU))
         if self.kdriver == "i40e":
-            # forville vf crc setting alias with host
-            self.vm_testpmd.execute_cmd("port stop all")
-            self.vm_testpmd.execute_cmd("port config all crc-strip on")
-            self.vm_testpmd.execute_cmd("port start all")
+            self.vm_testpmd.start_testpmd("Default", "--max-pkt-len=%d --port-topology=loop --crc-strip --txqflags=0x0" % (ETHER_JUMBO_FRAME_MTU))
+        else:
+            self.vm_testpmd.start_testpmd("Default", "--max-pkt-len=%s --port-topology=loop --txqflags=0x0" % (ETHER_JUMBO_FRAME_MTU))
 
         self.vm_testpmd.execute_cmd("set fwd mac")
         self.vm_testpmd.execute_cmd("start")
@@ -244,12 +240,10 @@ class TestVfJumboFrame(TestCase):
             self.dutobj.enable_jumbo(framesize=ETHER_STANDARD_MTU)
             time.sleep(2)
 
-        self.vm_testpmd.start_testpmd("Default", "--port-topology=loop --txqflags=0x0")
         if self.kdriver == "i40e":
-            # forville vf crc setting alias with host
-            self.vm_testpmd.execute_cmd("port stop all")
-            self.vm_testpmd.execute_cmd("port config all crc-strip on")
-            self.vm_testpmd.execute_cmd("port start all")
+            self.vm_testpmd.start_testpmd("Default", "--port-topology=loop --crc-strip --txqflags=0x0" )
+        else:
+            self.vm_testpmd.start_testpmd("Default", "--port-topology=loop --txqflags=0x0")
 
         self.vm_testpmd.execute_cmd("set fwd mac")
         self.vm_testpmd.execute_cmd("start")
@@ -270,12 +264,10 @@ class TestVfJumboFrame(TestCase):
             self.dutobj.enable_jumbo(framesize=ETHER_JUMBO_FRAME_MTU)
             time.sleep(2)
 
-        self.vm_testpmd.start_testpmd("Default", "--max-pkt-len=%s --port-topology=loop --txqflags=0x0" % (ETHER_JUMBO_FRAME_MTU))
         if self.kdriver == "i40e":
-            # forville vf crc setting alias with host
-            self.vm_testpmd.execute_cmd("port stop all")
-            self.vm_testpmd.execute_cmd("port config all crc-strip on")
-            self.vm_testpmd.execute_cmd("port start all")
+            self.vm_testpmd.start_testpmd("Default", "--max-pkt-len=%d --port-topology=loop --crc-strip --txqflags=0x0" % (ETHER_JUMBO_FRAME_MTU))
+        else:
+            self.vm_testpmd.start_testpmd("Default", "--max-pkt-len=%s --port-topology=loop --txqflags=0x0" % (ETHER_JUMBO_FRAME_MTU))
 
         self.vm_testpmd.execute_cmd("set fwd mac")
         self.vm_testpmd.execute_cmd("start")
@@ -298,12 +290,10 @@ class TestVfJumboFrame(TestCase):
             self.dutobj.enable_jumbo(framesize=ETHER_JUMBO_FRAME_MTU)
             time.sleep(2)
 
-        self.vm_testpmd.start_testpmd("Default", "--max-pkt-len=%s --port-topology=loop --txqflags=0x0" % (ETHER_JUMBO_FRAME_MTU))
         if self.kdriver == "i40e":
-            # forville vf crc setting alias with host
-            self.vm_testpmd.execute_cmd("port stop all")
-            self.vm_testpmd.execute_cmd("port config all crc-strip on")
-            self.vm_testpmd.execute_cmd("port start all")
+            self.vm_testpmd.start_testpmd("Default", "--max-pkt-len=%d --port-topology=loop --crc-strip --txqflags=0x0" % (ETHER_JUMBO_FRAME_MTU))
+        else:
+            self.vm_testpmd.start_testpmd("Default", "--max-pkt-len=%s --port-topology=loop --txqflags=0x0" % (ETHER_JUMBO_FRAME_MTU))
 
         self.vm_testpmd.execute_cmd("set fwd mac")
         self.vm_testpmd.execute_cmd("start")

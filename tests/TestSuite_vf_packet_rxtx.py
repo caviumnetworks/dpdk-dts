@@ -111,7 +111,10 @@ class TestVfPacketRxtx(TestCase):
         self.vm0_dut_ports = self.vm_dut_0.get_ports('any')
         port_id_0 = 0
         self.vm0_testpmd = PmdOutput(self.vm_dut_0)
-        self.vm0_testpmd.start_testpmd(VM_CORES_MASK)
+        if self.kdriver == "i40e":
+            self.vm0_testpmd.start_testpmd(VM_CORES_MASK, '--crc-strip')
+        else:
+            self.vm0_testpmd.start_testpmd(VM_CORES_MASK)
         self.vm0_testpmd.execute_cmd('port stop all')
         self.vm0_testpmd.execute_cmd('port config all crc-strip on')
         self.vm0_testpmd.execute_cmd('port start all')
@@ -241,7 +244,10 @@ class TestVfPacketRxtx(TestCase):
         port_id_1 = 1
 
         self.vm0_testpmd = PmdOutput(self.vm_dut_0)
-        self.vm0_testpmd.start_testpmd(VM_CORES_MASK)
+        if self.kdriver == "i40e":
+            self.vm0_testpmd.start_testpmd(VM_CORES_MASK, '--crc-strip')
+        else:
+            self.vm0_testpmd.start_testpmd(VM_CORES_MASK)
         self.vm0_testpmd.execute_cmd('show port info all')
         pmd0_vf0_mac = self.vm0_testpmd.get_port_mac(port_id_0)
         self.vm0_testpmd.execute_cmd('set fwd mac')
@@ -250,7 +256,10 @@ class TestVfPacketRxtx(TestCase):
         time.sleep(2)
 
         self.vm1_testpmd = PmdOutput(self.vm_dut_1)
-        self.vm1_testpmd.start_testpmd(VM_CORES_MASK)
+        if self.kdriver == "i40e":
+            self.vm1_testpmd.start_testpmd(VM_CORES_MASK, '--crc-strip')
+        else:
+            self.vm1_testpmd.start_testpmd(VM_CORES_MASK)
         self.vm1_testpmd.execute_cmd('show port info all')
 
         tx_port = self.tester.get_local_port(self.dut_ports[0])
