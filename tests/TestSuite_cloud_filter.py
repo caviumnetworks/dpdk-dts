@@ -308,9 +308,11 @@ class TestCloudFilter(TestCase):
         """
         Send packet match cloud filter rule and verify packet received
         """
+        self.logger.info("Verifying vxlan %s filter" % cloud_cfg.cf_rule['type'])
         if dpdk:
             cloud_cfg.transmit_packet()
             out = self.pmdout.get_output()
+            print out
             queue = cloud_cfg.cf_rule['queue']
             self.verify("queue %d" %
                         queue in out, "Vxlan not received in queue %d" % queue)
@@ -355,6 +357,8 @@ class TestCloudFilter(TestCase):
             except:
                 print "Kernel VF captured packet not match rule"
                 raise
+
+        self.logger.info("Verified vxlan %s filter pass" % cloud_cfg.cf_rule['type'])
 
     def test_cloud_filter(self):
         """
