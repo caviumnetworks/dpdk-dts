@@ -90,7 +90,7 @@ class TestVlan(TestCase):
         pkts = load_sniff_packets(self.inst)
         vlans = []
         for packet in pkts:
-            vlan = packet.strip_element_dot1q("vlan")
+            vlan = packet.strip_element_vlan("vlan")
             vlans.append(vlan)
         return vlans
 
@@ -117,7 +117,7 @@ class TestVlan(TestCase):
         else:
             pkt = Packet(pkt_type='VLAN_UDP')
             pkt.config_layer('ether', {'dst': self.dmac, 'src': self.smac})
-            pkt.config_layer('dot1q', {'vlan': vid})
+            pkt.config_layer('vlan', {'vlan': vid})
 
         pkt.send_pkt(tx_port=self.txItf)
 

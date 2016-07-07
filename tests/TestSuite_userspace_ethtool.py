@@ -340,7 +340,7 @@ class TestUserspaceEthtool(TestCase, IxiaPacketGenerator):
 
             # send correct vlan packet to port
             pkt = Packet(pkt_type='VLAN_UDP')
-            pkt.config_layer('dot1q', {'vlan': vlan})
+            pkt.config_layer('vlan', {'vlan': vlan})
             tester_port = self.tester.get_local_port(port)
             intf = self.tester.get_interface(tester_port)
             pkt.send_pkt(tx_port=intf)
@@ -350,7 +350,7 @@ class TestUserspaceEthtool(TestCase, IxiaPacketGenerator):
 
             # send incorrect vlan packet to port
             wrong_vlan = (vlan + 1) % 4096
-            pkt.config_layer('dot1q', {'vlan': wrong_vlan})
+            pkt.config_layer('vlan', {'vlan': wrong_vlan})
             pkt.send_pkt(tx_port=intf)
             time.sleep(2)
             rx_pkts_wrong, _ = self.strip_portstats(port)
@@ -359,7 +359,7 @@ class TestUserspaceEthtool(TestCase, IxiaPacketGenerator):
             # remove vlan
             self.dut.send_expect("vlan %d del %d" % (index, vlan), "EthApp>")
             # send same packet and make sure not received
-            pkt.config_layer('dot1q', {'vlan': vlan})
+            pkt.config_layer('vlan', {'vlan': vlan})
             pkt.send_pkt(tx_port=intf)
             time.sleep(2)
             rx_pkts_del, _ = self.strip_portstats(port)
