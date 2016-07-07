@@ -62,6 +62,9 @@ class SSHSessionDeadException(Exception):
         return 'SSH session with %s has been dead' % self.host
 
 
+class ParameterInvalidException(Exception):
+    pass
+
 class StartVMFailedException(Exception):
 
     """

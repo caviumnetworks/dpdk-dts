@@ -43,6 +43,7 @@ from etgen import IxiaPacketGenerator, SoftwarePacketGenerator
 from settings import IXIA
 import random
 from utils import GREEN
+from exception import ParameterInvalidException
 
 
 class Tester(Crb):
@@ -160,12 +161,18 @@ class Tester(Crb):
         """
         Return tester local port pci id.
         """
+        if localPort == -1:
+            raise ParameterInvalidException("local port should not be -1")
+
         return self.ports_info[localPort]['pci']
 
     def get_interface(self, localPort):
         """
         Return tester local port interface name.
         """
+        if localPort == -1:
+            raise ParameterInvalidException("local port should not be -1")
+
         if 'intf' not in self.ports_info[localPort]:
             return 'N/A'
 
@@ -175,6 +182,9 @@ class Tester(Crb):
         """
         Return tester local port mac address.
         """
+        if localPort == -1:
+            raise ParameterInvalidException("local port should not be -1")
+
         if self.ports_info[localPort]['type'] == 'ixia':
             return "00:00:00:00:00:01"
         else:
