@@ -43,7 +43,7 @@ import copy         # copy module for duplicate variable
 
 import rst          # rst file support
 import sys          # system module
-from settings import FOLDERS, NICS
+from settings import FOLDERS, NICS, LOG_NAME_SEP
 from tester import Tester
 from dut import Dut
 from serializer import Serializer
@@ -78,7 +78,8 @@ nic = None
 rx_mode = None
 requested_tests = None
 dut = None
-duts = None
+duts = []
+virtduts = []
 tester = None
 result = None
 excel_report = None
@@ -107,13 +108,13 @@ def close_all_sessions():
     Close session to DUT and tester.
     """
     # close all nics
-    if getattr(dut, 'ports_info', None) and dut.ports_info:
-        for port_info in dut.ports_info:
-            netdev = port_info['port']
-            netdev.close()
-    # close all session
-    if dut is not None:
-        dut.close()
+    for dutobj in duts:
+        if getattr(dutobj, 'ports_info', None) and dutobj.ports_info:
+            for port_info in dutobj.ports_info:
+                netdev = port_info['port']
+                netdev.close()
+        # close all session
+        dutobj.close()
     if tester is not None:
         tester.close()
     log_handler.info("DTS ended")
@@ -182,7 +183,7 @@ def dts_parse_config(section):
 
     nic = [_.strip() for _ in paramDict['nic_type'].split(',')][0]
 
-    return duts[0], targets, test_suites, nic, scenario
+    return duts, targets, test_suites, nic, scenario
 
 
 def dts_parse_commands(commands):
@@ -274,16 +275,19 @@ def dts_log_testsuite(test_suite, log_handler, test_classname):
     """
     Change to SUITE self logger handler.
     """
-    global duts
     test_suite.logger = getLogger(test_classname)
     test_suite.logger.config_suite(test_classname)
     log_handler.config_suite(test_classname, 'dts')
-    dut.logger.config_suite(test_classname, 'dut')
-    dut.test_classname = test_classname
     tester.logger.config_suite(test_classname, 'tester')
-    if duts and len(duts):
-        for crb in duts:
+
+    for dutobj in duts:
+        dutobj.logger.config_suite(test_classname, 'dut')
+        dutobj.test_classname = test_classname
+
+    if len(virtduts):
+        for crb in virtduts:
             crb.logger.config_suite(test_classname, 'virtdut')
+
     try:
         if tester.it_uses_external_generator():
             getattr(tester, 'ixia_packet_gen')
@@ -297,10 +301,13 @@ def dts_log_execution(log_handler):
     Change to DTS default logger handler.
     """
     log_handler.config_execution('dts')
-    dut.logger.config_execution('dut')
     tester.logger.config_execution('tester')
-    if duts and len(duts):
-        for crb in duts:
+
+    for dutobj in duts:
+        dutobj.logger.config_execution('dut' + LOG_NAME_SEP + '%s' % dutobj.crb['My IP'])
+
+    if len(virtduts):
+        for crb in virtduts:
             crb.logger.config_execution('virtdut')
     try:
         if tester.it_uses_external_generator():
@@ -310,34 +317,44 @@ def dts_log_execution(log_handler):
         pass
 
 
-def dts_crbs_init(crbInst, skip_setup, read_cache, project, base_dir, nic, virttype):
+def dts_crbs_init(crbInsts, skip_setup, read_cache, project, base_dir, nic, virttype):
     """
     Create dts dut/tester instance and initialize them.
     """
     global dut
+    global duts
     global tester
     serializer.set_serialized_filename(FOLDERS['Output'] +
-                                       '/.%s.cache' % crbInst['IP'])
+                                       '/.%s.cache' % crbInsts[0]['IP'])
     serializer.load_from_file()
 
-    dutInst = copy.copy(crbInst)
-    dutInst['My IP'] = crbInst['IP']
-    dut = get_project_obj(project, Dut, dutInst, serializer)
-    testInst = copy.copy(crbInst)
-    testInst['My IP'] = crbInst['tester IP']
+    testInst = copy.copy(crbInsts[0])
+    testInst['My IP'] = crbInsts[0]['tester IP']
     tester = get_project_obj(project, Tester, testInst, serializer)
+
+    for crbInst in crbInsts:
+        dutInst = copy.copy(crbInst)
+        dutInst['My IP'] = crbInst['IP']
+        dutobj = get_project_obj(project, Dut, dutInst, serializer)
+        duts.append(dutobj)
+
+    dut = duts[0]
+
     dts_log_execution(log_handler)
-    dut.tester = tester
-    tester.dut = dut
-    dut.set_virttype(virttype)
-    dut.set_speedup_options(read_cache, skip_setup)
-    dut.set_directory(base_dir)
-    dut.set_nic_type(nic)
-    tester.set_speedup_options(read_cache, skip_setup)
+
+    tester.duts = duts
     show_speedup_options_messages(read_cache, skip_setup)
-    dut.set_test_types(func_tests=functional_only, perf_tests=performance_only)
+    tester.set_speedup_options(read_cache, skip_setup)
     tester.set_test_types(func_tests=functional_only, perf_tests=performance_only)
     tester.init_ext_gen()
+
+    for dutobj in duts:
+        dutobj.tester = tester
+        dutobj.set_virttype(virttype)
+        dutobj.set_speedup_options(read_cache, skip_setup)
+        dutobj.set_directory(base_dir)
+        dutobj.set_nic_type(nic)
+        dutobj.set_test_types(func_tests=functional_only, perf_tests=performance_only)
 
 
 def dts_crbs_exit():
@@ -356,20 +373,20 @@ def dts_run_prerequisties(pkgName, patch):
         dts_run_commands(tester)
         tester.prerequisites(performance_only)
         dts_run_commands(tester)
-        dts_run_commands(dut)
-        dut.prerequisites(pkgName, patch)
-        dts_run_commands(dut)
+        for dutobj in duts:
+            dutobj.prerequisites(pkgName, patch)
+            dts_run_commands(dutobj)
 
         serializer.save_to_file()
     except Exception as ex:
         log_handler.error(" PREREQ EXCEPTION " + traceback.format_exc())
-        result.add_failed_dut(dut, str(ex))
+        result.add_failed_dut(duts[0], str(ex))
         log_handler.info('CACHE: Discarding cache.')
         serializer.discard_cache()
         return False
 
 
-def dts_run_target(crbInst, targets, test_suites, nic, scenario):
+def dts_run_target(crbInsts, targets, test_suites, nic, scenario):
     """
     Run each target in execution targets.
     """
@@ -395,9 +412,11 @@ def dts_run_target(crbInst, targets, test_suites, nic, scenario):
                     dut.set_target(target, bind_dev=False)
             else:
                 if drivername == "":
-                    dut.set_target(target, bind_dev=False)
+                    for dutobj in duts:
+                        dutobj.set_target(target, bind_dev=False)
                 else:
-                    dut.set_target(target)
+                    for dutobj in duts:
+                        dutobj.set_target(target)
         except AssertionError as ex:
             log_handler.error(" TARGET ERROR: " + str(ex))
             result.add_failed_target(result.dut, target, str(ex))
@@ -411,18 +430,20 @@ def dts_run_target(crbInst, targets, test_suites, nic, scenario):
             paramDict['nic_type'] = 'any'
             nic = 'any'
 
-        dts_run_suite(crbInst, test_suites, target, nic, scene)
+        dts_run_suite(crbInsts, test_suites, target, nic, scene)
 
     if scene:
         scene.destroy_scene()
         scene = None
 
-    dut.stop_ports()
-    dut.restore_interfaces()
     tester.restore_interfaces()
 
+    for dutobj in duts:
+        dutobj.stop_ports()
+        dutobj.restore_interfaces()
 
-def dts_run_suite(crbInst, test_suites, target, nic, scene):
+
+def dts_run_suite(crbInsts, test_suites, target, nic, scene):
     """
     Run each suite in test suite list.
     """
@@ -430,19 +451,20 @@ def dts_run_suite(crbInst, test_suites, target, nic, scene):
         for test_suite in test_suites:
             # prepare rst report file
             result.test_suite = test_suite
-            rst.generate_results_rst(crbInst['name'], target, nic, test_suite, performance_only)
+            rst.generate_results_rst(crbInsts[0]['name'], target, nic, test_suite, performance_only)
             test_module = __import__('TestSuite_' + test_suite)
             global module
             module = test_module
             for test_classname, test_class in get_subclasses(test_module, TestCase):
 
                 if scene and scene.vm_dut_enable:
-                    global duts
-                    duts = scene.get_vm_duts()
-                    tester.dut = duts[0]
-                    test_suite = test_class(duts[0], tester, target, test_suite)
+                    global virtduts
+                    virtduts = scene.get_vm_duts()
+                    tester.dut = virtduts[0]
+                    tester.duts = virtduts
+                    test_suite = test_class(virtduts, tester, target, test_suite)
                 else:
-                    test_suite = test_class(dut, tester, target, test_suite)
+                    test_suite = test_class(duts, tester, target, test_suite)
                 result.nic = test_suite.nic
 
                 dts_log_testsuite(test_suite, log_handler, test_classname)
@@ -547,7 +569,7 @@ def run_all(config_file, pkgName, git, patch, skip_setup,
     excel_report = ExcelReporter(output_dir + '/test_results.xls')
     stats = StatsReporter(output_dir + '/statistics.txt')
 
-    crbInst = None
+    crbInsts = []
     crbs_conf = CrbsConf()
     crbs = crbs_conf.load_crbs_config()
 
@@ -556,24 +578,26 @@ def run_all(config_file, pkgName, git, patch, skip_setup,
         dts_parse_param(section)
 
         # verify if the delimiter is good if the lists are vertical
-        dutIP, targets, test_suites, nics, scenario = dts_parse_config(section)
-        log_handler.info("\nDUT " + dutIP)
+        dutIPs, targets, test_suites, nics, scenario = dts_parse_config(section)
+        for dutIP in dutIPs:
+            log_handler.info("\nDUT " + dutIP)
 
         # look up in crbs - to find the matching IP
-        for crb in crbs:
-            if crb['IP'] == dutIP:
-                crbInst = crb
-                break
+        for dutIP in dutIPs:
+            for crb in crbs:
+                if crb['IP'] == dutIP:
+                    crbInsts.append(crb)
+                    break
 
         # only run on the dut in known crbs
-        if crbInst is None:
+        if len(crbInsts) == 0:
             log_handler.error(" SKIP UNKNOWN CRB")
             continue
 
-        result.dut = dutIP
+        result.dut = dutIPs[0]
 
         # init dut, tester crb
-        dts_crbs_init(crbInst, skip_setup, read_cache, project, base_dir, nics, virttype)
+        dts_crbs_init(crbInsts, skip_setup, read_cache, project, base_dir, nics, virttype)
 
         check_case_inst = check_case_skip(dut)
         support_case_inst = check_case_support(dut)
@@ -583,7 +607,7 @@ def run_all(config_file, pkgName, git, patch, skip_setup,
             dts_crbs_exit()
             continue
 
-        dts_run_target(crbInst, targets, test_suites, nics, scenario)
+        dts_run_target(crbInsts, targets, test_suites, nics, scenario)
 
         dts_crbs_exit()
 
