@@ -187,7 +187,7 @@ class TestVF2VFBridge(TestCase):
         self.vm0_dut.restore_interfaces()
         self.vm0_ports = self.vm0_dut.get_ports('any')
         vf0_intf = self.vm0_dut.ports_info[self.vm0_ports[0]]['intf']
-        self.vm0_dut.send_expect('tcpdump -i %s -s 1000 > /dev/null &' % vf0_intf, '#', 30)
+        self.vm0_dut.send_expect('tcpdump -i %s -s 1000 ' % vf0_intf, 'tcpdump', 30)
 
         self.vm1_ports = self.vm1_dut.get_ports('any')
         self.prepare_pktgen(self.vm1_dut)
@@ -204,7 +204,7 @@ class TestVF2VFBridge(TestCase):
         self.send_stream_pktgen(self.vm1_dut)
         self.stop_stream_pktgen(self.vm1_dut)
 
-        recv_tcpdump = self.vm0_dut.send_expect('killall tcpdump', '#', 30)
+        recv_tcpdump = self.vm0_dut.send_expect('^C', '#', 30)
         time.sleep(5)
         recv_pattern = re.compile("(\d+) packets captured")
         recv_info = recv_pattern.search(recv_tcpdump)
