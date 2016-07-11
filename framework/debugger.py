@@ -85,13 +85,13 @@ def rerun_command():
     new_module = imp.reload(AliveModule)
 
     # save arguments required to initialize suite
-    dut = AliveSuite.__dict__['dut']
+    duts = AliveSuite.__dict__['duts']
     tester = AliveSuite.__dict__['tester']
     target = AliveSuite.__dict__['target']
     suite = AliveSuite.__dict__['suite']
 
     for test_classname, test_class in dts.get_subclasses(new_module, TestCase):
-        suite_obj = test_class(dut, tester, target, suite)
+        suite_obj = test_class(duts, tester, target, suite)
 
         # copy all element from previous suite to reloaded suite
         dts.copy_instance_attr(AliveSuite, suite_obj)
