@@ -102,9 +102,6 @@ class RedRockCanyou(NetDevice):
     def __init__(self, host, domain_id, bus_id, devfun_id):
         super(RedRockCanyou, self).__init__(host, domain_id, bus_id, devfun_id)
 
-        if host.NAME == "tester":
-            return
-
         self.tp_path = "~"
         self.sec_port = False
         self.host = host
@@ -112,7 +109,7 @@ class RedRockCanyou(NetDevice):
         # load port config
         portconf = PortConf(PORTCONF)
         portconf.load_ports_config(host.crb['IP'])
-        pci_addr = ':'.join((bus_id, devfun_id))
+        pci_addr = ':'.join((domain_id, bus_id, devfun_id))
         if not portconf.check_port_available(pci_addr):
             raise PortConfigParseException("RRC must configured")
 
