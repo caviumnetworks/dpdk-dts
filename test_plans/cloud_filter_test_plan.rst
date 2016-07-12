@@ -85,7 +85,7 @@ Action 3 mean packet will be redirected to queue 3.
 	ethtool -N $PF_INTF flow-type ip4 dst-ip 192.168.1.1 user-def 0xffffffff00000001 action 3 loc 1
 
 2. Send vxlan packet with inner ip matched rule
-	Ether()/IP()/UDP()/Vxlan()/Ether()/IP(dst="192.168.1.1")/UDP()/Raw('x' * 20)
+	Ether()/IP()/UDP()/Vxlan()/Ether()/IP(dst="192.168.1.1")/TCP()/Raw('x' * 20)
 
 3. verify packet received by queue3 of VF1, verify packet type is correct
 
