@@ -43,6 +43,10 @@ from settings import CONFIG_ROOT_PATH
 from virt_dut import VirtDut
 from utils import remove_old_rsa_key
 
+ST_NOTSTART = "NOTSTART"
+ST_PAUSE = "PAUSE"
+ST_RUNNING = "RUNNING"
+ST_UNKNOWN = "UNKNOWN"
 
 class VirtBase(object):
     """
@@ -85,6 +89,9 @@ class VirtBase(object):
 
         # default call back function is None
         self.callback = None
+
+        # vm status is running by default, only be changed in internal module
+        self.vm_status = ST_RUNNING
 
     def get_virt_type(self):
         """
@@ -224,7 +231,7 @@ class VirtBase(object):
         self.load_global_config()
         self.load_local_config(self.suite)
 
-    def start(self, load_config=True, set_target=True, cpu_topo='', bind_dev=True):
+    def start(self, load_config=True, set_target=True, cpu_topo=''):
         """
         Start VM and instantiate the VM with VirtDut.
         """
@@ -237,8 +244,12 @@ class VirtBase(object):
             # start virutal machine
             self._start_vm()
 
-            # connect vm dut and init running environment
-            vm_dut = self.instantiate_vm_dut(set_target, cpu_topo)
+            if self.vm_status is ST_RUNNING:
+                # connect vm dut and init running environment
+                vm_dut = self.instantiate_vm_dut(set_target, cpu_topo)
+            else:
+                vm_dut = None
+
         except Exception as vm_except:
             if self.handle_exception(vm_except):
                 print dts.RED("Handled expection " + str(type(vm_except)))
@@ -249,6 +260,25 @@ class VirtBase(object):
                 self.callback()
 
             return None
+        return vm_dut
+
+    def migrated_start(self, set_target=True, cpu_topo=''):
+        """
+        Instantiate the VM after migration done
+        There's no need to load param and start VM because VM has been started
+        """
+        try:
+            if self.vm_status is ST_PAUSE:
+                # connect backup vm dut and it just inherited from host
+                vm_dut = self.instantiate_vm_dut(set_target, cpu_topo, bind_dev=False)
+        except Exception as vm_except:
+            if self.handle_exception(vm_except):
+                print dts.RED("Handled expection " + str(type(vm_except)))
+            else:
+                print dts.RED("Unhandled expection " + str(type(vm_except)))
+
+            return None
+
         return vm_dut
 
     def handle_exception(self, vm_except):
@@ -357,10 +387,19 @@ class VirtBase(object):
         """
         Stop the VM.
         """
-        self.vm_dut.close()
-        self.vm_dut.logger.logger_exit()
-        self.vm_dut = None
+        # vm_dut may not init in migration case
+        if getattr(self, 'vm_dut', None):
+            if self.vm_status is ST_RUNNING:
+                self.vm_dut.close()
+            else:
+                # when vm is not running, not close session forcely
+                self.vm_dut.close(force=True)
+
+            self.vm_dut.logger.logger_exit()
+            self.vm_dut = None
+
         self._stop_vm()
+
         self.virt_pool.free_all_resource(self.vm_name)
 
     def register_exit_callback(self, callback):
