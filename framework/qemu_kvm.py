@@ -35,6 +35,7 @@ import re
 import os
 
 from virt_base import VirtBase
+from virt_base import ST_NOTSTART, ST_PAUSE, ST_RUNNING, ST_UNKNOWN
 from exception import StartVMFailedException
 from settings import get_host_ip
 
@@ -752,17 +753,59 @@ class QEMUKvm(VirtBase):
             else:
                 self.qga_sock_path = ''
 
+    def add_vm_migration(self, **options):
+        """
+        enable: yes
+        port: tcp port for live migration
+        """
+        migrate_cmd = "-incoming tcp::%(migrate_port)s"
+
+        if 'enable' in options.keys():
+            if options['enable'] == 'yes':
+                if 'port' in options.keys():
+                    self.migrate_port = options['port']
+                else:
+                    self.migrate_port = str(self.virt_pool.alloc_port(self.vm_name))
+                migrate_boot_line = migrate_cmd % {'migrate_port': self.migrate_port}
+                self.__add_boot_line(migrate_boot_line)
+
     def add_vm_serial_port(self, **options):
         """
         enable: 'yes'
         """
-        SERAIL_SOCK_PATH = "/tmp/%s_serial.sock" % self.vm_name
         if 'enable' in options.keys():
             if options['enable'] == 'yes':
-                serial_boot_line = '-serial unix:%s,server,nowait' % SERIAL_SOCK_PATH
+                self.serial_path = "/tmp/%s_serial.sock" % self.vm_name
+                serial_boot_line = '-serial unix:%s,server,nowait' % self.serial_path
                 self.__add_boot_line(serial_boot_line)
             else:
                 pass
+
+    def connect_serial_port(self, name="", first=True):
+        """
+        Connect to serial port and return connected session for usage
+        if connected failed will return None
+        """
+        if getattr(self, 'serial_path', None):
+            self.serial_session = self.host_dut.new_session(suite=name)
+            self.serial_session.send_command("nc -U %s" % self.serial_path)
+            if first:
+                # login into Fedora os, not sure can work on all distributions
+                self.serial_session.send_expect("", "login:")
+                self.serial_session.send_expect("%s" % self.username, "Password:")
+                self.serial_session.send_expect("%s" % self.password, "# ")
+            return self.serial_session
+
+        return None
+
+    def close_serial_port(self):
+        """
+        Close serial session if it existed
+        """
+        if getattr(self, 'serial_session', None):
+            # exit from nc first
+            self.serial_session.send_expect("^C", "# ")
+            self.host_dut.close_session(self.serial_session)
 
     def add_vm_vnc(self, **options):
         """
@@ -822,12 +865,55 @@ class QEMUKvm(VirtBase):
         ret = self.host_session.send_expect(qemu_boot_line, '# ', verify=True)
         if type(ret) is int and ret != 0:
             raise StartVMFailedException('Start VM failed!!!')
-        out = self.__control_session('ping', '120')
-        if "Not responded" in out:
-            raise StartVMFailedException('Not response in 60 seconds!!!')
 
         self.__get_pci_mapping()
-        self.__wait_vmnet_ready()
+
+        # query status
+        self.update_status()
+
+        # when vm is waiting for migration, can't ping
+        if self.vm_status is not ST_PAUSE:
+            # if VM waiting for migration, can't return ping
+            out = self.__control_session('ping', '120')
+            if "Not responded" in out:
+                raise StartVMFailedException('Not response in 120 seconds!!!')
+
+            self.__wait_vmnet_ready()
+
+    def start_migration(self, remote_ip, remote_port):
+        """
+        Send migration command to host and check whether start migration
+        """
+        # send migration command
+        migration_port = 'tcp:%(IP)s:%(PORT)s' % {'IP': remote_ip, 'PORT': remote_port}
+
+        self.__monitor_session('migrate', '-d', migration_port)
+        time.sleep(2)
+        out = self.__monitor_session('info', 'migrate')
+        if "Migration status: active" in out:
+            return True
+        else:
+            return False
+
+    def wait_migration_done(self):
+        """
+        Wait for migration done. If not finished after three minutes
+        will raise exception.
+        """
+        # wait for migration done
+        count = 30
+        while count:
+            out = self.__monitor_session('info', 'migrate')
+            if "completed" in out:
+                self.host_logger.info("%s" % out)
+                # after migration done, status is pause
+                self.vm_status = ST_PAUSE
+                return True
+
+            time.sleep(6)
+            count -= 1
+
+        raise StartVMFailedException('Virtual machine can not finished in 180 seconds!!!')
 
     def generate_qemu_boot_line(self):
         """
@@ -1036,9 +1122,27 @@ class QEMUKvm(VirtBase):
         for arg in args:
             cmd += ' ' + str(arg)
 
-        out = self.host_session.send_expect('%s' % cmd, '(qemu)')
+        # after quit command, qemu will exit
+        if 'quit' in cmd:
+            out = self.host_session.send_expect('%s' % cmd, '# ')
+        else:
+            out = self.host_session.send_expect('%s' % cmd, '(qemu)')
         self.host_session.send_expect('^C', "# ")
         return out
+
+    def update_status(self):
+        """
+        Query and update VM status
+        """
+        out = self.__monitor_session('info', 'status')
+        self.host_logger.info("Virtual machine status: %s" % out)
+
+        if 'paused' in out:
+            self.vm_status = ST_PAUSE
+        elif 'running' in out:
+            self.vm_status = ST_RUNNING
+        else:
+            self.vm_status = ST_UNKNOWN
 
     def __strip_guest_pci(self):
         """
@@ -1105,5 +1209,8 @@ class QEMUKvm(VirtBase):
         """
         Stop VM.
         """
-        self.__control_session('powerdown')
+        if self.vm_status is ST_RUNNING:
+            self.__control_session('powerdown')
+        else:
+            self.__monitor_session('quit')
         time.sleep(5)
