@@ -505,7 +505,7 @@ class Crb(object):
         core_id = 0
         coremap = {}
         for line in cpuinfo:
-            (thread, core, unused, socket) = line.split(',')[0:4]
+            (thread, core, socket, unused) = line.split(',')[0:4]
 
             if core not in coremap.keys():
                 coremap[core] = core_id
