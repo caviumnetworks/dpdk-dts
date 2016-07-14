@@ -75,12 +75,12 @@ class VirtDut(DPDKdut):
     def init_log(self):
         self.logger.config_suite(self.host_dut.test_classname, 'virtdut')
 
-    def close(self):
+    def close(self, force=False):
         if self.session:
-            self.session.close()
+            self.session.close(force)
             self.session = None
         if self.alt_session:
-            self.alt_session.close()
+            self.alt_session.close(force)
             self.alt_session = None
         RemoveNicObj(self)
 

@@ -72,8 +72,8 @@ class SSHConnection(object):
         self.logger.debug(out)
         return out
 
-    def close(self):
-        self.session.close()
+    def close(self, force=False):
+        self.session.close(force)
         connection = {}
         connection[self.name] = self.session
         try:

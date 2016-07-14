@@ -129,9 +129,12 @@ class SSHPexpect(object):
         output.replace("[PEXPECT]", "")
         return output
 
-    def close(self):
-        if self.isalive():
-            self.session.logout()
+    def close(self, force=False):
+        if force is True:
+            self.session.close()
+        else:
+            if self.isalive():
+                self.session.logout()
 
     def isalive(self):
         return self.session.isalive()
