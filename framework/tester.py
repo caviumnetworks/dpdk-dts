@@ -143,8 +143,8 @@ class Tester(Crb):
         Return tester local port connect to specified port and specified dut.
         """
         for dut in self.duts:
-            if dut.crb['My IP'] == dutIP:
-                return self.dut.ports_map[remotePort]
+            if dut.crb['My IP'] == dutIp:
+                return dut.ports_map[remotePort]
 
     def get_local_index(self, pci):
         """
