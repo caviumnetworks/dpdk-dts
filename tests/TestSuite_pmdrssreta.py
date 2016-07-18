@@ -104,8 +104,8 @@ class TestPmdrssreta(TestCase):
                 time.sleep(.5)
         else:
             print "\ntran_type error!\n"
-
-        out = self.dut.send_expect("stop", "testpmd>")
+        out = self.dut.get_session_output(timeout=1)
+        self.dut.send_expect("stop", "testpmd>")
         lines = out.split("\r\n")
         reta_line = {}
 
