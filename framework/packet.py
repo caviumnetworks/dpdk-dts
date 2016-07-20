@@ -59,6 +59,7 @@ from scapy.sendrecv import sniff
 from scapy.route import *
 from scapy.packet import bind_layers, Raw
 from scapy.sendrecv import sendp
+from scapy.arch import get_if_hwaddr
 
 # load extension layers
 exec_file = os.path.realpath(__file__)
@@ -316,6 +317,8 @@ class scapy(object):
     def send_pkt(self, intf=''):
         self.print_summary()
         if intf != '':
+            # fix fortville can't receive packets with 00:00:00:00:00:00
+            self.pkt.getlayer(0).src = get_if_hwaddr(intf)
             sendp(self.pkt, iface=intf)
 
 
