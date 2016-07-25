@@ -284,7 +284,7 @@ class DPDKdut(Dut):
                 binding_list += '%s ' % (port_info['pci'])
             current_nic += 1
 
-        self.send_expect('tools/dpdk_nic_bind.py %s' % binding_list, '# ')
+        self.send_expect('tools/dpdk-devbind.py %s' % binding_list, '# ')
 
     def unbind_interfaces_linux(self, nics_to_bind=None):
         """
@@ -299,7 +299,7 @@ class DPDKdut(Dut):
                 binding_list += '%s ' % (port_info['pci'])
             current_nic += 1
 
-        self.send_expect('tools/dpdk_nic_bind.py %s' % binding_list, '# ', 30)
+        self.send_expect('tools/dpdk-devbind.py %s' % binding_list, '# ', 30)
 
     def build_dpdk_apps(self, folder, extra_options=''):
         """

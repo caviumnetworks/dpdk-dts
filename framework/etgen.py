@@ -64,7 +64,7 @@ class SoftwarePacketGenerator():
         for port in ports:
             bind_cmd += " %s" % self.tester.ports_info[port]['pci']
 
-        self.tester.send_expect("./dpdk_nic_bind.py --bind=igb_uio %s" % bind_cmd, "#")
+        self.tester.send_expect("./dpdk-devbind.py --bind=igb_uio %s" % bind_cmd, "#")
 
         # assgin core for ports
         map_cmd = ""

@@ -969,7 +969,7 @@ class TestKni(TestCase):
         port_virtual_interaces = []
         for port in white_list:
             information = self.dut.send_expect(
-                "./tools/dpdk_nic_bind.py --status | grep '%s'" % port, "# ")
+                "./tools/dpdk-devbind.py --status | grep '%s'" % port, "# ")
             data = information.split(' ')
             for field in data:
                 if field.rfind("if=") != -1:
@@ -1005,7 +1005,7 @@ class TestKni(TestCase):
 
         for port in white_list:
             self.dut.send_expect(
-                "./tools/dpdk_nic_bind.py -b igb_uio %s" % (port), "# ")
+                "./tools/dpdk-devbind.py -b igb_uio %s" % (port), "# ")
         dts.results_table_print()
 
     def test_perf_routing(self):
@@ -1133,7 +1133,7 @@ class TestKni(TestCase):
 
             # Enables the interfaces
             information = self.dut.send_expect(
-                "./tools/dpdk_nic_bind.py --status | grep '%s'" % port, "# ")
+                "./tools/dpdk-devbind.py --status | grep '%s'" % port, "# ")
             print information
             data = information.split(' ')
             for field in data:
@@ -1201,7 +1201,7 @@ class TestKni(TestCase):
 
         for port in white_list:
             self.dut.send_expect(
-                "./tools/dpdk_nic_bind.py -b %s %s" % (dts.drivername, port), "# ")
+                "./tools/dpdk-devbind.py -b %s %s" % (dts.drivername, port), "# ")
 
     def tear_down(self):
         """
