@@ -69,12 +69,13 @@ sys.path.append(DEP_FOLDER)
 from vxlan import Vxlan
 from nvgre import NVGRE, IPPROTO_NVGRE
 from lldp import LLDP, LLDPManagementAddress
+from Dot1BR import Dot1BR
 
 # packet generator type should be configured later
 PACKETGEN = "scapy"
 
 LayersTypes = {
-    "L2": ['ether', 'vlan', '1588', 'arp', 'lldp'],
+    "L2": ['ether', 'vlan', 'etag', '1588', 'arp', 'lldp'],
     # ipv4_ext_unknown, ipv6_ext_unknown
     "L3": ['ipv4', 'ipv4ihl', 'ipv6', 'ipv4_ext', 'ipv6_ext', 'ipv6_ext2', 'ipv6_frag'],
     "L4": ['tcp', 'udp', 'frag', 'sctp', 'icmp', 'nofrag'],
@@ -98,6 +99,7 @@ class scapy(object):
     SCAPY_LAYERS = {
         'ether': Ether(dst="ff:ff:ff:ff:ff:ff"),
         'vlan': Dot1Q(),
+        'etag': Dot1BR(),
         '1588': Ether(type=0x88f7),
         'arp': ARP(),
         'ipv4': IP(),
@@ -176,6 +178,24 @@ class scapy(object):
 
         if element == 'vlan':
             value = int(str(self.pkt[Dot1Q].vlan))
+        return value
+
+    def etag(self, pkt_layer, ECIDbase=0, prio=0, type=None):
+        if pkt_layer.name != "802.1BR":
+           return
+        pkt_layer.ECIDbase = int(ECIDbase)
+        pkt_layer.prio = prio
+        if type is not None:
+            pkt_layer.type = type
+
+    def strip_etag(self, element):
+        value = None
+
+        if self.pkt.haslayer('Dot1BR') is 0:
+            return None
+
+        if element == 'ECIDbase':
+            value = int(str(self.pkt[Dot1BR].ECIDbase))
         return value
 
     def strip_layer2(self, element):
@@ -316,6 +336,7 @@ class Packet(object):
         'TCP': {'layers': ['ether', 'ipv4', 'tcp', 'raw'], 'cfgload': True},
         'UDP': {'layers': ['ether', 'ipv4', 'udp', 'raw'], 'cfgload': True},
         'VLAN_UDP': {'layers': ['ether', 'vlan', 'ipv4', 'udp', 'raw'], 'cfgload': True},
+        'ETAG_UDP': {'layers': ['ether', 'etag', 'ipv4', 'udp', 'raw'], 'cfgload': True},
         'SCTP': {'layers': ['ether', 'ipv4', 'sctp', 'raw'], 'cfgload': True},
         'IPv6_TCP': {'layers': ['ether', 'ipv6', 'tcp', 'raw'], 'cfgload': True},
         'IPv6_UDP': {'layers': ['ether', 'ipv6', 'udp', 'raw'], 'cfgload': True},
@@ -446,6 +467,7 @@ class Packet(object):
         name2type = {
             'MAC': 'ether',
             'VLAN': 'vlan',
+            'ETAG': 'etag',
             'IP': 'ipv4',
             'IPihl': 'ipv4ihl',
             'IPFRAG': 'ipv4_ext',
@@ -553,6 +575,9 @@ class Packet(object):
     def _config_layer_vlan(self, pkt_layer, config):
         return self.pktgen.vlan(pkt_layer, **config)
 
+    def _config_layer_etag(self, pkt_layer, config):
+        return self.pktgen.etag(pkt_layer, **config)
+
     def _config_layer_ipv4(self, pkt_layer, config):
         return self.pktgen.ipv4(pkt_layer, **config)
 
@@ -585,6 +610,9 @@ class Packet(object):
 
     def strip_element_vlan(self, element):
         return self.pktgen.strip_vlan(element)
+
+    def strip_element_etag(self, element):
+        return self.pktgen.strip_etag(element)
 
     def strip_element_layer4(self, element):
         return self.pktgen.strip_layer4(element)
