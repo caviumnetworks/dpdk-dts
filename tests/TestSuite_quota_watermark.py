@@ -215,7 +215,7 @@ class TestQuotaWatermark(TestCase, IxiaPacketGenerator):
         Creates a simple scapy packet to run the tests with
         """
 
-        self.tester.scapy_append('flow=[Ether()/IP()/("X"*26)]*%d'%pkt_cnt)
+        self.tester.scapy_append('flow=[Ether(src="11:22:33:44:55:66")/IP()/("X"*26)]*%d'%pkt_cnt)
         self.tester.scapy_append('wrpcap("file.pcap", flow)')
         self.tester.scapy_execute()
 
