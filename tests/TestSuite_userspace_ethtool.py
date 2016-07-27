@@ -34,6 +34,7 @@ DPDK Test suite.
 Test support of userspace ethtool feature
 """
 
+import os
 import dts
 import time
 import re
@@ -128,8 +129,8 @@ class TestUserspaceEthtool(TestCase, IxiaPacketGenerator):
             return 1518
 
     def resize_linux_eeprom_file(self, dpdk_eeprom_file, linux_eeprom_file):
-        basePath = self.dut.base_dir
-        with open( basePath + dpdk_eeprom_file, 'rb') as fpDpdk:
+        basePath = os.sep + "root" + self.dut.base_dir[1:] + os.sep
+        with open( basePath + os.sep + dpdk_eeprom_file, 'rb') as fpDpdk:
             dpdk_bytes = fpDpdk.read()
             dpdk_length = len(dpdk_bytes)
 
@@ -220,7 +221,10 @@ class TestUserspaceEthtool(TestCase, IxiaPacketGenerator):
 
         portsinfo = []
         ori_drivers = []
-
+        
+        if self.nic.startswith("fortville"):
+            return
+        
         for portid in range(len(self.ports)):
             self.dut.send_expect("regs %d regs_%d.bin" % (portid, portid), "EthApp>")
             portinfo = {'portid': portid, 'reg_file': 'regs_%d.bin' % portid}
@@ -300,8 +304,8 @@ class TestUserspaceEthtool(TestCase, IxiaPacketGenerator):
         """
         Test ethtool app ring parameter getting and setting
         """
-        self.dut.send_expect(self.cmd, "EthApp>", 60)
         for index in range(len(self.ports)):
+            self.dut.send_expect(self.cmd, "EthApp>", 60)
             port = self.ports[index]
             ori_rx_pkts, ori_tx_pkts = self.strip_portstats(port)
             _, rx_max, _, tx_max = self.strip_ringparam(index)
@@ -315,8 +319,7 @@ class TestUserspaceEthtool(TestCase, IxiaPacketGenerator):
             pkt.send_pkt(tx_port=intf)
             rx_pkts, tx_pkts = self.strip_portstats(index)
             self.verify(rx_pkts == ori_rx_pkts + 1, "Failed to forward after ring parameter changed")
-
-        self.dut.send_expect("quit", "# ")
+            self.dut.send_expect("quit", "# ")
 
     def test_ethtool_vlan(self):
         """
