@@ -185,19 +185,19 @@ class TestUnitTestsDump(TestCase):
         Run devargs dump test case.
         """
         test_port = self.dut_ports[0]
-        self.dut.send_expect("./%s/app/test -n 1 -c ffff -b 0000:%s"
+        self.dut.send_expect("./%s/app/test -n 1 -c ffff -b %s"
                              % (self.target, self.dut.ports_info[test_port]['pci']), "R.*T.*E.*>.*>", self.start_test_time)
         out = self.dut.send_expect("dump_devargs", "RTE>>", self.run_cmd_time * 2)
         self.dut.send_expect("quit", "# ")
-        black_str = "PCI blacklist 0000:%s" % self.dut.ports_info[test_port]['pci']
+        black_str = "PCI blacklist %s" % self.dut.ports_info[test_port]['pci']
         self.verify(black_str in out, "Dump black list failed")
 
-        self.dut.send_expect("./%s/app/test -n 1 -c ffff -w 0000:%s"
+        self.dut.send_expect("./%s/app/test -n 1 -c ffff -w %s"
                              % (self.target, self.dut.ports_info[test_port]['pci']), "R.*T.*E.*>.*>", self.start_test_time)
         out = self.dut.send_expect("dump_devargs", "RTE>>", self.run_cmd_time * 2)
         self.dut.send_expect("quit", "# ")
 
-        white_str = "PCI whitelist 0000:%s" % self.dut.ports_info[test_port]['pci']
+        white_str = "PCI whitelist %s" % self.dut.ports_info[test_port]['pci']
         self.verify(white_str in out, "Dump white list failed")
 
     def tear_down(self):
