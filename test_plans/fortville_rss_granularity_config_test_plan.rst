@@ -118,7 +118,7 @@ different from the values in step 2.
 testpmd> set_hash_input_set 0 ipv4-tcp tcp-src-port add
 testpmd> set_hash_input_set 0 ipv4-tcp tcp-dst-port add
 
-send packet as step 2, got hash value and queue value that output from the testpmd on DUT, the values shoud be
+send packet as step 2, got hash value and queue value that output from the testpmd on DUT, the values
 should be different with the values from step 3 & step 4, should be same as step 2.
 
 6. set hash input set by testpmd on dut, enable tcp-src-port, tcp-dst-port
