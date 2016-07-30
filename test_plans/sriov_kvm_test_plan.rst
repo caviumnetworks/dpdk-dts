@@ -65,7 +65,7 @@ used to generate 2VFs and make them in pci-stub modes.::
     echo 0000:08:10.0 >/sys/bus/pci/devices/0000\:08\:10.0/driver/unbind
     echo 0000:08:10.2 >/sys/bus/pci/devices/0000\:08\:10.2/driver/unbind
     echo 0000:08:10.0 >/sys/bus/pci/drivers/pci-stub/bind
-    echo 0000:08:10.0 >/sys/bus/pci/drivers/pci-stub/bind
+    echo 0000:08:10.2 >/sys/bus/pci/drivers/pci-stub/bind
 
 Start PF driver on the Host and skip the VFs.::
 
