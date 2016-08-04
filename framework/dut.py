@@ -32,7 +32,6 @@
 import os
 import re
 import time
-import dts
 import settings
 from config import PortConf
 from settings import NICS, LOG_NAME_SEP
@@ -307,9 +306,9 @@ class Dut(Crb):
                 arch_huge_pages = hugepages if hugepages > 0 else 512
 
             if total_huge_pages != arch_huge_pages:
-                 # before all hugepage average distribution  by all socket,
-                 # but sometimes create mbuf pool on socket 0 failed when setup testpmd,
-                 # so set all huge page on socket 0
+                # before all hugepage average distribution  by all socket,
+                # but sometimes create mbuf pool on socket 0 failed when setup testpmd,
+                # so set all huge page on socket 0
                 if force_socket:
                     self.set_huge_pages(arch_huge_pages, 0)
                 else:
@@ -362,7 +361,7 @@ class Dut(Crb):
 
         current_nic = 0
         for (pci_bus, pci_id) in self.pci_devices_info:
-            if dts.accepted_nic(pci_id):
+            if settings.accepted_nic(pci_id):
                 if self.is_ssh_session_port(pci_bus):
                     continue
 
@@ -385,7 +384,7 @@ class Dut(Crb):
 
         current_nic = 0
         for (pci_bus, pci_id) in self.pci_devices_info:
-            if dts.accepted_nic(pci_id):
+            if settings.accepted_nic(pci_id):
                 if self.is_ssh_session_port(pci_bus):
                     continue
 
@@ -407,9 +406,6 @@ class Dut(Crb):
         """
         ports = []
         candidates = []
-
-        if perf is None:
-            perf = self.want_perf_tests
 
         nictypes = []
         if nic_type == 'any':
@@ -508,17 +504,17 @@ class Dut(Crb):
 
     def lcore_table_print(self, horizontal=False):
         if not horizontal:
-            dts.results_table_add_header(['Socket', 'Core', 'Thread'])
+            result_table = ResultTable(['Socket', 'Core', 'Thread'])
 
             for lcore in self.cores:
-                dts.results_table_add_row([lcore['socket'], lcore['core'], lcore['thread']])
-            dts.results_table_print()
+                result_table.add_row([lcore['socket'], lcore['core'], lcore['thread']])
+            result_table.table_print()
         else:
-            dts.results_table_add_header(['X'] + [''] * len(self.cores))
-            dts.results_table_add_row(['Thread'] + [n['thread'] for n in self.cores])
-            dts.results_table_add_row(['Core'] + [n['core'] for n in self.cores])
-            dts.results_table_add_row(['Socket'] + [n['socket'] for n in self.cores])
-            dts.results_table_print()
+            result_table = ResultTable(['X'] + [''] * len(self.cores))
+            result_table.add_row(['Thread'] + [n['thread'] for n in self.cores])
+            result_table.add_row(['Core'] + [n['core'] for n in self.cores])
+            result_table.add_row(['Socket'] + [n['socket'] for n in self.cores])
+            result_table.table_print()
 
     def get_memory_channels(self):
         n = self.crb['memory channels']
@@ -556,7 +552,7 @@ class Dut(Crb):
         if self.ports_info:
             self.rescan_ports_uncached()
             self.save_serializer_ports()
- 
+
     def rescan_ports_uncached(self):
         """
         rescan ports and update port's mac adress, intf, ipv6 address.
@@ -652,7 +648,7 @@ class Dut(Crb):
             intf = port.get_interface_name()
 
             self.logger.info("DUT cached: [%s %s] %s" % (port_info['pci'],
-                             port_info['type'], intf))
+                                                         port_info['type'], intf))
 
             port_info['port'] = port
 
@@ -675,7 +671,7 @@ class Dut(Crb):
         for (pci_bus, pci_id) in self.pci_devices_info:
             if self.check_ports_available(pci_bus, pci_id) is False:
                 self.logger.info("DUT: [%s %s] %s" % (pci_bus, pci_id,
-                                                          skipped))
+                                                      skipped))
                 continue
 
             addr_array = pci_bus.split(':')
@@ -721,7 +717,7 @@ class Dut(Crb):
 
         for (pci_bus, pci_id) in self.pci_devices_info:
 
-            if not dts.accepted_nic(pci_id):
+            if not settings.accepted_nic(pci_id):
                 self.logger.info("DUT: [%s %s] %s" % (pci_bus, pci_id,
                                                       skipped))
                 continue
@@ -836,8 +832,6 @@ class Dut(Crb):
                 if port_cfg['numa'] != port['numa']:
                     self.logger.warning("CONFIGURED NUMA NOT SAME AS SCANNED!!!")
                 port['numa'] = port_cfg['numa']
-                
-                
 
     def map_available_ports(self):
         """

@@ -32,7 +32,7 @@
 import os
 import re
 import time
-import dts
+import utils
 import settings
 from config import PortConf
 from settings import NICS, LOG_NAME_SEP, get_netdev
@@ -110,7 +110,7 @@ class VirtDut(DPDKdut):
         for key in self.ports_cfg.keys():
             index = int(key)
             if index >= port_num:
-                print dts.RED("Can not found [%d ]port info" % index)
+                print utils.RED("Can not found [%d ]port info" % index)
                 continue
 
             if 'peer' in self.ports_cfg[key].keys():
@@ -210,7 +210,7 @@ class VirtDut(DPDKdut):
                 total_phycores = socks * cores
                 # cores should match cpu_topo
                 if total != len(cpuinfo):
-                    print dts.RED("Core number not matched!!!")
+                    print utils.RED("Core number not matched!!!")
                 else:
                     for core in range(total):
                         thread = core / total_phycores
@@ -378,7 +378,7 @@ class VirtDut(DPDKdut):
                         vfs = remoteport.get_sriov_vfs_pci()
                         # if hostpci is vf of tester port
                         if hostpci == remotepci or hostpci in vfs:
-                            print dts.RED("Skip ping from same PF device")
+                            print utils.RED("Skip ping from same PF device")
                             continue
 
                 ipv6 = self.get_ipv6_address(vmPort)

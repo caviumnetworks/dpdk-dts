@@ -30,7 +30,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import time
-import dts
+import utils
 
 from settings import CONFIG_ROOT_PATH, get_netdev
 from config import VirtConf
@@ -38,6 +38,7 @@ from config import VIRTCONF
 from exception import *
 from qemu_kvm import QEMUKvm
 from pmd_output import PmdOutput
+from utils import create_mask
 
 # scenario module for handling scenario
 # 1. load configurations
@@ -136,11 +137,11 @@ class VirtScene(object):
 
     def prepare_host(self, **opts):
         if 'dpdk' not in opts.keys():
-            print dts.RED("Scenario host parameter request dpdk option!!!")
+            print utils.RED("Scenario host parameter request dpdk option!!!")
             raise VirtConfigParamException('host')
 
         if 'cores' not in opts.keys():
-            print dts.RED("Scenario host parameter request cores option!!!")
+            print utils.RED("Scenario host parameter request cores option!!!")
             raise VirtConfigParamException('host')
 
         if 'target' in opts.keys():
@@ -171,7 +172,7 @@ class VirtScene(object):
                 if int(cpu) not in self.host_dut.virt_pool.cores:
                     cpus.remove(cpu)
             # create core mask for reserver cores
-            core_mask = dts.create_mask(cpus)
+            core_mask = create_mask(cpus)
             # reserve those skipped cores
             self.host_dut.virt_pool.reserve_cpu(core_mask)
 
@@ -284,7 +285,7 @@ class VirtScene(object):
             if 'mac' in param.keys():
                 pf_net.set_vf_mac_addr(vf_idx, param['mac'])
         else:
-            print dts.RED("Invalid vf device config, request pf_dev")
+            print utils.RED("Invalid vf device config, request pf_dev")
 
         return vf_param
 
@@ -302,17 +303,17 @@ class VirtScene(object):
             if 'vf_num' in opts.keys():
                 vf_num = int(opts['vf_num'])
             else:
-                print dts.RED("No vf_num for port %d, assum one VF" % port)
+                print utils.RED("No vf_num for port %d, assum one VF" % port)
                 vf_num = 1
             if 'driver' in opts.keys():
                 driver = opts['driver']
 
             try:
-                print dts.GREEN("create vf %d %d %s" % (port, vf_num, driver))
+                print utils.GREEN("create vf %d %d %s" % (port, vf_num, driver))
                 self.host_dut.generate_sriov_vfs_by_port(port, vf_num, driver)
                 self.reset_pf_cmds(port)
             except:
-                print dts.RED("Failed to create vf as requested!!!")
+                print utils.RED("Failed to create vf as requested!!!")
                 raise VirtDeviceCreateException
 
     def handle_dev_destroy(self, **opts):
@@ -320,10 +321,10 @@ class VirtScene(object):
             port = int(opts['pf_idx'])
 
             try:
-                print dts.GREEN("destroy vfs on port %d" % port)
+                print utils.GREEN("destroy vfs on port %d" % port)
                 self.host_dut.destroy_sriov_vfs_by_port(port)
             except:
-                print dts.RED("Failed to destroy vf as requested!!!")
+                print utils.RED("Failed to destroy vf as requested!!!")
 
     def reg_prevm_cmds(self, command):
         """
@@ -343,7 +344,7 @@ class VirtScene(object):
     def run_pre_cmds(self):
         for cmd in self.pre_cmds:
             if cmd['type'] == 'vm':
-                print dts.RED("Can't run vm command when vm not ready")
+                print utils.RED("Can't run vm command when vm not ready")
             elif cmd['type'] == 'host':
                 crb = self.host_dut
             elif cmd['type'] == 'tester':
@@ -370,7 +371,7 @@ class VirtScene(object):
                                   verify=verify)
 
             if type(ret) is int and ret != 0:
-                print dts.RED("Failed to run command %s" % cmd['command'])
+                print utils.RED("Failed to run command %s" % cmd['command'])
                 raise VirtVmOperationException
 
     def reg_postvm_cmds(self, command):
@@ -417,7 +418,7 @@ class VirtScene(object):
                                   verify=verify)
 
             if type(ret) is int and ret != 0:
-                print dts.RED("Failed to run command %s" % cmd['command'])
+                print utils.RED("Failed to run command %s" % cmd['command'])
                 raise VirtVmOperationException
 
     def merge_params(self, vm, params):
@@ -467,7 +468,7 @@ class VirtScene(object):
                     self.vms.append(vm_info)
 
                 except Exception as e:
-                    print dts.RED("Failure for %s" % str(e))
+                    print utils.RED("Failure for %s" % str(e))
 
     def get_vm_duts(self):
         duts = []

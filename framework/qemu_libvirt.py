@@ -33,7 +33,7 @@ import time
 import re
 import os
 
-import dts
+import utils
 from dut import Dut
 from ssh_connection import SSHConnection
 from virt_base import VirtBase
@@ -326,12 +326,12 @@ class LibvirtKvm(VirtBase):
                                    'managed': 'yes'})
 
         if 'pf_idx' not in options.keys():
-            print dts.RED("Missing device index for device option!!!")
+            print utils.RED("Missing device index for device option!!!")
             return False
 
         pf = int(options['pf_idx'])
         if pf > len(self.host_dut.ports_info):
-            print dts.RED("PF device index over size!!!")
+            print utils.RED("PF device index over size!!!")
             return False
 
         pci_addr = self.host_dut.ports_info[pf]['pci']
@@ -360,7 +360,7 @@ class LibvirtKvm(VirtBase):
             pci_map['guestpci'] = options['guestpci']
             self.pci_maps.append(pci_map)
         else:
-            print dts.RED('Host device pass-through need guestpci option!!!')
+            print utils.RED('Host device pass-through need guestpci option!!!')
 
     def add_vm_net(self, **options):
         """
