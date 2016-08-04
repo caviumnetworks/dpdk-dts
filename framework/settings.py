@@ -31,6 +31,7 @@
 """
 Folders for framework running enviornment.
 """
+import os
 import re
 import socket
 
@@ -60,8 +61,8 @@ NICS = {
     'twinpond': '8086:1528',
     'twinville': '8086:1512',
     'sageville': '8086:1563',
-    'sagepond' : '8086:15ad',
-    'sagepond_vf':'8086:15a8',
+    'sagepond': '8086:15ad',
+    'sagepond_vf': '8086:15a8',
     'hartwell': '8086:10d3',
     '82545EM': '8086:100f',
     '82540EM': '8086:100e',
@@ -78,13 +79,13 @@ NICS = {
     'fortville_spirit': '8086:1583',
     'fortville_spirit_single': '8086:1584',
     'redrockcanyou': '8086:15a4',
-    'fortpark':'8086:374c',
-    'fortpark_TLV':'8086:37d0',
-    'fortpark_TLV_vf':'8086:37cd',
-    'fvl10g_vf':'8086:154c',
+    'fortpark': '8086:374c',
+    'fortpark_TLV': '8086:37d0',
+    'fortpark_TLV_vf': '8086:37cd',
+    'fvl10g_vf': '8086:154c',
     'atwood': '8086:15d5',
-    'ConnectX3':'15b3:1003',
-    'ConnectX4':'15b3:1013',
+    'ConnectX3': '15b3:1003',
+    'ConnectX4': '15b3:1013',
     'boulderrapid': '8086:15d0',
 }
 
@@ -102,7 +103,7 @@ DRIVERS = {
     'twinpond': 'ixgbe',
     'twinville': 'ixgbe',
     'sageville': 'ixgbe',
-    'sagepond' : 'ixgbe',
+    'sagepond': 'ixgbe',
     'sagepond_vf': 'ixgbevf',
     'hartwell': 'igb',
     '82545EM': 'igb',
@@ -120,13 +121,13 @@ DRIVERS = {
     'fortville_spirit': 'i40e',
     'fortville_spirit_single': 'i40e',
     'redrockcanyou': 'fm10k',
-    'fortpark':'i40e',
-    'fortpark_TLV':'i40e',
-    'fortpark_TLV_vf':'i40evf',
-    'fvl10g_vf':'i40evf',
+    'fortpark': 'i40e',
+    'fortpark_TLV': 'i40e',
+    'fortpark_TLV_vf': 'i40evf',
+    'fvl10g_vf': 'i40evf',
     'atwood': 'fm10k',
-    'ConnectX3':'mlx4_core',
-    'ConnectX4':'mlx5_core',
+    'ConnectX3': 'mlx4_core',
+    'ConnectX4': 'mlx5_core',
     'boulderrapid': 'fm10k',
 }
 
@@ -180,6 +181,18 @@ The log name seperater.
 """
 LOG_NAME_SEP = '.'
 
+"""
+DTS global environment variable
+"""
+DTS_ENV_PAT = r"DTS_*"
+PERF_SETTING = "DTS_PERF_ONLY"
+FUNC_SETTING = "DTS_FUNC_ONLY"
+HOST_DRIVER_SETTING = "DTS_HOST_DRIVER"
+HOST_NIC_SETTING = "DTS_HOST_NIC"
+DEBUG_SETTING = "DTS_DEBUG_ENABLE"
+DEBUG_CASE_SETTING = "DTS_DEBUGCASE_ENABLE"
+DPDK_RXMODE_SETTING = "DTS_DPDK_RXMODE"
+
 
 def get_nic_name(type):
     """
@@ -214,6 +227,7 @@ def get_netdev(crb, pci):
 
     return None
 
+
 def get_host_ip(address):
     ip_reg = r'\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3}'
     m = re.match(ip_reg, address)
@@ -221,8 +235,54 @@ def get_host_ip(address):
         return address
     else:
         try:
-            result=socket.gethostbyaddr(address)
+            result = socket.gethostbyaddr(address)
             return result[2][0]
         except:
             print "couldn't look up %s" % address
             return ''
+
+
+def save_global_setting(key, value):
+    """
+    Save DTS global setting
+    """
+    if re.match(DTS_ENV_PAT, key):
+        env_key = key
+    else:
+        env_key = "DTS_" + key
+
+    os.environ[env_key] = value
+
+
+def load_global_setting(key):
+    """
+    Load DTS global setting
+    """
+    if re.match(DTS_ENV_PAT, key):
+        env_key = key
+    else:
+        env_key = "DTS_" + key
+
+    if env_key in os.environ.keys():
+        return os.environ[env_key]
+    else:
+        return ''
+
+
+def accepted_nic(pci_id):
+    """
+    Return True if the pci_id is a known NIC card in the settings file and if
+    it is selected in the execution file, otherwise it returns False.
+    """
+    nic = load_global_setting(HOST_NIC_SETTING)
+    if pci_id not in settings.NICS.values():
+        return False
+
+    if nic is 'any':
+        return True
+
+    else:
+        if pci_id == settings.NICS[nic]:
+            return True
+
+    return False
