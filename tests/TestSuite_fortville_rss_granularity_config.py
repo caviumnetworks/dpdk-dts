@@ -50,7 +50,7 @@ Support 4*10G, 1*40G and 2*40G NICs.
 import time
 import random
 import re
-import dts
+import utils
 import dut
 
 testQueues = [16]
@@ -177,7 +177,7 @@ class TestFortvilleRssGranularityConfig(TestCase):
         global reta_num
 
         #append the the hash value and queue id into table
-        dts.results_table_add_header(
+        self.result_table_create(
             ['packet index', 'hash value', 'hash index', 'queue id'])
 
         i = 0
@@ -186,7 +186,7 @@ class TestFortvilleRssGranularityConfig(TestCase):
             
             # compute the hash result of five tuple into the 7 LSBs value.
             hash_index = int(tmp_reta_line["RSS hash"], 16) % reta_num
-	    dts.results_table_add_row(
+	    self.result_table_add(
                 [i, tmp_reta_line["RSS hash"], hash_index, tmp_reta_line["queue"]])
             i = i + 1
 
@@ -238,29 +238,30 @@ class TestFortvilleRssGranularityConfig(TestCase):
             self.send_packet(itf, "ipv4-tcp")
 
         self.dut.send_expect("quit", "# ", 30)
-	dts.results_table_print()
-	self.verify(len(dts.results_table_rows) > 1, "There is no data in the table, testcase failed!")
+	self.result_table_print()
+    result_rows = self.result_table_getrows()
+	self.verify(len(result_rows) > 1, "There is no data in the table, testcase failed!")
 
 	
-	if ((dts.results_table_rows[1][1]==dts.results_table_rows[2][1])or(dts.results_table_rows[1][3]==dts.results_table_rows[2][3])):
+	if ((result_rows[1][1]==result_rows[2][1])or(result_rows[1][3]==result_rows[2][3])):
 	    flag = 0
 	    self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-	elif ((dts.results_table_rows[1][1]==dts.results_table_rows[3][1])or(dts.results_table_rows[1][3]==dts.results_table_rows[3][3])):
+	elif ((result_rows[1][1]==result_rows[3][1])or(result_rows[1][3]==result_rows[3][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-	elif ((dts.results_table_rows[2][1]==dts.results_table_rows[3][1])or(dts.results_table_rows[2][3]==dts.results_table_rows[3][3])):
+	elif ((result_rows[2][1]==result_rows[3][1])or(result_rows[2][3]==result_rows[3][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-	elif ((dts.results_table_rows[1][1]==dts.results_table_rows[5][1])or(dts.results_table_rows[1][3]==dts.results_table_rows[5][3])):
+	elif ((result_rows[1][1]==result_rows[5][1])or(result_rows[1][3]==result_rows[5][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-        elif ((dts.results_table_rows[2][1]==dts.results_table_rows[5][1])or(dts.results_table_rows[2][3]==dts.results_table_rows[5][3])):
+        elif ((result_rows[2][1]==result_rows[5][1])or(result_rows[2][3]==result_rows[5][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-	elif ((dts.results_table_rows[3][1]==dts.results_table_rows[5][1])or(dts.results_table_rows[3][3]==dts.results_table_rows[5][3])):
+	elif ((result_rows[3][1]==result_rows[5][1])or(result_rows[3][3]==result_rows[5][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-	elif ((dts.results_table_rows[1][1]!=dts.results_table_rows[4][1])or(dts.results_table_rows[1][3]!=dts.results_table_rows[4][3])):
+	elif ((result_rows[1][1]!=result_rows[4][1])or(result_rows[1][3]!=result_rows[4][3])):
             flag = 0
             self.verify(flag, "The two hash values are different, rss_granularity_config failed!")
 
@@ -313,29 +314,30 @@ class TestFortvilleRssGranularityConfig(TestCase):
 	    self.send_packet(itf, "ipv4-udp")
 
         self.dut.send_expect("quit", "# ", 30)
-        dts.results_table_print()
-        self.verify(len(dts.results_table_rows) > 1, "There is no data in the table, testcase failed!")
+        self.result_table_print()
+        result_rows = self.result_table_getrows()
+        self.verify(len(result_rows) > 1, "There is no data in the table, testcase failed!")
 
         #check the results   
-        if ((dts.results_table_rows[1][1]==dts.results_table_rows[2][1])or(dts.results_table_rows[1][3]==dts.results_table_rows[2][3])):
+        if ((result_rows[1][1]==result_rows[2][1])or(result_rows[1][3]==result_rows[2][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-        elif ((dts.results_table_rows[1][1]==dts.results_table_rows[3][1])or(dts.results_table_rows[1][3]==dts.results_table_rows[3][3])):
+        elif ((result_rows[1][1]==result_rows[3][1])or(result_rows[1][3]==result_rows[3][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-        elif ((dts.results_table_rows[2][1]==dts.results_table_rows[3][1])or(dts.results_table_rows[2][3]==dts.results_table_rows[3][3])):
+        elif ((result_rows[2][1]==result_rows[3][1])or(result_rows[2][3]==result_rows[3][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-        elif ((dts.results_table_rows[1][1]==dts.results_table_rows[5][1])or(dts.results_table_rows[1][3]==dts.results_table_rows[5][3])):
+        elif ((result_rows[1][1]==result_rows[5][1])or(result_rows[1][3]==result_rows[5][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-        elif ((dts.results_table_rows[2][1]==dts.results_table_rows[5][1])or(dts.results_table_rows[2][3]==dts.results_table_rows[5][3])):
+        elif ((result_rows[2][1]==result_rows[5][1])or(result_rows[2][3]==result_rows[5][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-        elif ((dts.results_table_rows[3][1]==dts.results_table_rows[5][1])or(dts.results_table_rows[3][3]==dts.results_table_rows[5][3])):
+        elif ((result_rows[3][1]==result_rows[5][1])or(result_rows[3][3]==result_rows[5][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-        elif ((dts.results_table_rows[1][1]!=dts.results_table_rows[4][1])or(dts.results_table_rows[1][3]!=dts.results_table_rows[4][3])):
+        elif ((result_rows[1][1]!=result_rows[4][1])or(result_rows[1][3]!=result_rows[4][3])):
             flag = 0
             self.verify(flag, "The two hash values are different, rss_granularity_config failed!")
 
@@ -388,29 +390,30 @@ class TestFortvilleRssGranularityConfig(TestCase):
             self.send_packet(itf, "ipv6-tcp")
 
 	self.dut.send_expect("quit", "# ", 30)
-        dts.results_table_print()
-        self.verify(len(dts.results_table_rows) > 1, "There is no data in the table, testcase failed!")
+        self.result_table_print()
+        result_rows = self.result_table_getrows()
+        self.verify(len(result_rows) > 1, "There is no data in the table, testcase failed!")
 
         #check the results
-        if ((dts.results_table_rows[1][1]==dts.results_table_rows[2][1])or(dts.results_table_rows[1][3]==dts.results_table_rows[2][3])):
+        if ((result_rows[1][1]==result_rows[2][1])or(result_rows[1][3]==result_rows[2][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-        elif ((dts.results_table_rows[1][1]==dts.results_table_rows[3][1])or(dts.results_table_rows[1][3]==dts.results_table_rows[3][3])):
+        elif ((result_rows[1][1]==result_rows[3][1])or(result_rows[1][3]==result_rows[3][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-        elif ((dts.results_table_rows[2][1]==dts.results_table_rows[3][1])or(dts.results_table_rows[2][3]==dts.results_table_rows[3][3])):
+        elif ((result_rows[2][1]==result_rows[3][1])or(result_rows[2][3]==result_rows[3][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-        elif ((dts.results_table_rows[1][1]==dts.results_table_rows[5][1])or(dts.results_table_rows[1][3]==dts.results_table_rows[5][3])):
+        elif ((result_rows[1][1]==result_rows[5][1])or(result_rows[1][3]==result_rows[5][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-        elif ((dts.results_table_rows[2][1]==dts.results_table_rows[5][1])or(dts.results_table_rows[2][3]==dts.results_table_rows[5][3])):
+        elif ((result_rows[2][1]==result_rows[5][1])or(result_rows[2][3]==result_rows[5][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-        elif ((dts.results_table_rows[3][1]==dts.results_table_rows[5][1])or(dts.results_table_rows[3][3]==dts.results_table_rows[5][3])):
+        elif ((result_rows[3][1]==result_rows[5][1])or(result_rows[3][3]==result_rows[5][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-        elif ((dts.results_table_rows[1][1]!=dts.results_table_rows[4][1])or(dts.results_table_rows[1][3]!=dts.results_table_rows[4][3])):
+        elif ((result_rows[1][1]!=result_rows[4][1])or(result_rows[1][3]!=result_rows[4][3])):
             flag = 0
             self.verify(flag, "The two hash values are different, rss_granularity_config failed!")
 
@@ -463,29 +466,30 @@ class TestFortvilleRssGranularityConfig(TestCase):
             self.send_packet(itf, "ipv6-udp")
 
         self.dut.send_expect("quit", "# ", 30)
-        dts.results_table_print()
-        self.verify(len(dts.results_table_rows) > 1, "There is no data in the table, testcase failed!")
+        self.result_table_print()
+        result_rows = self.result_table_getrows()
+        self.verify(len(result_rows) > 1, "There is no data in the table, testcase failed!")
 
         #check the results
-        if ((dts.results_table_rows[1][1]==dts.results_table_rows[2][1])or(dts.results_table_rows[1][3]==dts.results_table_rows[2][3])):
+        if ((result_rows[1][1]==result_rows[2][1])or(result_rows[1][3]==result_rows[2][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-        elif ((dts.results_table_rows[1][1]==dts.results_table_rows[3][1])or(dts.results_table_rows[1][3]==dts.results_table_rows[3][3])):
+        elif ((result_rows[1][1]==result_rows[3][1])or(result_rows[1][3]==result_rows[3][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-        elif ((dts.results_table_rows[2][1]==dts.results_table_rows[3][1])or(dts.results_table_rows[2][3]==dts.results_table_rows[3][3])):
+        elif ((result_rows[2][1]==result_rows[3][1])or(result_rows[2][3]==result_rows[3][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-        elif ((dts.results_table_rows[1][1]==dts.results_table_rows[5][1])or(dts.results_table_rows[1][3]==dts.results_table_rows[5][3])):
+        elif ((result_rows[1][1]==result_rows[5][1])or(result_rows[1][3]==result_rows[5][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-        elif ((dts.results_table_rows[2][1]==dts.results_table_rows[5][1])or(dts.results_table_rows[2][3]==dts.results_table_rows[5][3])):
+        elif ((result_rows[2][1]==result_rows[5][1])or(result_rows[2][3]==result_rows[5][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-        elif ((dts.results_table_rows[3][1]==dts.results_table_rows[5][1])or(dts.results_table_rows[3][3]==dts.results_table_rows[5][3])):
+        elif ((result_rows[3][1]==result_rows[5][1])or(result_rows[3][3]==result_rows[5][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-        elif ((dts.results_table_rows[1][1]!=dts.results_table_rows[4][1])or(dts.results_table_rows[1][3]!=dts.results_table_rows[4][3])):
+        elif ((result_rows[1][1]!=result_rows[4][1])or(result_rows[1][3]!=result_rows[4][3])):
             flag = 0
             self.verify(flag, "The two hash values are different, rss_granularity_config failed!")
 
@@ -532,20 +536,21 @@ class TestFortvilleRssGranularityConfig(TestCase):
 
 
 	self.dut.send_expect("quit", "# ", 30)
-        dts.results_table_print()
-        self.verify(len(dts.results_table_rows) > 1, "There is no data in the table, testcase failed!")
+        self.result_table_print()
+        result_rows = self.result_table_getrows()
+        self.verify(len(result_rows) > 1, "There is no data in the table, testcase failed!")
 
         #check the results
-        if ((dts.results_table_rows[1][1]!=dts.results_table_rows[2][1])or(dts.results_table_rows[1][3]!=dts.results_table_rows[2][3])):
+        if ((result_rows[1][1]!=result_rows[2][1])or(result_rows[1][3]!=result_rows[2][3])):
             flag = 0
             self.verify(flag, "The two hash values are different, rss_granularity_config failed!")
-        elif ((dts.results_table_rows[1][1]==dts.results_table_rows[3][1])or(dts.results_table_rows[1][3]==dts.results_table_rows[3][3])):
+        elif ((result_rows[1][1]==result_rows[3][1])or(result_rows[1][3]==result_rows[3][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-        elif ((dts.results_table_rows[1][1]==dts.results_table_rows[4][1])or(dts.results_table_rows[1][3]==dts.results_table_rows[4][3])):
+        elif ((result_rows[1][1]==result_rows[4][1])or(result_rows[1][3]==result_rows[4][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-        elif ((dts.results_table_rows[3][1]==dts.results_table_rows[4][1])or(dts.results_table_rows[3][3]==dts.results_table_rows[4][3])):
+        elif ((result_rows[3][1]==result_rows[4][1])or(result_rows[3][3]==result_rows[4][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
 
@@ -584,32 +589,33 @@ class TestFortvilleRssGranularityConfig(TestCase):
             #set hash input set by testpmd on dut, enable src-ipv4 & dst-ipv4
             self.dut.send_expect("set_hash_input_set 0 ipv4-other src-ipv4 add", "testpmd> ")
             self.dut.send_expect("set_hash_input_set 0 ipv4-other dst-ipv4 add", "testpmd> ")
-	    self.send_packet(itf, "ipv4-other")
+	        self.send_packet(itf, "ipv4-other")
 
             #set hash input set by testpmd on dut, enable src-ipv4, dst-ipv4, gre-key-len 3
             self.dut.send_expect("global_config 0 gre-key-len 3", "testpmd> ")
-	    self.dut.send_expect("set_hash_input_set 0 ipv4-other gre-key add", "testpmd> ")
+	        self.dut.send_expect("set_hash_input_set 0 ipv4-other gre-key add", "testpmd> ")
             self.send_packet(itf, "ipv4-other")
 
-	    #set hash input set by testpmd on dut, enable src-ipv4, dst-ipv4, gre-key-len 4
+	        #set hash input set by testpmd on dut, enable src-ipv4, dst-ipv4, gre-key-len 4
             self.dut.send_expect("global_config 0 gre-key-len 4", "testpmd> ")
-	    self.send_packet(itf, "ipv4-other")
+	        self.send_packet(itf, "ipv4-other")
 
         self.dut.send_expect("quit", "# ", 30)
-        dts.results_table_print()
-        self.verify(len(dts.results_table_rows) > 1, "There is no data in the table, testcase failed!")
+        self.result_table_print()
+        result_rows = self.result_table_getrows()
+        self.verify(len(result_rows) > 1, "There is no data in the table, testcase failed!")
 
         #check the results
-  	if ((dts.results_table_rows[1][1]==dts.results_table_rows[2][1])or(dts.results_table_rows[1][3]==dts.results_table_rows[2][3])):
+        if ((result_rows[1][1]==result_rows[2][1])or(result_rows[1][3]==result_rows[2][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-        elif ((dts.results_table_rows[1][1]!=dts.results_table_rows[3][1])or(dts.results_table_rows[1][3]!=dts.results_table_rows[3][3])):
+        elif ((result_rows[1][1]!=result_rows[3][1])or(result_rows[1][3]!=result_rows[3][3])):
             flag = 0
             self.verify(flag, "The two hash values are different, rss_granularity_config failed!")
-        elif ((dts.results_table_rows[1][1]==dts.results_table_rows[4][1])or(dts.results_table_rows[1][3]==dts.results_table_rows[4][3])):
+        elif ((result_rows[1][1]==result_rows[4][1])or(result_rows[1][3]==result_rows[4][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-        elif ((dts.results_table_rows[4][1]==dts.results_table_rows[5][1])or(dts.results_table_rows[4][3]==dts.results_table_rows[5][3])):
+        elif ((result_rows[4][1]==result_rows[5][1])or(result_rows[4][3]==result_rows[5][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
 

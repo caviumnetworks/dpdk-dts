@@ -34,7 +34,7 @@ DPDK Test suite.
 Test Timer.
 """
 
-import dts
+import utils
 import re
 import time
 
@@ -69,7 +69,7 @@ class TestTimer(TestCase):
 
         # get the mask for the first core
         cores = self.dut.get_core_list('1S/1C/1T')
-        coreMask = dts.create_mask(cores)
+        coreMask = utils.create_mask(cores)
 
         # run timer on the background
         cmdline = "./examples/timer/build/app/timer -n 1 -c " + coreMask + " &"
@@ -80,7 +80,7 @@ class TestTimer(TestCase):
         self.dut.send_expect("killall timer", "# ", 5)
 
         # verify timer0
-        dts.regexp(out, r'timer0_cb\(\) on lcore (\d+)')
+        utils.regexp(out, r'timer0_cb\(\) on lcore (\d+)')
         pat = re.compile(r'timer0_cb\(\) on lcore (\d+)')
         match = pat.findall(out)
         self.verify(match or match[0] == 0, "timer0 error")

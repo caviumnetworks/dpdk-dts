@@ -38,7 +38,6 @@ Test queue start stop Feature
 
 """
 
-import dts
 import time
 import re
 import os

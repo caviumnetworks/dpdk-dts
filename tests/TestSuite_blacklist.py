@@ -33,7 +33,7 @@
 DPDK Test suite.
 Test device blacklisting.
 """
-import dts
+import utils
 from test_case import TestCase
 from pmd_output import PmdOutput
 
@@ -78,7 +78,7 @@ class TestBlackList(TestCase):
                 regexp_blacklisted_port = self.regexp_blacklisted_port % (int(pci.split(':')[0], 16), pci.split(':')[1])
             else:
                 regexp_blacklisted_port = self.regexp_blacklisted_port % self.dut.ports_info[port]['pci']
-            matching_ports = dts.regexp(output, regexp_blacklisted_port, True)
+            matching_ports = utils.regexp(output, regexp_blacklisted_port, True)
             if blacklisted:
                 self.verify(len(matching_ports) == 1,
                             "Blacklisted port is being initialized")
@@ -92,7 +92,7 @@ class TestBlackList(TestCase):
         """
         out = self.pmdout.start_testpmd("Default")
         rexp = r"Link"
-        match_status = dts.regexp(out, rexp, True)
+        match_status = utils.regexp(out, rexp, True)
 
         self.check_blacklisted_ports(out, self.ports)
 

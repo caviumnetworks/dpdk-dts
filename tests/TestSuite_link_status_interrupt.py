@@ -12,7 +12,7 @@ Link Status Detection
 # is left here for legacy reasons.
 
 
-import dts
+import utils
 import re
 
 testPorts = []
@@ -95,17 +95,17 @@ class TestLinkStatusInterrupt(TestCase):
         """
 
         memChannel = self.dut.get_memory_channels()
-        portMask = dts.create_mask(testPorts)
-        if dts.drivername in ["igb_uio"]:
+        portMask = utils.create_mask(testPorts)
+        if self.drivername in ["igb_uio"]:
             cmdline = "./examples/link_status_interrupt/build/link_status_interrupt -c f -n %s -- -q 2 -p %s" % (
                 memChannel, portMask)
-        elif dts.drivername in ["vfio-pci"]:
+        elif self.drivername in ["vfio-pci"]:
             cmdline = "./examples/link_status_interrupt/build/link_status_interrupt -c f -n %s --vfio-intr=intx  -- -q 2 -p %s" % (
                 memChannel, portMask)
         else:
             print "unknow driver"
         for n in range(len(intr_mode)):
-            if dts.drivername in ["igb_uio"]:
+            if self.drivername in ["igb_uio"]:
                 self.dut.send_expect("rmmod igb_uio", "# ")
                 self.dut.send_expect(
                     "insmod %s/kmod/igb_uio.ko %s" % (self.target, intr_mode[n]), "# ")
@@ -131,17 +131,17 @@ class TestLinkStatusInterrupt(TestCase):
         """
 
         memChannel = self.dut.get_memory_channels()
-        portMask = dts.create_mask(testPorts)
-        if dts.drivername in ["igb_uio"]:
+        portMask = utils.create_mask(testPorts)
+        if self.drivername in ["igb_uio"]:
             cmdline = "./examples/link_status_interrupt/build/link_status_interrupt -c f -n %s -- -q 2 -p %s" % (
                 memChannel, portMask)
-        elif dts.drivername in ["vfio-pci"]:
+        elif self.drivername in ["vfio-pci"]:
             cmdline = "./examples/link_status_interrupt/build/link_status_interrupt -c f -n %s --vfio-intr=intx -- -q 2 -p %s " % (
                 memChannel, portMask)
         else:
             print "unknow driver"
         for n in range(1, len(intr_mode)):
-            if dts.drivername in ["igb_uio"]:
+            if self.drivername in ["igb_uio"]:
                 self.dut.send_expect("rmmod igb_uio", "# ")
                 self.dut.send_expect(
                     "insmod %s/kmod/igb_uio.ko %s" % (self.target, intr_mode[n]), "# ")
@@ -178,7 +178,7 @@ class TestLinkStatusInterrupt(TestCase):
         """
         Recovery.
         """
-        if dts.drivername in ["igb_uio"]:
+        if self.drivername in ["igb_uio"]:
             self.dut.send_expect("^C", "# ")
             self.dut.send_expect("rmmod igb_uio", "# ")
             self.dut.send_expect(
@@ -187,7 +187,7 @@ class TestLinkStatusInterrupt(TestCase):
                 "dmesg -c | grep '\<Use MSIX interrupt by default\>'", "# ")
             self.verify(
                 'Use MSIX interrupt by default' in out, "Fail to recovery default igb_uio")
-        elif dts.drivername in ["vfio-pci"]:
+        elif self.drivername in ["vfio-pci"]:
             self.verify(Ture, "not need run this case, when used vfio driver")
         else:
             print "unknow driver"

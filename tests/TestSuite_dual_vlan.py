@@ -37,7 +37,7 @@ Test the support of Dual VLAN Offload Features by Poll Mode Drivers.
 
 """
 
-import dts
+import utils
 import random
 import re
 
@@ -90,12 +90,12 @@ class TestDualVlan(TestCase):
         self.ports_socket = self.dut.get_numa_id(ports[0])
 
         cores = self.dut.get_core_list('1S/2C/2T')
-        coreMask = dts.create_mask(cores)
+        coreMask = utils.create_mask(cores)
 
         ports = self.dut.get_ports(self.nic)
         valports = [_ for _ in ports if self.tester.get_local_port(_) != -1]
 
-        portMask = dts.create_mask(valports[:2])
+        portMask = utils.create_mask(valports[:2])
 
         dutRxPortId = valports[0]
         dutTxPortId = valports[1]

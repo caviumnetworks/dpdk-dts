@@ -43,7 +43,7 @@ translate the offloaded packet types into these 7 fields of information, for
 user applications
 """
 
-import dts
+import utils
 from test_case import TestCase
 from exception import VerifyFailure
 from packet import Packet
@@ -85,9 +85,9 @@ class TestUniPacket(TestCase):
             out = self.dut.get_session_output(timeout=2)
             for pkt_layer_name in pkt_names:
                 if pkt_layer_name not in out:
-                    print dts.RED("Fail to detect %s" % pkt_layer_name)
+                    print utils.RED("Fail to detect %s" % pkt_layer_name)
                     raise VerifyFailure("Failed to detect %s" % pkt_layer_name)
-            print dts.GREEN("Detected %s successfully" % pkt_type)
+            print utils.GREEN("Detected %s successfully" % pkt_type)
 
     def test_l2pkt_detect(self):
         """
@@ -107,7 +107,7 @@ class TestUniPacket(TestCase):
             pkt.send_pkt(tx_port=self.tester_iface)
             out = self.dut.get_session_output(timeout=2)
             if pkt_name in out:
-                print dts.GREEN("Detected L2 %s successfully" % l2_type)
+                print utils.GREEN("Detected L2 %s successfully" % l2_type)
             else:
                 raise VerifyFailure("Failed to detect L2 %s" % l2_type)
 

@@ -34,7 +34,7 @@
 DPDK Test suite.
 Test Skeleton.
 """
-import dts
+import utils
 import string
 import time
 from test_case import TestCase
@@ -56,7 +56,7 @@ class TestSkeleton(TestCase):
         self.verify(len(self.dut_ports) >= 2, "Insufficient ports")
 
         cores = self.dut.get_core_list("1S/2C/1T")
-        self.coremask = dts.create_mask(cores)
+        self.coremask = utils.create_mask(cores)
         
         self.mac = self.dut.get_mac_address(self.dut_ports[0])
         self.path = "./examples/skeleton/build/basicfwd"

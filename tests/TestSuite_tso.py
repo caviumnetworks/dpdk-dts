@@ -37,7 +37,7 @@ Tests for TSO.
 
 """
 
-import dts
+import utils
 import time
 import re
 from test_case import TestCase
@@ -65,8 +65,8 @@ class TestTSO(TestCase):
         self.verify(len(self.dut_ports) >= 2, "Insufficient ports for testing")
 
         # Verify that enough threads are available
-        self.all_cores_mask = dts.create_mask(self.dut.get_core_list("all"))
-        self.portMask = dts.create_mask([self.dut_ports[0], self.dut_ports[1]])
+        self.all_cores_mask = utils.create_mask(self.dut.get_core_list("all"))
+        self.portMask = utils.create_mask([self.dut_ports[0], self.dut_ports[1]])
         self.ports_socket = self.dut.get_numa_id(self.dut_ports[0])
 
         self.frame_sizes = [128, 1458]
@@ -87,7 +87,7 @@ class TestTSO(TestCase):
 
         self.blacklist = ""
 
-        # self.coreMask = dts.create_mask(cores)
+        # self.coreMask = utils.create_mask(cores)
 
         self.headers_size = HEADER_SIZE['eth'] + HEADER_SIZE[
             'ip'] + HEADER_SIZE['tcp']
@@ -150,7 +150,7 @@ class TestTSO(TestCase):
         mac = self.dut.get_mac_address(self.dut_ports[0])
         cores = self.dut.get_core_list("1S/2C/2T")
         self.verify(cores is not None, "Insufficient cores for speed testing")
-        self.coreMask = dts.create_mask(cores)
+        self.coreMask = utils.create_mask(cores)
 
         padding = self.frame_sizes[0] - self.headers_size
 
@@ -216,7 +216,7 @@ class TestTSO(TestCase):
 
         cores = self.dut.get_core_list("1S/2C/2T")
         self.verify(cores is not None, "Insufficient cores for speed testing")
-        self.coreMask = dts.create_mask(cores)
+        self.coreMask = utils.create_mask(cores)
 
         padding = self.frame_sizes[0] - self.headers_size
 
@@ -281,7 +281,7 @@ class TestTSO(TestCase):
         for test_cycle in self.test_cycles:
             core_config = test_cycle['cores']
             cores = self.dut.get_core_list(core_config, socket=self.ports_socket)
-            self.coreMask = dts.create_mask(cores)
+            self.coreMask = utils.create_mask(cores)
             if len(cores) > 2:
                 queues = len(cores) / 2
             else:
@@ -291,8 +291,8 @@ class TestTSO(TestCase):
 
             info = "Executing PMD using %s\n" % test_cycle['cores']
             self.logger.info(info)
-            dts.report(info, annex=True)
-            dts.report(command_line + "\n\n", frame=True, annex=True)
+            self.rst_report(info, annex=True)
+            self.rst_report(command_line + "\n\n", frame=True, annex=True)
 
             self.dut.send_expect(command_line, "testpmd> ", 120)
             self.dut.send_expect("csum set ip hw %d" % self.dut_ports[0], "testpmd> ", 120)
@@ -340,13 +340,13 @@ class TestTSO(TestCase):
                             frame_size] > 0, "No traffic detected")
 
         # Print results
-        dts.results_table_add_header(self.table_header)
+        self.result_table_create(self.table_header)
         for frame_size in self.frame_sizes:
             table_row = [frame_size]
             for test_cycle in self.test_cycles:
                 table_row.append(test_cycle['Mpps'][frame_size])
                 table_row.append(test_cycle['pct'][frame_size])
 
-            dts.results_table_add_row(table_row)
+            self.result_table_add(table_row)
 
-        dts.results_table_print()
+        self.result_table_print()

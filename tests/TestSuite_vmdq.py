@@ -7,7 +7,7 @@ Tests for vmdq.
 
 """
 
-import dts
+import utils
 import re
 from etgen import IxiaPacketGenerator
 from test_case import TestCase
@@ -62,7 +62,7 @@ class TestVmdq(TestCase, IxiaPacketGenerator):
         minimum = 1000000
         maximun = 0
 
-        # Need to use Python re package because dts.regexp only handles 1 group,
+        # Need to use Python re package because utils.regexp only handles 1 group,
         # we need 4.
         scanner = re.compile(
             "^Pool [0-9]+: ([0-9]+) ([0-9]+) ([0-9]+) ([0-9]+)$")
@@ -91,9 +91,9 @@ class TestVmdq(TestCase, IxiaPacketGenerator):
         self.dut_ports = self.dut.get_ports(self.nic)
 
         core_list = self.dut.get_core_list("1S/4C/1T", socket=self.ports_socket)
-        core_mask = dts.create_mask(core_list)
+        core_mask = utils.create_mask(core_list)
 
-        port_mask = dts.create_mask([self.dut_ports[0], self.dut_ports[1]])
+        port_mask = utils.create_mask([self.dut_ports[0], self.dut_ports[1]])
         # Run the application
         out = self.dut.send_expect("./examples/vmdq/build/vmdq_app -n 4 -c %s -- -p %s --nb-pools %s&" %
                                    (core_mask, port_mask, str(npools)), "reading queues", 120)
@@ -153,13 +153,13 @@ class TestVmdq(TestCase, IxiaPacketGenerator):
         frame_sizes = [64, 128, 256, 512, 1024, 1280, 1518]
         for config in self.core_configs:
 
-            print dts.BLUE(config["cores"])
+            print utils.BLUE(config["cores"])
             self.dut.kill_all()
 
             core_config = config['cores']
             core_list = self.dut.get_core_list(core_config,socket=self.ports_socket)
-            core_mask = dts.create_mask(core_list)
-            portmask = dts.create_mask(self.dut.get_ports())
+            core_mask = utils.create_mask(core_list)
+            portmask = utils.create_mask(self.dut.get_ports())
             if self.nic in ("niantic", "springfountain"):
                 self.queues = 64
                 self.dut.send_expect(
@@ -184,14 +184,14 @@ class TestVmdq(TestCase, IxiaPacketGenerator):
             tx_port = self.tester.get_local_port(self.dut_ports[0])
             rx_port = self.tester.get_local_port(self.dut_ports[1])
 
-            print dts.GREEN("Waiting for application to initialize")
+            print utils.GREEN("Waiting for application to initialize")
             sleep(5)
 
             for frame_size in frame_sizes:
 
                 TestVmdq.current_frame_size = frame_size
 
-                print dts.BLUE(str(frame_size))
+                print utils.BLUE(str(frame_size))
 
                 self.tester.scapy_append('dstmac="%s"' % self.destmac_port0)
                 tx_mac = self.tester.get_mac(tx_port)
@@ -226,14 +226,14 @@ class TestVmdq(TestCase, IxiaPacketGenerator):
                     self.core_configs[n]['mpps'][size] is not 0, "No traffic detected")
 
         # Print results
-        dts.results_table_add_header(
+        self.result_table_create(
             ['Frame size'] + [n['cores'] for n in self.core_configs])
 
         for size in frame_sizes:
-            dts.results_table_add_row(
+            self.result_table_add(
                 [size] + [n['mpps'][size] for n in self.core_configs])
 
-        dts.results_table_print()
+        self.result_table_print()
 
     # Override etgen.dot1q function
     def dot1q(self, port, prio, id, vlan, type):

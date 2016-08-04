@@ -3,7 +3,7 @@
 import re
 import time
 
-import dts
+import utils
 from qemu_kvm import QEMUKvm
 from test_case import TestCase
 from pmd_output import PmdOutput
@@ -29,7 +29,7 @@ class TestVfJumboFrame(TestCase):
         self.port = self.dut_ports[0]
         self.vm_port = 0
         cores = self.dut.get_core_list("1S/1C/1T")
-        self.port_mask = dts.create_mask([self.port])
+        self.port_mask = utils.create_mask([self.port])
         
         # enable tester mtu
         tester_port = self.tester.get_local_port(self.port)

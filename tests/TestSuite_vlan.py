@@ -37,7 +37,7 @@ Test the support of VLAN Offload Features by Poll Mode Drivers.
 
 """
 
-import dts
+import utils
 import time
 
 
@@ -67,7 +67,7 @@ class TestVlan(TestCase):
         valports = [_ for _ in ports if self.tester.get_local_port(_) != -1]
         dutRxPortId = valports[0]
         dutTxPortId = valports[0]
-        portMask = dts.create_mask(valports[:1])
+        portMask = utils.create_mask(valports[:1])
 
         self.pmdout = PmdOutput(self.dut)
         self.pmdout.start_testpmd("Default", "--portmask=%s --port-topology=loop" % portMask)
@@ -133,7 +133,7 @@ class TestVlan(TestCase):
         """
 
         if self.kdriver == "fm10k":
-            print dts.RED("fm10k not support this case\n")
+            print utils.RED("fm10k not support this case\n")
             return
         self.dut.send_expect("rx_vlan add %d %s" % (self.vlan, dutRxPortId), "testpmd> ")
         self.dut.send_expect("vlan set strip off  %s" % dutRxPortId, "testpmd> ")
@@ -178,7 +178,7 @@ class TestVlan(TestCase):
     def test_vlan_strip_config_off(self):
 
         if self.kdriver == "fm10k":
-            print dts.RED("fm10k not support this case\n")
+            print utils.RED("fm10k not support this case\n")
             return
         self.dut.send_expect("vlan set strip off %s" % dutRxPortId, "testpmd> ", 20)
         self.dut.send_expect("rx_vlan add %d %s" % (self.vlan, dutRxPortId), "testpmd> ", 20)

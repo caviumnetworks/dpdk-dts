@@ -39,7 +39,7 @@ from scapy.utils import struct, socket, PcapWriter
 from settings import HEADER_SIZE
 from test_case import TestCase
 from time import sleep
-import dts
+import utils
 
 
 class TestIPPipeline(TestCase):
@@ -304,7 +304,7 @@ class TestIPPipeline(TestCase):
         out = self.dut.build_dpdk_apps("./examples/ip_pipeline")
         self.verify("Error" not in out, "Compilation error")
 
-        self.ports_mask = dts.create_mask(
+        self.ports_mask = utils.create_mask(
             [self.dut_ports[0], self.dut_ports[1]])
         self.coremask = "0x3e"  # IP Pipeline app requires FIVE cores
 
@@ -336,7 +336,7 @@ class TestIPPipeline(TestCase):
 
         for frames_number in TestIPPipeline.number_of_frames:
             for inter in TestIPPipeline.inter:
-                print dts.BLUE(
+                print utils.BLUE(
                     "\tNumber of frames %d, interval %.1f" % (frames_number,
                                                               inter))
                 stats = self.send_and_sniff_pcap_file(pcap_file, frames_number,
@@ -370,7 +370,7 @@ class TestIPPipeline(TestCase):
             self.create_pcap_file(pcap_file, frame_size, 100, True)
             self.tester.session.copy_file_to(pcap_file)
 
-            print dts.BLUE("\tFrame size %d, interval %.1f" % (frame_size,
+            print utils.BLUE("\tFrame size %d, interval %.1f" % (frame_size,
                                                                inter))
 
             stats = self.send_and_sniff_pcap_file(pcap_file, frames_number,

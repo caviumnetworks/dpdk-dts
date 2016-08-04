@@ -33,7 +33,6 @@
 DPDK Test suite.
 Test Scattered Packets.
 """
-import dts
 from test_case import TestCase
 from pmd_output import PmdOutput
 from packet import Packet, sniff_packets, load_sniff_packets, strip_pktload

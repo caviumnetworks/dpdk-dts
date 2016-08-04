@@ -34,7 +34,7 @@ Test vf to vf nic bridge
 """
 
 import re
-import dts
+import utils
 import time
 import pdb
 
@@ -82,7 +82,7 @@ class TestVF2VFBridge(TestCase):
             if self.vm0_dut is None:
                 raise Exception('Set up VM0 failed')
         except Exception as e:
-            print dts.RED(str(e))
+            print utils.RED(str(e))
         
         self.vm1 = QEMUKvm(self.dut, 'vm1', 'vf_to_vf_bridge')
         self.vm1.set_vm_device(driver='pci-assign', **vf1_prop)
@@ -91,7 +91,7 @@ class TestVF2VFBridge(TestCase):
             if self.vm1_dut is None:
                 raise Exception('Set up VM1 failed')
         except Exception as e:
-            print dts.RED(str(e))
+            print utils.RED(str(e))
     
     def clear_vf_to_vf_env(self):
         if self.vm0 is not None:
@@ -210,7 +210,7 @@ class TestVF2VFBridge(TestCase):
         recv_info = recv_pattern.search(recv_tcpdump)
         recv_str = recv_info.group(0).split(' ')[0]
         recv_number = int(recv_str, 10)
-        self.vm0_dut.bind_interfaces_linux(dts.drivername)
+        self.vm0_dut.bind_interfaces_linux(self.drivername)
         
         self.verify(recv_number is SEND_PACKET, 'Rx port recv error: %d' % recv_number)
     
@@ -236,7 +236,7 @@ class TestVF2VFBridge(TestCase):
         self.vm1_dut.send_expect('scapy', '>>> ', 10)
         self.vm1_dut.send_expect('sendp([%s], iface="%s", count=%d)' % (pkt_content, vf1_intf, SEND_PACKET), '>>> ', 30)
         self.vm1_dut.send_expect('quit()', '# ', 10)
-        self.vm1_dut.bind_interfaces_linux(dts.drivername)
+        self.vm1_dut.bind_interfaces_linux(self.drivername)
         recv_num = self.vm0_pmd.get_pmd_stats(0)['RX-packets']
         self.vm0_pmd.execute_cmd('stop')
         self.vm0_pmd.execute_cmd('quit', '# ')

@@ -35,7 +35,7 @@ Test support of userspace ethtool feature
 """
 
 import os
-import dts
+import utils
 import time
 import re
 from test_case import TestCase
@@ -170,7 +170,7 @@ class TestUserspaceEthtool(TestCase, IxiaPacketGenerator):
                 port = m.group(1)
                 driver = m.group(2)
                 version = m.group(3)
-                print dts.GREEN("Detect port %s with %s driver\n" % (port, driver))
+                print utils.GREEN("Detect port %s with %s driver\n" % (port, driver))
 
         # ethtool doesn't support port disconnect by tools of linux 
         # only detect physical link disconnect status
@@ -296,8 +296,8 @@ class TestUserspaceEthtool(TestCase, IxiaPacketGenerator):
             md5 = self.strip_md5(portsinfo[index]['eeprom_file'])
             self.resize_linux_eeprom_file( portsinfo[index]['eeprom_file'], portsinfo[index]['ethtool_eeprom'])
             md5_ref = self.strip_md5(portsinfo[index]['ethtool_eeprom'])
-            print dts.GREEN("Reference eeprom md5 %s" % md5)
-            print dts.GREEN("Reference eeprom md5_ref %s" % md5_ref)
+            print utils.GREEN("Reference eeprom md5 %s" % md5)
+            print utils.GREEN("Reference eeprom md5_ref %s" % md5_ref)
             self.verify(md5 == md5_ref, "Dumped eeprom not same as linux dumped")
 
     def test_ring_parameter(self):

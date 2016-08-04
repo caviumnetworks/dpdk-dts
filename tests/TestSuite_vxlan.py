@@ -5,7 +5,7 @@ Test VXLAN behaviour in DPDK.
 
 """
 
-import dts
+import utils
 import string
 import re
 import time
@@ -271,14 +271,14 @@ class TestVxlan(TestCase, IxiaPacketGenerator):
         global valports
         valports = [_ for _ in ports if self.tester.get_local_port(_) != -1]
 
-        self.portMask = dts.create_mask(valports[:2])
+        self.portMask = utils.create_mask(valports[:2])
 
         # Verify that enough threads are available
         netdev = self.dut.ports_info[ports[0]]['port']
         self.ports_socket = netdev.socket
         cores = self.dut.get_core_list("1S/5C/1T", socket=self.ports_socket)
         self.verify(cores is not None, "Insufficient cores for speed testing")
-        self.coremask = dts.create_mask(cores)
+        self.coremask = utils.create_mask(cores)
 
         # start testpmd
         self.pmdout = PmdOutput(self.dut)
@@ -837,7 +837,7 @@ class TestVxlan(TestCase, IxiaPacketGenerator):
         recv_queue = perf_config['recvqueue']
         # there's known bug that if enable vxlan, rss will be disabled
         if tun_filter == "None" and recv_queue == 'Multi':
-            print dts.RED("RSS and Tunel filter can't enable in the same time")
+            print utils.RED("RSS and Tunel filter can't enable in the same time")
         else:
             self.enable_vxlan(dut_port)
 
@@ -913,11 +913,11 @@ class TestVxlan(TestCase, IxiaPacketGenerator):
         wrpcap(dest_pcap, pkts)
 
     def test_perf_vxlan_tunnelfilter_performance_2ports(self):
-        dts.results_table_add_header(self.tunnel_header)
+        self.result_table_create(self.tunnel_header)
         core_list = self.dut.get_core_list(
             '1S/%dC/1T' % (self.tunnel_multiqueue * 2 + 1),
             socket=self.ports_socket)
-        core_mask = dts.create_mask(core_list)
+        core_mask = utils.create_mask(core_list)
 
         pmd_temp = "./%(TARGET)s/app/testpmd -c %(COREMASK)s -n " + \
             "%(CHANNEL)d -- -i --disable-rss --rxq=2 --txq=2" + \
@@ -926,7 +926,7 @@ class TestVxlan(TestCase, IxiaPacketGenerator):
         for perf_config in self.tunnel_perf:
             tun_filter = perf_config['tunnel_filter']
             recv_queue = perf_config['recvqueue']
-            print dts.GREEN("Measure tunnel performance of [%s %s %s]"
+            print utils.GREEN("Measure tunnel performance of [%s %s %s]"
                             % (perf_config['Packet'], tun_filter, recv_queue))
 
             if tun_filter == "None" and recv_queue == "Multi":
@@ -991,12 +991,12 @@ class TestVxlan(TestCase, IxiaPacketGenerator):
             table_row = [perf_config['Packet'], tun_filter, recv_queue,
                          perf_config['Mpps'], perf_config['pct']]
 
-            dts.results_table_add_row(table_row)
+            self.result_table_add(table_row)
 
-        dts.results_table_print()
+        self.result_table_print()
 
     def test_perf_vxlan_checksum_performance_2ports(self):
-        dts.results_table_add_header(self.chksum_header)
+        self.result_table_create(self.chksum_header)
         vxlan = VxlanTestConfig(self, payload_size=self.vxlan_payload)
         vxlan.outer_mac_dst = self.dut.get_mac_address(self.dut_port)
         vxlan.pcap_file = "vxlan1.pcap"
@@ -1013,13 +1013,13 @@ class TestVxlan(TestCase, IxiaPacketGenerator):
         core_list = self.dut.get_core_list(
             '1S/%dC/1T' % (self.tunnel_multiqueue * 2 + 1),
             socket=self.ports_socket)
-        core_mask = dts.create_mask(core_list)
+        core_mask = utils.create_mask(core_list)
 
         tgen_dut = self.tester.get_local_port(self.dut_port)
         tgen_tester = self.tester.get_local_port(self.recv_port)
         for cal in self.cal_type:
             recv_queue = cal['recvqueue']
-            print dts.GREEN("Measure checksum performance of [%s %s %s]"
+            print utils.GREEN("Measure checksum performance of [%s %s %s]"
                             % (cal['Type'], recv_queue, cal['csum']))
 
             # configure flows
@@ -1091,9 +1091,9 @@ class TestVxlan(TestCase, IxiaPacketGenerator):
                                 "Queue %d no traffic" % queue)
 
             table_row = [cal['Type'], recv_queue, cal['Mpps'], cal['pct']]
-            dts.results_table_add_row(table_row)
+            self.result_table_add(table_row)
 
-        dts.results_table_print()
+        self.result_table_print()
 
     def enable_vxlan(self, port):
         self.dut.send_expect("rx_vxlan_port add %d %d"

@@ -36,7 +36,6 @@ Test RSS reta (redirection table) update function.
 import time
 import random
 import re
-import dts
 testQueues = [4]
 reta_entries = []
 reta_lines = []
@@ -182,7 +181,7 @@ class TestVfRss(TestCase):
 
         global reta_lines
         result = []
-        dts.results_table_add_header(
+        self.result_table_create(
             ['packet index', 'hash value', 'hash index', 'queue id', 'actual queue id', 'pass '])
 
         i = 0
@@ -200,11 +199,11 @@ class TestVfRss(TestCase):
             else:
                 status = "fail"
                 result.insert(i, 1)
-            dts.results_table_add_row(
+            self.result_table_add(
                 [i, tmp_reta_line["RSS hash"], hash_index, reta_entries[hash_index], tmp_reta_line["queue"], status])
             i = i + 1
 
-        dts.results_table_print()
+        self.result_table_print()
         reta_lines = []
         self.verify(sum(result) == 0, "the reta update function failed!")
 

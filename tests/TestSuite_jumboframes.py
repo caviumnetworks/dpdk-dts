@@ -34,7 +34,7 @@ DPDK Test suite.
 Test the support of Jumbo Frames by Poll Mode Drivers
 """
 
-import dts
+import utils
 import re
 from time import sleep
 from test_case import TestCase
@@ -115,9 +115,9 @@ class TestJumboframes(TestCase):
         self.tx_port = self.dut_ports[0]
 
         cores = self.dut.get_core_list("1S/2C/1T")
-        self.coremask = dts.create_mask(cores)
+        self.coremask = utils.create_mask(cores)
 
-        self.port_mask = dts.create_mask([self.rx_port, self.tx_port])
+        self.port_mask = utils.create_mask([self.rx_port, self.tx_port])
 
         if self.kdriver == "fm10k":
             netobj = self.dut.ports_info[self.tx_port]['port']
@@ -158,7 +158,7 @@ class TestJumboframes(TestCase):
         """
         # RRC has no ability to set the max pkt len to hardware
         if self.kdriver == "fm10k":
-            print dts.RED("fm10k not support this case\n")
+            print utils.RED("fm10k not support this case\n")
             return
         self.pmdout.start_testpmd("Default", "--max-pkt-len=%d --port-topology=loop" % (ETHER_STANDARD_MTU))
         self.dut.send_expect("set fwd mac", "testpmd> ")

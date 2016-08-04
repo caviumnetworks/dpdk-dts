@@ -5,7 +5,7 @@ Test NVGRE features in DPDK.
 
 """
 
-import dts
+import utils
 import string
 import re
 import time
@@ -352,16 +352,16 @@ class TestNvgre(TestCase):
         self.verify(self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single", "fortpark_TLV", "sageville", "sagepond"], "NVGRE Only supported by Fortville and Sageville")
         # Based on h/w type, choose how many ports to use
         ports = self.dut.get_ports(self.nic)
-        self.portmask = dts.create_mask(self.dut.get_ports(self.nic))
+        self.portmask = utils.create_mask(self.dut.get_ports(self.nic))
 
         # Verify that enough ports are available
         self.verify(len(ports) >= 2, "Insufficient ports for testing")
 
         # Verify that enough threads are available
-        self.all_cores_mask = dts.create_mask(self.dut.get_core_list("all"))
+        self.all_cores_mask = utils.create_mask(self.dut.get_core_list("all"))
         cores = self.dut.get_core_list("1S/5C/1T")
         self.verify(cores is not None, "Insufficient cores for speed testing")
-        self.coremask = dts.create_mask(cores)
+        self.coremask = utils.create_mask(cores)
 
         # start testpmd
         self.pmdout = PmdOutput(self.dut)
@@ -703,9 +703,9 @@ class TestNvgre(TestCase):
         self.nvgre_checksum(outer_vlan=1, inner_l4_invalid=1, inner_l4_type='SCTP')
 
     def test_perf_nvgre_tunnelfilter_performance_2ports(self):
-        dts.results_table_add_header(self.tunnel_header)
+        self.result_table_create(self.tunnel_header)
         core_list = self.dut.get_core_list('1S/%dC/1T' % (self.tunnel_multiqueue * 2), socket=self.ports_socket)
-        core_mask = dts.create_mask(core_list)
+        core_mask = utils.create_mask(core_list)
 
         command_line = "./%s/app/testpmd -c %s -n %d -- -i --disable-rss --coremask=%s --rxq=4 --txq=4 --portmask=%s" % (self.target,
                                                                                                                          self.all_cores_mask,
@@ -787,9 +787,9 @@ class TestNvgre(TestCase):
                          perf_config['recvqueue'], perf_config['Mpps'],
                          perf_config['pct']]
 
-            dts.results_table_add_row(table_row)
+            self.result_table_add(table_row)
 
-        dts.results_table_print()
+        self.result_table_print()
 
     def test_perf_nvgre_checksum_performance_2ports(self):
         config = NvgreTestConfig(self)
@@ -809,7 +809,7 @@ class TestNvgre(TestCase):
                           self.tester.get_local_port(self.dut_port),
                           "nvgre.pcap"))
 
-        all_cores_mask = dts.create_mask(self.dut.get_core_list("all"))
+        all_cores_mask = utils.create_mask(self.dut.get_core_list("all"))
 
         # socket/core/thread
         for test_cycle in self.test_cycles:
@@ -822,7 +822,7 @@ class TestNvgre(TestCase):
             else:
                 core_list = self.dut.get_core_list(core_config)
 
-            core_mask = dts.create_mask(core_list)
+            core_mask = utils.create_mask(core_list)
 
             command_line = "./%s/app/testpmd -c %s -n %d -- -i \
  --disable-rss --coremask=%s --portmask=%s" % (self.target,
@@ -852,7 +852,7 @@ class TestNvgre(TestCase):
 
             self.dut.send_expect("quit", "# ", 10)
 
-        dts.results_table_add_header(self.table_header)
+        self.result_table_create(self.table_header)
 
         # save the results
         for cal in self.cal_type:
@@ -861,9 +861,9 @@ class TestNvgre(TestCase):
                 table_row.append(test_cycle['Mpps'][cal['Type']])
                 table_row.append(test_cycle['pct'][cal['Type']])
 
-            dts.results_table_add_row(table_row)
+            self.result_table_add(table_row)
 
-        dts.results_table_print()
+        self.result_table_print()
 
     def set_up(self):
         """

@@ -35,7 +35,7 @@ VM power manager test suite.
 """
 
 import re
-import dts
+import utils
 from test_case import TestCase
 from etgen import IxiaPacketGenerator
 from settings import HEADER_SIZE
@@ -158,7 +158,7 @@ class TestVmPowerManager(TestCase, IxiaPacketGenerator):
                 self.vm_dut.send_expect(
                     "set_cpu_freq %d down" % vcpu, "vmpower\(guest\)>")
                 cur_freq = self.get_cpu_frequency(self.vcpu_map[vcpu])
-                print dts.GREEN("After freqency down, freq is %d\n" % cur_freq)
+                print utils.GREEN("After freqency down, freq is %d\n" % cur_freq)
                 self.verify(
                     ori_freq > cur_freq, "Cpu freqenecy can not scale down")
                 ori_freq = cur_freq
@@ -187,7 +187,7 @@ class TestVmPowerManager(TestCase, IxiaPacketGenerator):
                 self.vm_dut.send_expect(
                     "set_cpu_freq %d up" % vcpu, "vmpower\(guest\)>")
                 cur_freq = self.get_cpu_frequency(self.vcpu_map[vcpu])
-                print dts.GREEN("After freqency up, freq is %d\n" % cur_freq)
+                print utils.GREEN("After freqency up, freq is %d\n" % cur_freq)
                 self.verify(
                     cur_freq > ori_freq, "Cpu freqenecy can not scale up")
                 ori_freq = cur_freq
@@ -216,7 +216,7 @@ class TestVmPowerManager(TestCase, IxiaPacketGenerator):
             max_freq = int(out)
 
             self.verify(freq == max_freq, "Cpu max frequency not correct")
-            print dts.GREEN("After freqency max, freq is %d\n" % max_freq)
+            print utils.GREEN("After freqency max, freq is %d\n" % max_freq)
         self.vm_dut.send_expect("quit", "# ")
 
     def test_vm_power_managment_freqmin(self):
@@ -241,7 +241,7 @@ class TestVmPowerManager(TestCase, IxiaPacketGenerator):
             min_freq = int(out)
 
             self.verify(freq == min_freq, "Cpu min frequency not correct")
-            print dts.GREEN("After freqency min, freq is %d\n" % min_freq)
+            print utils.GREEN("After freqency min, freq is %d\n" % min_freq)
         self.vm_dut.send_expect("quit", "# ")
 
     def test_vm_power_multivms(self):
@@ -281,7 +281,7 @@ class TestVmPowerManager(TestCase, IxiaPacketGenerator):
         # check host core has correct mapped
         cpu_idx = 0
         for cpu in cpus:
-            mask = dts.create_mask([cpu])
+            mask = utils.create_mask([cpu])
             cpu_map = '[%d]: Physical CPU Mask %s' % (cpu_idx, mask)
             self.verify(cpu_map in vm_info, "Faile to map host cpu %s" % cpu)
             cpu_idx += 1
@@ -305,7 +305,7 @@ class TestVmPowerManager(TestCase, IxiaPacketGenerator):
         latency_header = ['Frame Size', 'Max latency', 'Min lantecy',
                           'Avg latency']
 
-        dts.results_table_add_header(latency_header)
+        self.result_table_create(latency_header)
 
         rx_port = self.dut_ports[0]
         tx_port = self.dut_ports[1]
@@ -341,9 +341,9 @@ class TestVmPowerManager(TestCase, IxiaPacketGenerator):
             print latency
             table_row = [frame_size, latency['max'], latency['min'],
                          latency['average']]
-            dts.results_table_add_row(table_row)
+            self.result_table_add(table_row)
 
-        dts.results_table_print()
+        self.result_table_print()
 
         self.vm_dut.kill_all()
 
@@ -353,7 +353,7 @@ class TestVmPowerManager(TestCase, IxiaPacketGenerator):
         """
         latency_header = ['Tx linerate%', 'Rx linerate%', 'Cpu freq']
 
-        dts.results_table_add_header(latency_header)
+        self.result_table_create(latency_header)
 
         rx_port = self.dut_ports[0]
         tx_port = self.dut_ports[1]
@@ -398,15 +398,15 @@ class TestVmPowerManager(TestCase, IxiaPacketGenerator):
             wirespeed = self.wirespeed(self.nic, self.def_framesize, 1)
             pct = pps * 100 / wirespeed
             table_row = [rate, pct, freq]
-            dts.results_table_add_row(table_row)
+            self.result_table_add(table_row)
 
-        dts.results_table_print()
+        self.result_table_print()
 
         self.vm_dut.kill_all()
 
     def get_freq_in_transmission(self):
         self.cur_freq = self.get_cpu_frequency(self.vcpu_map[1])
-        print dts.GREEN("Current cpu frequency %d" % self.cur_freq)
+        print utils.GREEN("Current cpu frequency %d" % self.cur_freq)
 
     def get_max_freq(self, core_num):
         freq_path = "cat /sys/devices/system/cpu/cpu%d/cpufreq/" + \

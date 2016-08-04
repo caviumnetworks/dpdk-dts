@@ -36,7 +36,7 @@ Quota & Watermark example app test cases.
 
 """
 import time
-import dts
+import utils
 from test_case import TestCase
 from etgen import IxiaPacketGenerator
 from packet import Packet, sniff_packets, load_sniff_packets
@@ -86,9 +86,9 @@ class TestQuotaWatermark(TestCase, IxiaPacketGenerator):
         """
         Adds the table header and some info about the executed test
         """
-        dts.report('Core mask: %s' % core_mask)
-        dts.report('Port mask: %s' % port_mask)
-        dts.results_table_add_header([
+        self.rst_report('Core mask: %s' % core_mask)
+        self.rst_report('Port mask: %s' % port_mask)
+        self.result_table_create([
             'Ring size',
             'Quota',
             'Low water-mark',
@@ -228,7 +228,7 @@ class TestQuotaWatermark(TestCase, IxiaPacketGenerator):
         ports_config['dut_rx'] = dut_rx_port
         ports_config['dut_tx'] = dut_tx_port
         ports_config[
-            'dut_port_mask'] = dts.create_mask([ports_config['dut_tx'],
+            'dut_port_mask'] = utils.create_mask([ports_config['dut_tx'],
                                                 ports_config['dut_rx']])
         ports_config['tester_rx'] = self.tester.get_local_port(
             ports_config['dut_rx'])
@@ -297,7 +297,7 @@ class TestQuotaWatermark(TestCase, IxiaPacketGenerator):
                 self.num_of_frames = test_config['frames_to_sent']
                 test_stats = self.tester.traffic_generator_throughput(tgen_input)
 
-                dts.results_table_add_row([ring_size, quota, low_watermark, high_watermark] +
+                self.result_table_add([ring_size, quota, low_watermark, high_watermark] +
                                           test_stats)
 
     def check_packets_transfer(self, tx_port, rx_port, tgen_input, pkt_cnt=1):
@@ -435,7 +435,7 @@ class TestQuotaWatermark(TestCase, IxiaPacketGenerator):
         cores_one_socket = self.dut.get_core_list('1S/4C/1T')
         core_config = {
             'cores': cores_one_socket,
-            'mask': dts.create_mask(cores_one_socket)
+            'mask': utils.create_mask(cores_one_socket)
         }
 
         self.func_iterate_through_qw_ring_sizes(ports_config, core_config)
@@ -453,13 +453,13 @@ class TestQuotaWatermark(TestCase, IxiaPacketGenerator):
         cores_one_socket = self.dut.get_core_list('1S/4C/1T')
         core_config = {
             'cores':   cores_one_socket,
-            'mask':    dts.create_mask(cores_one_socket)
+            'mask':    utils.create_mask(cores_one_socket)
         }
 
         self.add_report_headers( core_config['mask'], 
                                  ports_config['dut_port_mask'])
         self.iterate_through_qw_ring_sizes(ports_config, core_config)
-        dts.results_table_print()
+        self.result_table_print()
 
     def test_perf_quota_watermark_two_sockets(self):
         """
@@ -474,9 +474,9 @@ class TestQuotaWatermark(TestCase, IxiaPacketGenerator):
         cores_two_sockets = self.dut.get_core_list('2S/4C/1T')
         core_config = {
             'cores': cores_two_sockets,
-            'mask': dts.create_mask(cores_two_sockets)
+            'mask': utils.create_mask(cores_two_sockets)
         }
 
         self.add_report_headers( core_config['mask'], ports_config['dut_port_mask'])
         self.iterate_through_qw_ring_sizes(ports_config, core_config)
-        dts.results_table_print()
+        self.result_table_print()

@@ -3,7 +3,7 @@
 import re
 import time
 
-import dts
+import utils
 from qemu_kvm import QEMUKvm
 from test_case import TestCase
 from pmd_output import PmdOutput
@@ -23,7 +23,7 @@ class TestVfOffload(TestCase):
         self.setup_2pf_2vf_1vm_env_flag = 0
         self.setup_2pf_2vf_1vm_env(driver='')
         self.vm0_dut_ports = self.vm_dut_0.get_ports('any')
-        self.portMask = dts.create_mask([self.vm0_dut_ports[0]])
+        self.portMask = utils.create_mask([self.vm0_dut_ports[0]])
         self.vm0_testpmd = PmdOutput(self.vm_dut_0)
 
     def set_up(self):
@@ -329,7 +329,7 @@ class TestVfOffload(TestCase):
         self.tester.send_expect("ethtool -K %s rx off tx off tso off gso off gro off lro off" % tx_interface, "# ")
         self.tester.send_expect("ip l set %s up" % tx_interface, "# ")
 
-        self.portMask = dts.create_mask([self.vm0_dut_ports[0]])
+        self.portMask = utils.create_mask([self.vm0_dut_ports[0]])
         self.vm0_testpmd.start_testpmd(VM_CORES_MASK, "--portmask=%s " %
                                       (self.portMask) + "--enable-rx-cksum " +
                                       "--txqflags=0 " + 

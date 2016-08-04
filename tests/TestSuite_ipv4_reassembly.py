@@ -13,7 +13,7 @@ from scapy.utils import struct, socket, PcapWriter
 from scapy.layers.inet import Ether, IP, TCP, fragment
 from scapy.route import *
 
-import dts
+import utils
 from test_case import TestCase
 
 
@@ -43,7 +43,7 @@ class IpReassemblyTestConfig(object):
 
     def cpu_config(self):
         self.core_list = self.test_case.dut.get_core_list('1S/1C/1T')
-        self.core_mask = dts.create_mask(self.core_list)
+        self.core_mask = utils.create_mask(self.core_list)
         self.memory_channels = self.test_case.dut.get_memory_channels()
 
     def ports_config(self):
@@ -51,7 +51,7 @@ class IpReassemblyTestConfig(object):
         dut_port = dut_ports[0]
         tester_port = self.test_case.tester.get_local_port(dut_port)
         self.tester_iface = self.test_case.tester.get_interface(tester_port)
-        self.dut_port_mask = dts.create_mask([dut_port])
+        self.dut_port_mask = utils.create_mask([dut_port])
         self.queue_config = '({},{},{})'.format(dut_port, '0', self.core_list[0])
 
     def example_app_config(self):

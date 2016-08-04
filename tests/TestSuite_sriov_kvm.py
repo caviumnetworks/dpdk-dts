@@ -12,7 +12,6 @@ import re
 import pdb
 import time
 
-import dts
 from qemu_kvm import QEMUKvm
 from test_case import TestCase
 

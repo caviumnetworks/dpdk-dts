@@ -34,7 +34,7 @@ DPDK Test suite.
 Test support of IEEE1588 Precise Time Protocol.
 """
 
-import dts
+import utils
 import time
 import re
 from test_case import TestCase
@@ -100,7 +100,7 @@ class TestIeee1588(TestCase):
         out = self.dut.get_session_output()
         self.dut.send_expect("stop", "testpmd> ")
 
-        text = dts.regexp(out, "(.*) by hardware")
+        text = utils.regexp(out, "(.*) by hardware")
         self.verify("IEEE1588 PTP V2 SYNC" in text, "Not filtered " + text)
         
         pattern_rx = re.compile("RX timestamp value (\d+) s (\d+) ns")

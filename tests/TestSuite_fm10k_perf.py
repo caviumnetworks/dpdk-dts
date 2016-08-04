@@ -34,7 +34,7 @@ DPDK Test suite.
 Layer-3 forwarding test script.
 """
 
-import dts
+import utils
 import string
 import re
 from test_case import TestCase
@@ -288,7 +288,7 @@ class TestFM10kL3fwd(TestCase, IxiaPacketGenerator):
 
         header_row = ["Frame", "mode", "S/C/T", "Mpps", "% linerate", "latency_max(us)", "latency_min(us)", "latency_avg(us)"]
         self.l3fwd_test_results['header'] = header_row
-        dts.results_table_add_header(header_row)
+        utils.result_table_create(header_row)
         self.l3fwd_test_results['data'] = []
 
 	mac = ["02:00:00:00:00:00", "02:00:00:00:00:01"]
@@ -303,9 +303,9 @@ class TestFM10kL3fwd(TestCase, IxiaPacketGenerator):
                 self.tester.scapy_append('wrpcap("dst%d.pcap", [%s])' %(valports[_port],string.join(flows,',')))
             self.tester.scapy_execute() 
 
-            dts.report("Flows for 2 ports, %d frame size.\n" % (frame_size),
+            self.rst_report("Flows for 2 ports, %d frame size.\n" % (frame_size),
                        annex=True)
-            dts.report("%s" % string.join(flows, '\n'),
+            self.rst_report("%s" % string.join(flows, '\n'),
                        frame=True, annex=True)
 
 
@@ -327,7 +327,7 @@ class TestFM10kL3fwd(TestCase, IxiaPacketGenerator):
                     rtCmdLines[key] = pat.sub(self.repl, rtCmdLines[key])
 
                 self.logger.info("%s\n" % str(corelist))
-                coreMask[key] = dts.create_mask(set(corelist))
+                coreMask[key] = utils.create_mask(set(corelist))
 
             # measure by two different mode
             #methods = TestFM10kL3fwd.methods
@@ -343,15 +343,15 @@ class TestFM10kL3fwd(TestCase, IxiaPacketGenerator):
                            mode, cores, frame_size)
 
                     self.logger.info(info)
-                    dts.report(info, annex=True)
+                    self.rst_report(info, annex=True)
 
                     subtitle.append(cores)
                     cmdline = rtCmdLines[cores] % (TestFM10kL3fwd.path + "l3fwd_" + mode, coreMask[cores],
-                                                   self.dut.get_memory_channels(), dts.create_mask(valports[:2]))
+                                                   self.dut.get_memory_channels(), utils.create_mask(valports[:2]))
 
                     if frame_size > 1518:
                         cmdline = cmdline + " --max-pkt-len %d" % frame_size
-                    dts.report(cmdline + "\n", frame=True, annex=True)
+                    self.rst_report(cmdline + "\n", frame=True, annex=True)
 
                     out = self.dut.send_expect(cmdline, "L3FWD:", 120)
 
@@ -386,16 +386,16 @@ class TestFM10kL3fwd(TestCase, IxiaPacketGenerator):
                     for latency in latencys:
                         if latency['max'] > 0:
                             data_row = [frame_size, mode, cores, str(pps), str(pct), str(latency['max']/1000), str(latency['min']/1000), str(latency['average']/1000)]
-                    dts.results_table_add_row(data_row)
+                    utils.result_table_add(data_row)
                     self.l3fwd_test_results['data'].append(data_row)
 
-        dts.results_table_print()
+        self.result_table_print()
 
     def perf_rfc2544(self):
 
         header_row = ["Frame", "mode", "S/C/T", "tx_pkts(1min)", "LR_rx_pkts(1min)", "LR_loss_pkts(1min)", "% zero_loss_rate(0.01%loss)"]
         self.l3fwd_test_results['header'] = header_row
-        dts.results_table_add_header(header_row)
+        self.result_table_create(header_row)
         self.l3fwd_test_results['data'] = []
 
         for frame_size in TestFM10kL3fwd.frame_sizes:
@@ -409,9 +409,9 @@ class TestFM10kL3fwd(TestCase, IxiaPacketGenerator):
                 self.tester.scapy_append('wrpcap("dst%d.pcap", [%s])' %(valports[_port],string.join(flows,',')))
             self.tester.scapy_execute()
 
-            dts.report("Flows for 2 ports, %d frame size.\n" % (frame_size),
+            self.rst_report("Flows for 2 ports, %d frame size.\n" % (frame_size),
                        annex=True)
-            dts.report("%s" % string.join(flows, '\n'),
+            self.rst_report("%s" % string.join(flows, '\n'),
                        frame=True, annex=True)
 
 
@@ -433,7 +433,7 @@ class TestFM10kL3fwd(TestCase, IxiaPacketGenerator):
                     rtCmdLines[key] = pat.sub(self.repl, rtCmdLines[key])
 
                 self.logger.info("%s\n" % str(corelist))
-                coreMask[key] = dts.create_mask(set(corelist))
+                coreMask[key] = utils.create_mask(set(corelist))
 
             # measure by two different mode
             for mode in TestFM10kL3fwd.methods:
@@ -449,16 +449,16 @@ class TestFM10kL3fwd(TestCase, IxiaPacketGenerator):
                                mode, cores, frame_size)
 
                         self.logger.info(info)
-                        dts.report(info, annex=True)
+                        self.rst_report(info, annex=True)
 
 
                         subtitle.append(cores)
                         cmdline = rtCmdLines[cores] % (TestFM10kL3fwd.path + "l3fwd_" + mode, coreMask[cores],
-                                                       self.dut.get_memory_channels(), dts.create_mask(valports[:2]))
+                                                       self.dut.get_memory_channels(), utils.create_mask(valports[:2]))
 
                         if frame_size > 1518:
                             cmdline = cmdline + "  --max-pkt-len %d" % frame_size
-                        dts.report(cmdline + "\n", frame=True, annex=True)
+                        self.rst_report(cmdline + "\n", frame=True, annex=True)
 
                         out = self.dut.send_expect(cmdline, "L3FWD:", 120)
 
@@ -486,14 +486,14 @@ class TestFM10kL3fwd(TestCase, IxiaPacketGenerator):
                         loss_pkts = human_read_number(loss_pkts)
 
                         data_row = [frame_size, mode, cores, str(tx_pkts), str(rx_pkts), loss_pkts, zero_loss_rate]
-                        dts.results_table_add_row(data_row)
+                        self.result_table_add(data_row)
                         self.l3fwd_test_results['data'].append(data_row)
                     else:
                         pass
 
                     index += 1
 
-        dts.results_table_print()
+        self.result_table_print()
 
     def test_perf_rfc2544_vec(self):
         # add setting for scatter
