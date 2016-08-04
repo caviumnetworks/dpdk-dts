@@ -305,7 +305,7 @@ class TestIpReassembly(TestCase):
         """
 
         sent_packets = self.number_of_sent_packets(self.test_config.mac_src)
-        print 'sent packets: %d - expected: %d' % (sent_packets, expected)
+        self.logger.info('sent packets: %d - expected: %d' % (sent_packets, expected))
         self.verify(sent_packets == expected, 'Not all fragments have been sent')
 
     def verify_received_packets(self, expected):
@@ -314,7 +314,7 @@ class TestIpReassembly(TestCase):
         """
 
         received_packets = self.number_of_received_packets(self.test_config.tcp_dst_port)
-        print 'received packets: %d - expected: %d' % (received_packets, expected)
+        self.logger.info('received packets: %d - expected: %d' % (received_packets, expected))
         self.verify(received_packets == expected,
                     'Not all frames have been forwarded')
 
@@ -324,7 +324,7 @@ class TestIpReassembly(TestCase):
         """
 
         tcp_valid_checksum = self.number_of_tcp_valid_checksum(self.test_config.tcp_dst_port)
-        print 'tcp valid: %d - expected: %d' % (tcp_valid_checksum, expected)
+        self.logger.info('tcp valid: %d - expected: %d' % (tcp_valid_checksum, expected))
         self.verify(tcp_valid_checksum == expected,
                     'Not all TCP packets have valid checksum')
 

@@ -63,12 +63,11 @@ class TestChecksumOffload(TestCase):
         """
         Run before each test case.
         """
-        if self.dut.want_func_tests:
-            self.pmdout.start_testpmd("Default", "--portmask=%s " %
-                                      (self.portMask) + "--disable-hw-vlan --enable-rx-cksum " +
-                                      "--crc-strip --port-topology=loop", socket=self.ports_socket)
-            self.dut.send_expect("set verbose 1", "testpmd>")
-            self.dut.send_expect("set fwd csum", "testpmd>")
+        self.pmdout.start_testpmd("Default", "--portmask=%s " %
+                                  (self.portMask) + "--disable-hw-vlan --enable-rx-cksum " +
+                                  "--crc-strip --port-topology=loop", socket=self.ports_socket)
+        self.dut.send_expect("set verbose 1", "testpmd>")
+        self.dut.send_expect("set fwd csum", "testpmd>")
 
     def checksum_enablehw(self, port):
             self.dut.send_expect("csum set ip hw %d" % port, "testpmd>")
@@ -327,8 +326,7 @@ class TestChecksumOffload(TestCase):
         """
         Run after each test case.
         """
-        if self.dut.want_func_tests:
-            self.dut.send_expect("quit", "#")
+        self.dut.send_expect("quit", "#")
 
     def tear_down_all(self):
         """

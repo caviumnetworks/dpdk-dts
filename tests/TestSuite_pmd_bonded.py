@@ -810,16 +810,12 @@ UDP(sport=srcport, dport=destport)/Raw(load="\x50"*%s)], iface="%s", count=%d)' 
         """
         Run before each test case.
         """
-        if self.dut.want_func_tests:
-            self.launch_app()
-        elif self.dut.want_perf_tests:
+        if self._enable_perf:
             pmd_param = "--burst=32 --rxfreet=32 --mbcache=250 --txpt=32 \
 --rxht=8 --rxwt=0 --txfreet=32 --txrst=32 --txqflags=0xf01"
             self.launch_app(pmd_param)
         else:
-            self.verify(False,
-                        "Test type not etting," +
-                        "please check framework to set test type to be function or performance.")
+            self.launch_app()
 
     def verify_bound_basic_opt(self, mode_set):
         """
