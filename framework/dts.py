@@ -64,7 +64,6 @@ reload(sys)
 sys.setdefaultencoding('UTF8')
 
 
-config = None
 requested_tests = None
 result = None
 excel_report = None
@@ -72,7 +71,7 @@ stats_report = None
 log_handler = None
 
 
-def dts_parse_param(section):
+def dts_parse_param(config, section):
     """
     Parse execution file parameters.
     """
@@ -112,7 +111,7 @@ def dts_parse_param(section):
         settings.save_global_setting(settings.FUNC_SETTING, 'no')
 
 
-def dts_parse_config(section):
+def dts_parse_config(config, section):
     """
     Parse execution file configuration.
     """
@@ -369,8 +368,8 @@ def dts_run_suite(duts, tester, test_suites, target):
     """
     Run each suite in test suite list.
     """
-    try:
-        for suite_name in test_suites:
+    for suite_name in test_suites:
+        try:
             result.test_suite = suite_name
             suite_module = __import__('TestSuite_' + suite_name)
             for test_classname, test_class in get_subclasses(suite_module, TestCase):
@@ -395,14 +394,19 @@ def dts_run_suite(duts, tester, test_suites, target):
 
                 log_handler.info("\nTEST SUITE ENDED: " + test_classname)
                 dts_log_execution(duts, tester, log_handler)
-    except VerifyFailure:
-        log_handler.error(" !!! DEBUG IT: " + traceback.format_exc())
-    except KeyboardInterrupt:
-        log_handler.error(" !!! STOPPING DCTS")
-    except Exception as e:
-        log_handler.error(str(e))
-    finally:
-        suite_obj.execute_tear_downall()
+        except VerifyFailure:
+            log_handler.error(" !!! DEBUG IT: " + traceback.format_exc())
+        except KeyboardInterrupt:
+            # stop/save result/skip execution
+            log_handler.error(" !!! STOPPING DTS")
+            suite_obj.execute_tear_downall()
+            save_all_results()
+            break
+        except Exception as e:
+            log_handler.error(str(e))
+        finally:
+            suite_obj.execute_tear_downall()
+            save_all_results()
 
 
 def run_all(config_file, pkgName, git, patch, skip_setup,
@@ -413,7 +417,6 @@ def run_all(config_file, pkgName, git, patch, skip_setup,
     Main process of DTS, it will run all test suites in the config file.
     """
 
-    global config
     global requested_tests
     global result
     global excel_report
@@ -442,9 +445,9 @@ def run_all(config_file, pkgName, git, patch, skip_setup,
 
     # enable debug mode
     if debug is True:
-        setting.set_local_variable(settings.DEBUG_SETTING, 'yes')
+        settings.save_global_setting(settings.DEBUG_SETTING, 'yes')
     if debugcase is True:
-        setting.set_local_variable(settings.DEBUG_CASE_SETTING, 'yes')
+        settings.save_global_setting(settings.DEBUG_CASE_SETTING, 'yes')
 
     # init log_handler handler
     if verbose is True:
@@ -482,10 +485,10 @@ def run_all(config_file, pkgName, git, patch, skip_setup,
 
     # for all Exectuion sections
     for section in config.sections():
-        dts_parse_param(section)
+        dts_parse_param(config, section)
 
         # verify if the delimiter is good if the lists are vertical
-        dutIPs, targets, test_suites = dts_parse_config(section)
+        dutIPs, targets, test_suites = dts_parse_config(config, section)
         for dutIP in dutIPs:
             log_handler.info("\nDUT " + dutIP)
 
