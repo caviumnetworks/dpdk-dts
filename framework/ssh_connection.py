@@ -84,6 +84,19 @@ class SSHConnection(object):
     def isalive(self):
         return self.session.isalive()
 
+    def check_available(self):
+        MAGIC_STR = "DTS_CHECK_SESSION"
+        out = self.session.send_command('echo %s' % MAGIC_STR, timeout=0.1)
+        # if not avaiable, try to send ^C and check again
+        if MAGIC_STR not in out:
+            self.logger.info("Try to recover session...")
+            self.session.send_command('^C', timeout=TIMEOUT)
+            out = self.session.send_command('echo %s' % MAGIC_STR, timeout=0.1)
+            if MAGIC_STR not in out:
+                return False
+
+        return True
+
     def copy_file_from(self, src, dst=".", password=''):
         self.session.copy_file_from(src, dst, password)
 

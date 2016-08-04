@@ -54,9 +54,15 @@ class TestCase(object):
         self.tester = tester
         self.target = target
 
+        # make sure session workable
+        for dutobj in duts:
+            self.verify(dutobj.session.check_available(), "DUT session can't work")
+            self.verify(dutobj.alt_session.check_available(), "DUT alt_session can't work")
+        self.verify(tester.session.check_available(), "Tester session can't work!!!")
+        self.verify(tester.alt_session.check_available(), "Tester alt_session can't work!!!")
+
         # get log handler
         class_name = self.__class__.__name__
-        print class_name
         self.logger = getLogger(class_name)
         self.logger.config_suite(class_name)
         # local variable
@@ -138,7 +144,7 @@ class TestCase(object):
         self._rst_obj.report(*args, **kwargs)
 
     def result_table_create(self, header):
-        self._result_table = ResultTable(self.table_header)
+        self._result_table = ResultTable(header)
         self._result_table.set_rst(self._rst_obj)
         self._result_table.set_logger(self.logger)
 
@@ -155,7 +161,7 @@ class TestCase(object):
         """
         Get all functional test cases.
         """
-        return self._get_test_cases(self, r'test_(?!perf_)')
+        return self._get_test_cases(r'test_(?!perf_)')
 
     def _get_performance_cases(self):
         """
@@ -228,14 +234,14 @@ class TestCase(object):
             if self._check_inst.case_skip(case_name[len("test_"):]):
                 self.logger.info('Test Case %s Result SKIPED:' % case_name)
                 self._rst_obj.write_result("N/A")
-                self._suite_result.test_case_skip(check_case_inst.comments)
+                self._suite_result.test_case_skip(self._check_inst.comments)
                 return
 
         if self._support_inst is not None:
             if not self._support_inst.case_support(case_name[len("test_"):]):
                 self.logger.info('Test Case %s Result SKIPED:' % case_name)
                 self._rst_obj.write_result("N/A")
-                self._suite_result.test_case_skip(support_case_inst.comments)
+                self._suite_result.test_case_skip(self._support_inst.comments)
                 return
 
         if self._enable_perf:
@@ -267,12 +273,13 @@ class TestCase(object):
 
         except VerifyFailure as v:
             self._suite_result.test_case_failed(str(v))
-            self_rst_obj.write_result("FAIL")
+            self._rst_obj.write_result("FAIL")
             self.logger.error('Test Case %s Result FAILED: ' % (case_name) + str(v))
         except KeyboardInterrupt:
             self._suite_result.test_case_blocked("Skipped")
             self.logger.error('Test Case %s SKIPED: ' % (case_name))
-            raise KeyboardInterrupt("Stop DCTS")
+            self.tear_down()
+            raise KeyboardInterrupt("Stop DTS")
         except TimeoutException as e:
             self._rst_obj.write_result("FAIL")
             msg = str(e)
