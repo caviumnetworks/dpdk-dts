@@ -213,6 +213,10 @@ class Dut(Crb):
         """
         Restore all ports's interfaces.
         """
+        # no need to restore for all info has been recorded
+        if self.read_cache:
+            return
+
         restore_interfaces = getattr(self, 'restore_interfaces_%s' % self.get_os_type())
         return restore_interfaces()
 
@@ -546,7 +550,7 @@ class Dut(Crb):
         """
         Rescan ports information
         """
-        if self.read_cache and self.load_serializer_ports():
+        if self.read_cache:
             return
 
         if self.ports_info:
@@ -565,12 +569,13 @@ class Dut(Crb):
 
         for port_info in self.ports_info:
             port = port_info['port']
-            intf = port_info['intf']
+            intf = port.get_interface_name()
+            port_info['intf'] = intf
             out = self.send_expect("ip link show %s" % intf, "# ")
             if "DOWN" in out:
                 self.send_expect("ip link set %s up" % intf, "# ")
                 time.sleep(5)
-            macaddr = port_info['mac']
+            port_info['mac'] = port.get_mac_addr()
             out = self.send_expect("ip -family inet6 address show dev %s | awk '/inet6/ { print $2 }'"
                                    % intf, "# ")
             ipv6 = out.split('/')[0]
@@ -644,13 +649,16 @@ class Dut(Crb):
             return
 
         for port_info in self.ports_info:
-            port = GetNicObj(self, port_info['pci'], port_info['type'])
-            intf = port.get_interface_name()
+            addr_array = port_info['pci'].split(':')
+            domain_id = addr_array[0]
+            bus_id = addr_array[1]
+            devfun_id = addr_array[2]
+
+            port = GetNicObj(self, domain_id, bus_id, devfun_id)
+            port_info['port'] = port
 
             self.logger.info("DUT cached: [%s %s] %s" % (port_info['pci'],
-                                                         port_info['type'], intf))
-
-            port_info['port'] = port
+                                port_info['type'], port_info['intf']))
 
     def scan_ports_uncached(self):
         """

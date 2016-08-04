@@ -293,7 +293,12 @@ class Tester(Crb):
             if port_info['type'] == 'ixia':
                 continue
 
-            port = GetNicObj(self, port_info['pci'], port_info['type'])
+            addr_array = port_info['pci'].split(':')
+            domain_id = addr_array[0]
+            bus_id = addr_array[1]
+            devfun_id = addr_array[2]
+
+            port = GetNicObj(self, domain_id, bus_id, devfun_id)
             intf = port.get_interface_name()
 
             self.logger.info("Tester cached: [000:%s %s] %s" % (
