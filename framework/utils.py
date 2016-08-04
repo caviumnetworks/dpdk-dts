@@ -31,6 +31,10 @@
 
 import json         # json format
 import re
+import os
+import inspect
+
+DTS_ENV_PAT = r"DTS_*"
 
 
 def RED(text):
@@ -99,6 +103,7 @@ def remove_old_rsa_key(crb, ip):
             (ip.strip(), rsa_key_path)
     crb.send_expect(remove_rsa_key_cmd, "# ")
 
+
 def human_read_number(num):
     if num > 1000000:
         num /= 1000000
@@ -108,3 +113,28 @@ def human_read_number(num):
         return str(num) + "K"
     else:
         return str(num)
+
+
+def get_subclasses(module, clazz):
+    """
+    Get module attribute name and attribute.
+    """
+    for subclazz_name, subclazz in inspect.getmembers(module):
+        if hasattr(subclazz, '__bases__') and clazz in subclazz.__bases__:
+            yield (subclazz_name, subclazz)
+
+
+def copy_instance_attr(from_inst, to_inst):
+    for key in from_inst.__dict__.keys():
+        to_inst.__dict__[key] = from_inst.__dict__[key]
+
+
+def create_mask(indexes):
+    """
+    Convert index to hex mask.
+    """
+    val = 0
+    for index in indexes:
+        val |= 1 << int(index)
+
+    return hex(val).rstrip("L")
