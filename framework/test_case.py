@@ -54,19 +54,17 @@ class TestCase(object):
         self.tester = tester
         self.target = target
 
-        # make sure session workable
-        for dutobj in duts:
-            self.verify(dutobj.session.check_available(), "DUT session can't work")
-            self.verify(dutobj.alt_session.check_available(), "DUT alt_session can't work")
-        self.verify(tester.session.check_available(), "Tester session can't work!!!")
-        self.verify(tester.alt_session.check_available(), "Tester alt_session can't work!!!")
-
         # get log handler
         class_name = self.__class__.__name__
         self.logger = getLogger(class_name)
         self.logger.config_suite(class_name)
         # local variable
         self._requested_tests = None
+
+        # check session and reconnect if possible
+        for dutobj in self.duts:
+            self._check_and_reconnect(crb=dutobj)
+        self._check_and_reconnect(crb=self.tester)
 
         # covert netdevice to codename
         self.nics = []
@@ -113,6 +111,23 @@ class TestCase(object):
 
         # create rst format report for this suite
         self._rst_obj = RstReport('rst_report', target, self.nic, self.suite_name, self._enable_perf)
+
+    def _check_and_reconnect(self, crb=None):
+        try:
+            result = crb.session.check_available()
+        except:
+            result = False
+
+        if result is False:
+            crb.reconnect_session()
+
+        try:
+            result = crb.alt_session.check_available()
+        except:
+            result = False
+
+        if result is False:
+            crb.reconnect_session(alt_session=True)
 
     def set_up_all(self):
         pass

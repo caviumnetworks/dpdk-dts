@@ -57,6 +57,7 @@ class Crb(object):
         self.ports_info = None
         self.sessions = []
         self.stage = 'pre-init'
+        self.name = name
 
         self.logger = getLogger(name)
         self.session = SSHConnection(self.get_ip_address(), name,
@@ -88,7 +89,7 @@ class Crb(object):
         """
         logger = getLogger(name)
         session = SSHConnection(self.get_ip_address(), name,
-                                     self.get_password())
+                                self.get_password())
         session.init_log(logger)
         self.sessions.append(session)
         return session
@@ -103,6 +104,31 @@ class Crb(object):
                 logger = getLogger(save_session.name)
                 logger.logger_exit()
             self.sessions.remove(save_session)
+
+    def reconnect_session(self, alt_session=False):
+        """
+        When session can't used anymore, recreate another one for replace
+        """
+        try:
+            if alt_session:
+                self.alt_session.close(force=True)
+            else:
+                self.session.close(force=True)
+        except Exception as e:
+            self.loggger.error("Session close failed for [%s]" % e)
+
+        if alt_session:
+            session = SSHConnection(
+                self.get_ip_address(),
+                self.name + '_alt',
+                self.get_password())
+            self.alt_session = session
+        else:
+            session = SSHConnection(self.get_ip_address(), self.name,
+                                    self.get_password())
+            self.session = session
+
+        session.init_log(self.logger)
 
     def send_command(self, cmds, timeout=TIMEOUT, alt_session=False):
         """
@@ -166,10 +192,9 @@ class Crb(object):
         if numa == -1:
             self.send_expect('echo %d > /sys/kernel/mm/hugepages/hugepages-%skB/nr_hugepages' % (huge_pages, page_size), '# ', 5)
         else:
-            #sometimes we set hugepage on kernel cmdline, so we need clear default hugepage
+            # sometimes we set hugepage on kernel cmdline, so we need clear default hugepage
             self.send_expect('echo 0 > /sys/kernel/mm/hugepages/hugepages-%skB/nr_hugepages' % (page_size), '# ', 5)
-            
-            #some platform not support numa, example vm dut
+            # some platform not support numa, example vm dut
             try:
                 self.send_expect('echo %d > /sys/devices/system/node/node%d/hugepages/hugepages-%skB/nr_hugepages' % (huge_pages, numa, page_size), '# ', 5)
             except:
@@ -687,7 +712,7 @@ class Crb(object):
         for port_info in self.ports_info:
             if port_info['pci'] == pci:
                 return port_info
-    
-    def enable_promisc(self,intf):
-        if intf !='N/A':
-            self.send_expect("ifconfig %s promisc" %intf, "# ",alt_session=True)
+
+    def enable_promisc(self, intf):
+        if intf != 'N/A':
+            self.send_expect("ifconfig %s promisc" % intf, "# ", alt_session=True)
