@@ -33,19 +33,11 @@ class TestVhostUserLiveMigration(TestCase):
         self.backup_tport = self.tester.get_local_port_bydut(self.backup_port, self.backup_dutip)
         self.backup_tintf = self.tester.get_interface(self.backup_tport)
 
-        # build backup vhost-switch
-        out = self.duts[0].send_expect("make -C examples/vhost", "# ")
-        self.verify("Error" not in out, "compilation error 1")
-        self.verify("No such file" not in out, "compilation error 2")
-
-        # build backup vhost-switch
-        out = self.duts[1].send_expect("make -C examples/vhost", "# ")
-        self.verify("Error" not in out, "compilation error 1")
-        self.verify("No such file" not in out, "compilation error 2")
-
-        self.vhost = "./examples/vhost/build/app/vhost-switch"
+        # Use testpmd as vhost-user application on host/backup server 
+        self.vhost = "./x86_64-native-linuxapp-gcc/app/testpmd"
         self.vm_testpmd = "./%s/app/testpmd -c 0x3 -n 4 -- -i" % self.target
-        self.virio_mac = "00:00:00:00:00:01"
+        self.virio_mac = "52:54:00:00:00:01"
+        
 
         # flag for environment
         self.env_done = False
@@ -86,14 +78,15 @@ class TestVhostUserLiveMigration(TestCase):
         if self.env_done:
             return
 
-        # start vhost-switch on host and backup machines
+        # start vhost application on host and backup machines
         self.logger.info("Start vhost on host and backup host")
         for crb in self.duts[:2]:
             self.bind_nic_driver(crb, [crb.get_ports()[0]], driver="igb_uio")
-            # start vhost-switch, predict hugepage on both sockets
+            # start vhost app: testpmd, predict hugepage on both sockets
             base_dir = crb.base_dir.replace('~', '/root')
             crb.send_expect("rm -f %s/vhost-net" % base_dir, "# ")
-            crb.send_expect("%s -c f -n 4 --socket-mem 1024 -- -p 0x1" % self.vhost, "bind to vhost-net")
+            crb.send_expect("%s -c f -n 4 --socket-mem 512,512 --vdev 'eth_vhost0,iface=./vhost-net,queues=1' -- -i" % self.vhost, "testpmd> ",60)
+            crb.send_expect("start", "testpmd> ")
 
         try:
             # set up host virtual machine
@@ -156,7 +149,7 @@ class TestVhostUserLiveMigration(TestCase):
             if self.backup_serial is not None and self.backup_vm is not None:
                 self.backup_vm.close_serial_port()
 
-        self.logger.info("Stop virtual machine on host")
+
         if getattr(self, 'vm_host', None):
             if self.vm_host is not None:
                 self.host_vm.stop()
@@ -176,7 +169,7 @@ class TestVhostUserLiveMigration(TestCase):
                 self.backup_vm.stop()
                 self.backup_vm = None
 
-        # after vm stopped, stop vhost-switch
+        # after vm stopped, stop vhost testpmd
         for crb in self.duts[:2]:
             crb.kill_all()
 
@@ -189,7 +182,7 @@ class TestVhostUserLiveMigration(TestCase):
         """
         send packet from tester
         """
-        sendp_fmt = "sendp([Ether(dst='%(DMAC)s')/Dot1Q(vlan=1000)/IP()/UDP()/Raw('x'*18)], iface='%(INTF)s', count=%(COUNT)d)"
+        sendp_fmt = "sendp([Ether(dst='%(DMAC)s')/IP()/UDP()/Raw('x'*18)], iface='%(INTF)s', count=%(COUNT)d)"
         sendp_cmd = sendp_fmt % {'DMAC': self.virio_mac, 'INTF': intf, 'COUNT': number}
         self.tester.scapy_append(sendp_cmd)
         self.tester.scapy_execute()
@@ -216,8 +209,8 @@ class TestVhostUserLiveMigration(TestCase):
         else:
             num_received = 0
 
-        self.verify(num_received >= num_pkts, "Not receive packets as expected!!!")
         self.logger.info("Verified %s packets recevied" % num_received)
+        self.verify(num_received >= num_pkts, "Not receive packets as expected!!!")
 
     def verify_kernel(self, tester_port, vm_dut):
         """
@@ -240,8 +233,8 @@ class TestVhostUserLiveMigration(TestCase):
         out = vm_dut.get_session_output(timeout=1)
         vm_dut.send_expect("^C", "# ")
         num = out.count('UDP')
-        self.verify(num == num_pkts, "Not receive packets as expected!!!")
         self.logger.info("Verified %s packets recevied" % num_pkts)
+        self.verify(num == num_pkts, "Not receive packets as expected!!!")
 
     def test_migrate_with_kernel(self):
         """
@@ -255,7 +248,8 @@ class TestVhostUserLiveMigration(TestCase):
 
         self.logger.info("Migrate host VM to backup host")
         # start live migration
-        self.host_vm.start_migration(self.backup_dutip, self.backup_vm.migrate_port)
+        ret = self.host_vm.start_migration(self.backup_dutip, self.backup_vm.migrate_port)
+        self.verify(ret, "Failed to migration, please check VM and qemu version")
 
         # make sure still can receive packets in migration process
         self.verify_kernel(self.host_tport, self.vm_host)
@@ -264,13 +258,13 @@ class TestVhostUserLiveMigration(TestCase):
         # wait live migration done
         self.host_vm.wait_migration_done()
 
-        # check vhost-switch log after migration
+        # check vhost testpmd log after migration
         out = self.duts[0].get_session_output(timeout=1)
-        self.verify("device has been removed" in out, "Device not removed for host")
+        self.verify("closed" in out, "Vhost Connection NOT closed on host")
         out = self.duts[1].get_session_output(timeout=1)
-        self.verify("virtio is now ready" in out, "Device not ready on backup host")
+        self.verify("established" in out, "Device not ready on backup host")
 
-        self.logger.info("Migration process done, init backup VM")
+        self.logger.info("Migration process done, then go to backup VM")
         # connected backup VM
         self.vm_backup = self.backup_vm.migrated_start()
 
@@ -291,8 +285,10 @@ class TestVhostUserLiveMigration(TestCase):
 
         self.logger.info("Migrate host VM to backup host")
         # start live migration
-        self.host_vm.start_migration(self.backup_dutip, self.backup_vm.migrate_port)
-
+        
+        ret = self.host_vm.start_migration(self.backup_dutip, self.backup_vm.migrate_port)
+        self.verify(ret, "Failed to migration, please check VM and qemu version")
+       
         # make sure still can receive packets in migration process
         self.verify_dpdk(self.host_tport, self.host_serial)
 
@@ -300,13 +296,13 @@ class TestVhostUserLiveMigration(TestCase):
         # wait live migration done
         self.host_vm.wait_migration_done()
 
-        # check vhost-switch log after migration
+        # check vhost testpmd log after migration
         out = self.duts[0].get_session_output(timeout=1)
-        self.verify("device has been removed" in out, "Device not removed for host")
+        self.verify("closed" in out, "Vhost Connection NOT closed on host")
         out = self.duts[1].get_session_output(timeout=1)
-        self.verify("virtio is now ready" in out, "Device not ready on backup host")
+        self.verify("established" in out, "Device not ready on backup host")
 
-        self.logger.info("Migration process done, init backup VM")
+        self.logger.info("Migration process done, then go to backup VM")
         time.sleep(5)
 
         # make sure still can receive packets
