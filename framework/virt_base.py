@@ -364,9 +364,10 @@ class VirtBase(object):
         skip_setup = self.host_dut.skip_setup
         base_dir = self.host_dut.base_dir
         vm_dut.set_speedup_options(read_cache, skip_setup)
-        func_only = self.host_dut.want_func_tests
-        perf_only = self.host_dut.want_perf_tests
-        vm_dut.set_test_types(func_tests=func_only, perf_tests=perf_only)
+
+        # package and patch should be set before prerequisites
+        vm_dut.set_package(self.host_dut.package, self.host_dut.patches)
+
         # base_dir should be set before prerequisites
         vm_dut.set_directory(base_dir)
 

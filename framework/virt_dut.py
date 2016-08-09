@@ -150,7 +150,7 @@ class VirtDut(DPDKdut):
         At last setup DUT' environment for validation.
         """
         if not self.skip_setup:
-            self.prepare_package(pkgName, patch)
+            self.prepare_package()
 
         self.send_expect("cd %s" % self.base_dir, "# ")
         self.send_expect("alias ls='ls --color=none'", "#")
