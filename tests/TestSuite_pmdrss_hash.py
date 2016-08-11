@@ -475,9 +475,9 @@ class TestPmdrssHash(TestCase):
                 self.dut.send_expect(
                     "set_hash_global_config  0 toeplitz %s enable" % iptype, "testpmd> ")
                 self.dut.send_expect("port start all", "testpmd> ")
-                self.dut.send_expect(
+                out = self.dut.send_expect(
                     "port config all rss %s" % rsstype, "testpmd> ")
-
+                self.verify("error" not in out, "Configuration of RSS hash failed: Invalid argument")
                 # configure the reta with specific mappings.
                 for i in range(reta_num):
                     reta_entries.insert(i, random.randint(0, queue - 1))
@@ -527,8 +527,9 @@ class TestPmdrssHash(TestCase):
                 self.dut.send_expect(
                     "set_sym_hash_ena_per_port 0 enable", "testpmd> ")
                 self.dut.send_expect("port start all", "testpmd> ")
-                self.dut.send_expect(
+                out = self.dut.send_expect(
                     "port config all rss %s" % rsstype, "testpmd> ")
+                self.verify("error" not in out, "Configuration of RSS hash failed: Invalid argument")
 
                 # configure the reta with specific mappings.
                 for i in range(reta_num):
@@ -580,9 +581,9 @@ class TestPmdrssHash(TestCase):
                     self.dut.send_expect(
                         "set_hash_global_config 0 simple_xor %s enable" % iptype, "testpmd> ")
                 self.dut.send_expect("port start all", "testpmd> ")
-                self.dut.send_expect(
+                out = self.dut.send_expect(
                     "port config all rss %s" % rsstype, "testpmd> ")
-
+                self.verify("error" not in out, "Configuration of RSS hash failed: Invalid argument")
                 # configure the reta with specific mappings.
                 for i in range(reta_num):
                     reta_entries.insert(i, random.randint(0, queue - 1))
@@ -633,8 +634,10 @@ class TestPmdrssHash(TestCase):
                 self.dut.send_expect(
                     "set_sym_hash_ena_per_port 0 enable", "testpmd> ")
                 self.dut.send_expect("port start all", "testpmd> ")
-                self.dut.send_expect(
+
+                out = self.dut.send_expect(
                     "port config all rss %s" % rsstype, "testpmd> ")
+                self.verify("error" not in out, "Configuration of RSS hash failed: Invalid argument")
                 # configure the reta with specific mappings.
                 for i in range(reta_num):
                     reta_entries.insert(i, random.randint(0, queue - 1))
