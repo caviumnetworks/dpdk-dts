@@ -29,6 +29,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import re
 from crb import Crb
 from config import PortConf, PORTCONF
 from exception import PortConfigParseException
@@ -239,3 +240,33 @@ class RedRockCanyou(NetDevice):
             self.ctrl_crb.send_expect("set port config 5 max_frame_size %d" % framesize, "<0>%")
         else:
             self.ctrl_crb.send_expect("set port config 1 max_frame_size %d" % framesize, "<0>%")
+
+    def get_glortid_bymac(self, dmac):
+        out = self.ctrl_crb.send_expect("show mac table all", "<0>%")
+        pattern = r"([0-9a-f]{2}:){5}([0-9a-f]{2})"
+        s = re.compile(pattern)
+        res = s.search(dmac)
+        if res is None:
+            print "search none mac filter"
+            return None
+        else:
+            mac_filter = res.group(2)
+        pattern = r"(?<=%s)+([\sA-Za-z0-9/])+([0-9]{4})" %mac_filter
+        s = re.compile(pattern)
+        res = s.search(out)
+        if res is None:
+            print "search none port value"
+            return None
+        else:
+            port_value = res.group(2)
+        out = self.ctrl_crb.send_expect("show stacking logical-port all", "<0>%",10000)
+        pattern = r"([0-9a-z]{6})+(\s)+(%s)+" %port_value
+        s = re.compile(pattern)
+        res = s.search(out)
+        if res is None:
+            print "search none port glort id"
+            return None
+        else:
+            port_glortid = res.group(1)
+            return port_glortid
+
