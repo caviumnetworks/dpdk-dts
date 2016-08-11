@@ -1,0 +1,287 @@
+From 0882390c731f8d39f81e52b0669651f5484683eb Mon Sep 17 00:00:00 2001
+From: Wang Xiao <xiao.w.wang@intel.com>
+Date: Wed, 10 Aug 2016 11:26:23 +0800
+Subject: [PATCH] fm10k: add a unit test for FTAG based forwarding
+
+This patch adds a unit test case for FTAG functional test. Before running
+the test, set PORT0_GLORT and PORT1_GLORT environment variables, and ensure
+two fm10k ports are used for dpdk, glort info for each port can be shown in
+TestPoint. In the unit test, a packet will be forwarded to the target port
+by the switch without changing the destination mac address.
+
+diff --git a/app/test/test_fm10k_ftag.c b/app/test/test_fm10k_ftag.c
+new file mode 100644
+index 0000000..c75a7b1
+--- /dev/null
++++ b/app/test/test_fm10k_ftag.c
+@@ -0,0 +1,267 @@
++/*-
++ *   BSD LICENSE
++ *
++ *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
++ *   All rights reserved.
++ *
++ *   Redistribution and use in source and binary forms, with or without
++ *   modification, are permitted provided that the following conditions
++ *   are met:
++ *
++ *     * Redistributions of source code must retain the above copyright
++ *       notice, this list of conditions and the following disclaimer.
++ *     * Redistributions in binary form must reproduce the above copyright
++ *       notice, this list of conditions and the following disclaimer in
++ *       the documentation and/or other materials provided with the
++ *       distribution.
++ *     * Neither the name of Intel Corporation nor the names of its
++ *       contributors may be used to endorse or promote products derived
++ *       from this software without specific prior written permission.
++ *
++ *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
++ *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
++ *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
++ *   A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
++ *   OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
++ *   SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
++ *   LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
++ *   DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
++ *   THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
++ *   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
++ *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++
++#include <stdint.h>
++#include <inttypes.h>
++#include <rte_eal.h>
++#include <rte_ethdev.h>
++#include <rte_cycles.h>
++#include <rte_lcore.h>
++#include <rte_mbuf.h>
++#include "test.h"
++
++#define RX_RING_SIZE 128
++#define TX_RING_SIZE 512
++
++#define NUM_MBUFS 8191
++#define MBUF_CACHE_SIZE 250
++#define BURST_SIZE 32
++
++struct fm10k_ftag {
++	uint16_t swpri_type_user;
++	uint16_t vlan;
++	uint16_t sglort;
++	uint16_t dglort;
++};
++
++static const struct rte_eth_conf port_conf_default = {
++	.rxmode = { .max_rx_pkt_len = ETHER_MAX_LEN }
++};
++
++/*
++ * Initializes a given port using global settings and with the RX buffers
++ * coming from the mbuf_pool passed as a parameter.
++ */
++static inline int
++port_init(uint8_t port, struct rte_mempool *mbuf_pool)
++{
++	struct rte_eth_conf port_conf = port_conf_default;
++	const uint16_t rx_rings = 1, tx_rings = 1;
++	int retval;
++	uint16_t q;
++	struct ether_addr addr;
++
++	if (port >= rte_eth_dev_count())
++		return -1;
++
++	/* Configure the Ethernet device. */
++	retval = rte_eth_dev_configure(port, rx_rings, tx_rings, &port_conf);
++	if (retval != 0)
++		return retval;
++
++	/* Allocate and set up 1 RX queue per Ethernet port. */
++	for (q = 0; q < rx_rings; q++) {
++		retval = rte_eth_rx_queue_setup(port, q, RX_RING_SIZE,
++				rte_eth_dev_socket_id(port), NULL, mbuf_pool);
++		if (retval < 0)
++			return retval;
++	}
++
++	/* Allocate and set up 1 TX queue per Ethernet port. */
++	for (q = 0; q < tx_rings; q++) {
++		retval = rte_eth_tx_queue_setup(port, q, TX_RING_SIZE,
++				rte_eth_dev_socket_id(port), NULL);
++		if (retval < 0)
++			return retval;
++	}
++
++	/* Start the Ethernet port. */
++	retval = rte_eth_dev_start(port);
++	if (retval < 0)
++		return retval;
++
++	/* Display the port MAC address. */
++	rte_eth_macaddr_get(port, &addr);
++	printf("Port %u MAC: %02" PRIx8 " %02" PRIx8 " %02" PRIx8
++			   " %02" PRIx8 " %02" PRIx8 " %02" PRIx8 "\n",
++			(unsigned)port,
++			addr.addr_bytes[0], addr.addr_bytes[1],
++			addr.addr_bytes[2], addr.addr_bytes[3],
++			addr.addr_bytes[4], addr.addr_bytes[5]);
++
++	return 0;
++}
++
++static int set_glort_value(const char *str, uint16_t *glort)
++{
++	const char *glort_str;
++	char *end = NULL;
++
++	glort_str = getenv(str);
++	if (glort_str == NULL) {
++		printf("Please set environment value %s first\n", str);
++		return -1;
++	}
++	*glort = (uint16_t)strtoul(glort_str, &end, 16);
++	if ((glort_str[0] == '\0') || (end == NULL) || (*end != '\0')) {
++		printf("Glort value is not valid\n");
++		return -1;
++	}
++	return 0;
++}
++
++static int test_ftag_rxtx(void)
++{
++	uint8_t port = 0;
++	uint16_t glort[2];
++
++	struct rte_mbuf *bufs[BURST_SIZE];
++	uint16_t nb_rx, nb_tx, i;
++	struct fm10k_ftag *ftag_addr;
++	int ret = 0;
++
++	/* Get the glort value of the two ports */
++	if ((set_glort_value("PORT0_GLORT", &glort[0]) < 0) ||
++			(set_glort_value("PORT1_GLORT", &glort[1]) < 0))
++		return -1;
++
++	/* Receive packets coming from EPL on any of the two ports */
++	printf("Please send some packets from Ethernet port to one PEP\n");
++	do {
++		port ^= 1;
++		nb_rx = rte_eth_rx_burst(port, 0, bufs, BURST_SIZE);
++	} while (nb_rx <= 0);
++	printf("Receive %d packets on port %d\n", nb_rx, port);
++
++	/* Check sglort value on mbuf->vlan_tci_outer. */
++	for (i = 0; i < nb_rx; i++) {
++		if (bufs[i]->vlan_tci_outer == 0) {
++			printf("Find a packet with sglort 0\n");
++			return -1;
++		}
++	}
++	printf("test for FTAG RX passed\n");
++
++	/* Put an FTAG header on each of the packets received and set FTAG
++	 * TX flag
++	 **/
++	for (i = 0; i < nb_rx; i++) {
++		ftag_addr = (struct fm10k_ftag *)rte_pktmbuf_prepend(bufs[i],
++						sizeof(struct fm10k_ftag));
++		ftag_addr->swpri_type_user = 0;
++		ftag_addr->vlan = 0;
++		ftag_addr->dglort = rte_cpu_to_be_16(glort[port ^ 1]);
++		ftag_addr->sglort = rte_cpu_to_be_16(glort[port]);
++		bufs[i]->timesync = 1;
++	}
++
++	/* Send packets to the other port by method of FTAG based forwarding */
++	nb_tx = rte_eth_tx_burst(port, 0, bufs, nb_rx);
++	if (nb_tx <= 0) {
++		printf("Can not send out packets with FTAG\n");
++		return -1;
++	}
++	if (unlikely(nb_tx < nb_rx)) {
++		do {
++			rte_pktmbuf_free(bufs[nb_tx]);
++		} while (++nb_tx < nb_rx);
++	}
++	printf("Send out %d packets with FTAG on port %d\n", nb_tx, port);
++
++	/* Wait enough time for a burst of packets forwarding */
++	rte_delay_us(100);
++
++	nb_rx = rte_eth_rx_burst(port ^ 1, 0, bufs, BURST_SIZE);
++	printf("Receive %d packets on port %d\n", nb_rx, port ^ 1);
++	if (nb_rx < nb_tx) {
++		printf("Packet loss happens in FTAG TX test\n");
++		ret = -1;
++	}
++
++	/* check if the sglort value is right on the other port */
++	for (i = 0; i < nb_rx; i++)	{
++		if (bufs[i]->vlan_tci_outer != glort[port]) {
++			printf("sglort of the received packet is not right\n");
++			ret = -1;
++			break;
++		}
++	}
++	for (i = 0; i < nb_rx; i++)
++		rte_pktmbuf_free(bufs[i]);
++
++	if (!ret)
++		printf("test for FTAG TX passed\n");
++	return ret;
++}
++
++static int
++test_fm10k_ftag(void)
++{
++	uint16_t nb_ports;
++	uint16_t portid, pid;
++	struct rte_mempool *mbuf_pool;
++	int ret = 0;
++
++	printf("Dump the devices args\n");
++	rte_eal_devargs_dump(stdout);
++
++	nb_ports = rte_eth_dev_count();
++	if (nb_ports != 2) {
++		printf("2 ports needed for fm10k ftag based forwarding test\n");
++		return -1;
++	}
++
++	/* Creates a new mempool in memory to hold the mbufs. */
++	mbuf_pool = rte_mempool_lookup("MBUF_POOL_FTAG");
++	if (mbuf_pool == NULL)
++		mbuf_pool = rte_pktmbuf_pool_create("MBUF_POOL_FTAG",
++			NUM_MBUFS * nb_ports, MBUF_CACHE_SIZE, 0,
++			RTE_MBUF_DEFAULT_BUF_SIZE, rte_socket_id());
++
++	if (mbuf_pool == NULL)
++		rte_exit(EXIT_FAILURE, "Cannot create mbuf pool\n");
++
++	/* Initialize all ports. */
++	for (portid = 0; portid < nb_ports; portid++)
++		if (port_init(portid, mbuf_pool) != 0) {
++			for (pid = 0; pid < portid; pid++) {
++				rte_eth_dev_stop(portid);
++				//rte_eth_dev_close(portid);
++			}
++			rte_exit(EXIT_FAILURE, "Cannot init port %"PRIu8 "\n",
++					portid);
++		}
++
++	if (test_ftag_rxtx() < 0)
++		ret = -1;
++
++	/* port tear down */
++	for (portid = 0; portid < nb_ports; portid++) {
++		rte_eth_dev_stop(portid);
++		//rte_eth_dev_close(portid);
++	}
++
++	return ret;
++}
++
++REGISTER_TEST_COMMAND(fm10k_ftag_autotest, test_fm10k_ftag);
+-- 
+1.9.3
+
