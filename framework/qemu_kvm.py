@@ -1124,7 +1124,8 @@ class QEMUKvm(VirtBase):
 
         # after quit command, qemu will exit
         if 'quit' in cmd:
-            out = self.host_session.send_expect('%s' % cmd, '# ')
+            self.host_session.send_command('%s' % cmd)
+            out = self.host_session.send_expect(' ', '#')
         else:
             out = self.host_session.send_expect('%s' % cmd, '(qemu)', 30)
         self.host_session.send_expect('^C', "# ")
