@@ -284,7 +284,7 @@ increased.
 | Yes        | Ipv6     | Vxlan     | Yes        | Ipv4     | Bad Sctp  |
 +------------+----------+-----------+------------+----------+-----------+
 
-Test Case: Clould Filter
+Test Case: Cloud Filter
 ========================
 Start testpmd with tunneling packet type to vxlan and disable receive side 
 scale for hardware limitation::
@@ -319,20 +319,20 @@ Then send one packet and check packet was forwarded into right queue.
 +------------+------------+------------+----------+----------+--------+-------+
 
 
-Add Clould filter to max number will be failed.
+Add Cloud filter to max number will be failed.
 
-Remove Clould filter which has been added. Then send one packet and check 
+Remove Cloud filter which has been added. Then send one packet and check 
 packet was received in queue 0.
 
-Add Clould filter with invalid Mac address "00:00:00:00:01" will be failed.
+Add Cloud filter with invalid Mac address "00:00:00:00:01" will be failed.
 
-Add Clould filter with invalid ip address "192.168.1.256" will be failed.
+Add Cloud filter with invalid ip address "192.168.1.256" will be failed.
 
-Add Clould filter with invalid vlan "4097" will be failed.
+Add Cloud filter with invalid vlan "4097" will be failed.
 
-Add Clould filter with invalid vni "16777216" will be failed.
+Add Cloud filter with invalid vni "16777216" will be failed.
 
-Add Clould filter with invalid queue id "64" will be failed.
+Add Cloud filter with invalid queue id "64" will be failed.
 
 Test Case: Vxlan Checksum Offload Performance Benchmarking
 ==========================================================
