@@ -184,15 +184,15 @@ Add NVGRE filter as table listed first::
 
 Validte the filter command with wrong parameter::
 
-Add Clould filter with invalid Mac address "00:00:00:00:01" will be failed.
+Add Cloud filter with invalid Mac address "00:00:00:00:01" will be failed.
 
-Add Clould filter with invalid ip address "192.168.1.256" will be failed.
+Add Cloud filter with invalid ip address "192.168.1.256" will be failed.
 
-Add Clould filter with invalid vlan "4097" will be failed.
+Add Cloud filter with invalid vlan "4097" will be failed.
 
-Add Clould filter with invalid vni "16777216" will be failed.
+Add Cloud filter with invalid vni "16777216" will be failed.
 
-Add Clould filter with invalid queue id "64" will be failed.
+Add Cloud filter with invalid queue id "64" will be failed.
 
 Test Case: NVGRE IPv6 Filter
 ========================
