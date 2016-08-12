@@ -559,6 +559,9 @@ class TestPmdrssHash(TestCase):
                    'ipv6-tcp': 'tcp',
                    'ipv6-frag': 'ip'
                    }
+        if self.kdriver in ["fm10k"]:
+            iptypes.pop('ipv4-sctp')
+            iptypes.pop('ipv6-sctp')
 
         self.dut.kill_all()
 
