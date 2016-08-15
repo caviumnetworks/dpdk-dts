@@ -276,11 +276,23 @@ class scapy(object):
         if chksum is not None:
             pkt_layer.chksum = chksum
 
+    def sctp(self, pkt_layer, src=53, dst=53, len=None, chksum=None):
+        pkt_layer.sport = src
+        pkt_layer.dport = dst
+        if len is not None:
+            pkt_layer.len = len
+        if chksum is not None:
+            pkt_layer.chksum = chksum
+
     def raw(self, pkt_layer, payload=None):
         if payload is not None:
             pkt_layer.load = ''
             for hex1, hex2 in payload:
                 pkt_layer.load += struct.pack("=B", int('%s%s' %(hex1, hex2), 16))
+
+    def gre(self, pkt_layer, proto=None):
+        if proto is not None:
+            pkt_layer.proto = proto
 
     def vxlan(self, pkt_layer, vni=0):
         pkt_layer.vni = vni
@@ -472,9 +484,11 @@ class Packet(object):
             'VLAN': 'vlan',
             'ETAG': 'etag',
             'IP': 'ipv4',
+            'IPv4-TUNNEL':'inner_ipv4',
             'IPihl': 'ipv4ihl',
             'IPFRAG': 'ipv4_ext',
             'IPv6': 'ipv6',
+            'IPv6-TUNNEL':'inner_ipv6',
             'IPv6FRAG': 'ipv6_frag',
             'IPv6EXT': 'ipv6_ext',
             'IPv6EXT2': 'ipv6_ext2',
@@ -592,6 +606,12 @@ class Packet(object):
 
     def _config_layer_tcp(self, pkt_layer, config):
         return self.pktgen.tcp(pkt_layer, **config)
+
+    def _config_layer_sctp(self, pkt_layer, config):
+        return self.pktgen.sctp(pkt_layer, **config)
+
+    def _config_layer_gre(self, pkt_layer, config):
+        return self.pktgen.gre(pkt_layer, **config)
 
     def _config_layer_raw(self, pkt_layer, config):
         return self.pktgen.raw(pkt_layer, **config)
