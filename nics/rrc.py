@@ -259,7 +259,7 @@ class RedRockCanyou(NetDevice):
             return None
         else:
             port_value = res.group(2)
-        out = self.ctrl_crb.send_expect("show stacking logical-port all", "<0>%",10000)
+        out = self.ctrl_crb.send_expect("show stacking logical-port all", "<0>%")
         pattern = r"([0-9a-z]{6})+(\s)+(%s)+" %port_value
         s = re.compile(pattern)
         res = s.search(out)
