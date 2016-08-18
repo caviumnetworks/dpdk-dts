@@ -50,9 +50,9 @@ class TestBlackList(TestCase):
         [arch, machine, self.env, toolchain] = self.target.split('-')
 
         if self.env == 'bsdapp':
-            self.regexp_blacklisted_port = "EAL: PCI device %02x:%s on NUMA socket [-0-9]+[^\n]*\nEAL:   probe driver[^\n]*\nEAL:   Device is blacklisted, not initializing"
+            self.regexp_blacklisted_port = "EAL: PCI device %02x:%s on NUMA socket [-0-9]+[^\n]*\nEAL:   Device is blacklisted, not initializing"
         else:
-            self.regexp_blacklisted_port = "EAL: PCI device %s on NUMA socket [-0-9]+[^\n]*\nEAL:   probe driver[^\n]*\nEAL:   Device is blacklisted, not initializing"
+            self.regexp_blacklisted_port = "EAL: PCI device %s on NUMA socket [-0-9]+[^\n]*\nEAL:   Device is blacklisted, not initializing"
         self.pmdout = PmdOutput(self.dut)
 
     def set_up(self):
