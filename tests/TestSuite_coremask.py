@@ -17,7 +17,7 @@ from test_case import TestCase
 # Test class.
 #
 
-command_line = """./%s/app/test -c %s -n %d"""
+command_line = """./%s/app/test -c %s -n %d --log-level 8"""
 
 
 class TestCoremask(TestCase):
@@ -39,6 +39,11 @@ class TestCoremask(TestCase):
         self.mem_channel = self.dut.get_memory_channels()
 
         self.all_cores = self.dut.get_core_list("all")
+        self.dut.send_expect("sed -i -e 's/CONFIG_RTE_LOG_LEVEL=.*$/"
+                          + "CONFIG_RTE_LOG_LEVEL=RTE_LOG_DEBUG/' config/common_base", "# ", 30)
+
+        self.dut.skip_setup = False
+        self.dut.build_install_dpdk(self.target)
 
     def set_up(self):
         """
@@ -79,11 +84,11 @@ class TestCoremask(TestCase):
 
         out = self.dut.send_expect(command, "RTE>>", 10)
 
-        self.verify("EAL: Master lcore 0 is ready" in out,
-                    "Core 0 not ready")
+        self.verify("EAL: Master lcore 1 is ready" in out,
+                    "Core 1 not ready")
 
-        self.verify("EAL: Detected lcore 0 as core" in out,
-                    "Core 0 not detected")
+        self.verify("EAL: Detected lcore 1 as core" in out,
+                    "Core 1 not detected")
 
         for core in self.all_cores[1:]:
             self.verify("EAL: lcore %s is ready" % core in out,
@@ -99,7 +104,7 @@ class TestCoremask(TestCase):
         Check coremask parsing for more cores than available.
         """
 
-        command_line = """./%s/app/test -c %s -n %d|tee out"""
+        command_line = """./%s/app/test -c %s -n %d --log-level 8|tee out"""
 
         # Default big coremask value 128
         big_coremask_size = 128
@@ -173,4 +178,8 @@ class TestCoremask(TestCase):
         """
         Run after each test suite.
         """
-        pass
+        self.dut.send_expect("sed -i -e 's/CONFIG_RTE_LOG_LEVEL=.*$/"
+                          + "CONFIG_RTE_LOG_LEVEL=RTE_LOG_INFO/' config/common_base", "# ", 30)
+
+        #self.dut.skip_setup = False
+        self.dut.build_install_dpdk(self.target)
