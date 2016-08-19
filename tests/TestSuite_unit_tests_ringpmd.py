@@ -57,10 +57,7 @@ class TestUnitTestsRingPmd(TestCase):
         Run at the start of each test suite.
         Nothing to do here.
         """
-        self.ring_ports = [{'mode': 'tx', 'index': '0'},
-                           {'mode': 'rxtx', 'index': '1'},
-                           {'mode': 'tx', 'index': '2'}]
-
+        pass
     def set_up(self):
         """
         Run before each test case.
@@ -72,17 +69,17 @@ class TestUnitTestsRingPmd(TestCase):
         """
         Run Inter-VM share memory test.
         """
-        dev_str = ""
-        for port in self.ring_ports:
-            if port['mode'] == 'tx':
-                dev_str += "--vdev='eth_ring%s,nodeaction=:0:CREATE' " % port['index']
-            else:
-                dev_str += "--vdev='eth_ring%s,nodeaction=:0:CREATE' " % port['index']
+        dev_str = "--vdev=eth_ring0 --vdev=eth_ring1"
+
+        self.dut.send_expect("./%s/app/test -n 1 -c ffff" % self.target, "R.*T.*E.*>.*>", 10)
+        out = self.dut.send_expect("ring_pmd_autotest", "RTE>>", 120)
+        self.dut.send_expect("quit", "# ")
+        self.verify("Test OK" in out, "Default no eth_ring devices Test failed")
 
         self.dut.send_expect("./%s/app/test -n 1 -c ffff %s" % (self.target, dev_str), "R.*T.*E.*>.*>", 10)
         out = self.dut.send_expect("ring_pmd_autotest", "RTE>>", 120)
         self.dut.send_expect("quit", "# ")
-        self.verify("Test OK" in out, "Test failed")
+        self.verify("Test OK" in out, "Two eth_ring devices test failed")
 
     def tear_down(self):
         """
