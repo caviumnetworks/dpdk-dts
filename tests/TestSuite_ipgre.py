@@ -77,7 +77,6 @@ class TestIpgre(TestCase):
         self.re_bind_nvgre_to_gre()
 
     def initialize_port_config(self):
-        self.outer_mac_src = "11:22:33:44:55:66"
         self.outer_mac_src = '00:00:10:00:00:00'
         self.outer_mac_dst = '11:22:33:44:55:66'
         self.outer_ip_src = '192.168.1.1'
