@@ -144,7 +144,7 @@ Send packet outer ip address matched and check packet recevied by queue 3.
  
 Remove tunnel filter and check same packet recevied by queue 0.
 	testpmd> tunnel_filter rm 0 XX:XX:XX:XX:XX:XX YY:YY:YY:YY:YY:YY \
-	         0.0.0.0 1 ipingre iip 0 3
+	         0.0.0.0 1 ipingre oip 0 3
 
 Test Case 4: GRE packet chksum offload
 ====================================
