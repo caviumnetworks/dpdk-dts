@@ -72,7 +72,7 @@ class TestUnitTestsDump(TestCase):
         """
         pass
 
-    def test_log_dump(self):
+    def discard_test_log_dump(self):
         """
         Run history log dump test case.
         """
@@ -85,41 +85,28 @@ class TestUnitTestsDump(TestCase):
         """
         Run history log dump test case.
         """
-        self.dut.send_expect("./%s/app/test -n 1 -c ffff" % (self.target), "R.*T.*E.*>.*>", self.start_test_time)
-        out = self.dut.send_expect("dump_ring", "RTE>>", self.run_cmd_time)
+        self.dut.send_expect("./%s/app/testpmd -n 1 -c f -- -i" % (self.target), "testpmd>", self.start_test_time)
+        out = self.dut.send_expect("dump_ring", "testpmd>", self.run_cmd_time)
         self.dut.send_expect("quit", "# ")
-        elements = ['ring', 'address', 'flags', 'size', 'ct', 'ch', 'pt', 'ph', 'used', 'avail', 'watermark']
         match_regex = "ring <(.*?)>@0x(.*)\r\n"
-        for element in elements[2:]:
-            match_regex += "  %s=(\d*)\r\n" % element
         m = re.compile(r"%s" % match_regex, re.S)
-        result = m.search(out)
-        ring_info = dict(zip(elements, result.groups()))
+        result = m.findall(out)
+        
 
-        self.verify(ring_info['ring'] == 'MP_log_history', "Test failed")
+        self.verify(result[0][0] == 'MP_mbuf_pool_socket_0', "dump ring name failed")
 
     def test_mempool_dump(self):
         """
         Run mempool dump test case.
         """
-        self.dut.send_expect("./%s/app/test -n 1 -c ffff" % (self.target), "R.*T.*E.*>.*>", self.start_test_time)
-        out = self.dut.send_expect("dump_mempool", "RTE>>", self.run_cmd_time * 2)
+        self.dut.send_expect("./%s/app/testpmd -n 1 -c f -- -i" % (self.target), "testpmd>", self.start_test_time)
+        out = self.dut.send_expect("dump_mempool", "testpmd>", self.run_cmd_time * 2)
         self.dut.send_expect("quit", "# ")
-        elements = ['mempool', 'flags', 'ring', 'phys_addr', 'nb_mem_chunks', 'size', 'populated_size', 'header_size', 'elt_size',
-                    'trailer_size', 'total_obj_size', 'private_data_size', 'avg bytes/object',  'cache infos','cache_size', 'common_pool_count']
         match_regex = "mempool <(.*?)>@0x(.*?)\r\n"
-        for element in elements[1:]:
-            if element == 'cache_size':
-                match_regex += "    %s=(.*?)\r\n" % element
-            elif element == 'cache infos':
-                match_regex += "  %s:\r\n" % element
-            else:
-                match_regex += "  %s=(.*?)\r\n" % element
         m = re.compile(r"%s" % match_regex, re.S)
-        result = m.search(out)
-        mempool_info = dict(zip(elements, result.groups()))
+        result = m.findall(out)
 
-        self.verify(mempool_info['mempool'] == 'log_history', "Test failed")
+        self.verify(result[0][0] == 'mbuf_pool_socket_0', "dump mempool name failed")
 
     def test_physmem_dump(self):
         """
@@ -185,19 +172,20 @@ class TestUnitTestsDump(TestCase):
         Run devargs dump test case.
         """
         test_port = self.dut_ports[0]
-        self.dut.send_expect("./%s/app/test -n 1 -c ffff -b %s"
-                             % (self.target, self.dut.ports_info[test_port]['pci']), "R.*T.*E.*>.*>", self.start_test_time)
+        pci_address = self.dut.ports_info[test_port]['pci'];
+        self.dut.send_expect("./%s/app/test -n 1 -c ffff -b %s"  
+                             % (self.target, pci_address), "R.*T.*E.*>.*>", self.start_test_time)
         out = self.dut.send_expect("dump_devargs", "RTE>>", self.run_cmd_time * 2)
         self.dut.send_expect("quit", "# ")
-        black_str = "PCI blacklist %s" % self.dut.ports_info[test_port]['pci']
+        black_str = "PCI blacklist %s" % pci_address
         self.verify(black_str in out, "Dump black list failed")
 
         self.dut.send_expect("./%s/app/test -n 1 -c ffff -w %s"
-                             % (self.target, self.dut.ports_info[test_port]['pci']), "R.*T.*E.*>.*>", self.start_test_time)
+                             % (self.target, pci_address), "R.*T.*E.*>.*>", self.start_test_time)
         out = self.dut.send_expect("dump_devargs", "RTE>>", self.run_cmd_time * 2)
         self.dut.send_expect("quit", "# ")
 
-        white_str = "PCI whitelist %s" % self.dut.ports_info[test_port]['pci']
+        white_str = "PCI whitelist %s" % pci_address
         self.verify(white_str in out, "Dump white list failed")
 
     def tear_down(self):
