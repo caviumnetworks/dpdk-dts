@@ -349,7 +349,12 @@ class TestNvgre(TestCase):
         nvgre Prerequisites
         """
         # this feature only enable in FVL now
-        self.verify(self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single", "fortpark_TLV", "sageville", "sagepond"], "NVGRE Only supported by Fortville and Sageville")
+        if self.nic in ["fortville_eagle", "fortville_spirit", "fortville_spirit_single", "fortpark_TLV"]:
+            self.compile_switch = 'CONFIG_RTE_LIBRTE_I40E_INC_VECTOR'
+        elif self.nic in ["sageville", "sagepond"]:
+            self.compile_switch = 'CONFIG_RTE_IXGBE_INC_VECTOR'
+        else:
+            self.verify(False, "%s not support NVGRE case" % self.nic)
         # Based on h/w type, choose how many ports to use
         ports = self.dut.get_ports(self.nic)
         self.portmask = dts.create_mask(self.dut.get_ports(self.nic))
@@ -457,7 +462,7 @@ class TestNvgre(TestCase):
         self.dut.send_expect("show port stats all", "testpmd>", 10)
         self.dut.send_expect("stop", "testpmd>", 10)
         self.dut.send_expect("quit", "#", 10)
-
+        
     def nvgre_filter(self, filter_type="omac-imac-tenid", queue_id=3, vlan=False, remove=False):
         """
         send nvgre packet and check whether receive packet in assigned queue
@@ -602,6 +607,15 @@ class TestNvgre(TestCase):
         """
         verify nvgre packet with ipv4
         """
+        # packet type detect must used without VECTOR pmd
+        out = self.dut.send_expect("cat config/common_base", "]# ", 10)
+        src_vec_model = re.findall("%s=." % self.compile_switch, out)[0][-1]
+        if src_vec_model == 'y':
+            self.dut.send_expect("sed -i -e 's/%s=.*$/" % self.compile_switch
+                                + "%s=n/' config/common_base" % self.compile_switch, "# ", 30)
+            self.dut.skip_setup = False
+            self.dut.build_install_dpdk(self.target)
+
         # check no nvgre packet
         self.nvgre_detect(outer_ip_proto=0xFF)
         # check nvgre + IP inner packet
@@ -614,7 +628,13 @@ class TestNvgre(TestCase):
         self.nvgre_detect(outer_vlan=1)
         # check vlan nvgre + vlan inner packet
         self.nvgre_detect(outer_vlan=1, inner_vlan=1)
-
+        out = self.dut.send_expect("cat config/common_base", "]# ", 10)
+        dst_vec_model = re.findall("%s=." % self.compile_switch, out)[0][-1]
+        if src_vec_model != dst_vec_model:
+            self.dut.send_expect("sed -i -e 's/%s=.*$/" % self.compile_switch
+                                + "%s=%s/' config/common_base" % (self.compile_switch, src_vec_model), "# ", 30)
+            self.dut.skip_setup = False
+            self.dut.build_install_dpdk(self.target)
     def test_tunnel_filter(self):
 
         # verify tunnel filter feature
