@@ -768,6 +768,7 @@ class NetDevice(object):
         Bind NIC port to the pci-stub driver on linux.
         """
         new_id = self.pci_id.replace(':', ' ')
+        nic_pci_num = ':'.join([domain_id, bus_id, devfun_id])
         self.__send_expect(
             "echo %s > /sys/bus/pci/drivers/pci-stub/new_id" % new_id, "# ")
         self.__send_expect(
