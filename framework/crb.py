@@ -281,7 +281,7 @@ class Crb(object):
             return None
         return match.group(1)
 
-    def get_pci_dev_driver_freebsd(self, bus_id, devfun_id):
+    def get_pci_dev_driver_freebsd(self, domain_id, bus_id, devfun_id):
         """
         Get the driver of specified pci device.
         """

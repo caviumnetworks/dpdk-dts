@@ -136,7 +136,7 @@ class NetDevice(object):
             socket = -1
         return socket
 
-    def get_nic_socket_freebsd(self, bus_id, devfun_id):
+    def get_nic_socket_freebsd(self, domain_id, bus_id, devfun_id):
         NotImplemented
 
     @nic_has_driver
@@ -200,7 +200,7 @@ class NetDevice(object):
             domain_id, bus_id, devfun_id)
         return self.__send_expect(command, '# ')
 
-    def get_interface_name_freebsd(self, bus_id, devfun_id, driver):
+    def get_interface_name_freebsd(self, domain_id, bus_id, devfun_id, driver):
         """
         Get interface name of specified pci device on Freebsd.
         """
@@ -212,14 +212,15 @@ class NetDevice(object):
             get_interface_name_freebsd = getattr(self,
                                                  'get_interface_name_freebsd_%s' % generic_driver)
 
-        return get_interface_name_freebsd(bus_id, devfun_id)
+        return get_interface_name_freebsd(domain_id, bus_id, devfun_id)
 
-    def get_interface_name_freebsd_generic(self, bus_id, devfun_id):
+    def get_interface_name_freebsd_generic(self, domain_id, bus_id, devfun_id):
         """
         Get the interface name by the default way on freebsd.
         """
+        pci_str = "%s:%s:%s" % (domain_id, bus_id, devfun_id) 
         out = self.__send_expect("pciconf -l", "# ")
-        rexp = r"(\w*)@pci0:%s" % bus_id
+        rexp = r"(\w*)@pci0:%s" % pci_str
         pattern = re.compile(rexp)
         match = pattern.findall(out)
         if len(match) == 0:
@@ -307,7 +308,7 @@ class NetDevice(object):
                    (domain_id, bus_id, devfun_id, virtio, intf))
         return self.__send_expect(command, '# ')
 
-    def get_mac_addr_freebsd(self, intf, bus_id, devfun_id, driver):
+    def get_mac_addr_freebsd(self, intf, domain_id, bus_id, devfun_id, driver):
         """
         Get mac address of specified pci device on Freebsd.
         """
@@ -323,9 +324,9 @@ class NetDevice(object):
                 'get_mac_addr_freebsd_%s' %
                 generic_driver)
 
-        return get_mac_addr_freebsd(intf, bus_id, devfun_id)
+        return get_mac_addr_freebsd(intf, domain_id, bus_id, devfun_id)
 
-    def get_mac_addr_freebsd_generic(self, intf, bus_id, devfun_id):
+    def get_mac_addr_freebsd_generic(self, intf, domain_id, bus_id, devfun_id):
         """
         Get the MAC by the default way on Freebsd.
         """

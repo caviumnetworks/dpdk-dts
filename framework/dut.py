@@ -229,10 +229,7 @@ class Dut(Crb):
         """
         After all execution done, some special nic like fm10k should be stop
         """
-        for port in self.ports_info:
-            pci_bus = port['pci']
-            pci_id = port['type']
-            # get device driver
+        for (pci_bus, pci_id) in self.pci_devices_info:
             driver = settings.get_nic_driver(pci_id)
             if driver is not None:
                 # unbind device driver
@@ -718,15 +715,18 @@ class Dut(Crb):
         self.ports_info = []
 
         skipped = RED('Skipped: Unknown/not selected')
-
+        
         for (pci_bus, pci_id) in self.pci_devices_info:
 
             if not dts.accepted_nic(pci_id):
                 self.logger.info("DUT: [%s %s] %s" % (pci_bus, pci_id,
                                                       skipped))
                 continue
-
-            port = GetNicObj(self, pci_bus, '')
+            addr_array = pci_bus.split(':')
+            domain_id = addr_array[0]
+            bus_id = addr_array[1]
+            devfun_id = addr_array[2]
+            port = GetNicObj(self, domain_id, bus_id, devfun_id)
             intf = port.get_interface_name()
 
             macaddr = port.get_mac_addr()
