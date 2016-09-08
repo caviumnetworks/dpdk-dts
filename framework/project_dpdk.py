@@ -170,6 +170,7 @@ class DPDKdut(Dut):
             build_time = 900
         # clean all
         self.send_expect("rm -rf " + target, "#")
+        self.send_expect("rm -rf %s" % r'./app/test/test_resource_c.res.o' , "#")
 
         # compile
         out = self.send_expect("make -j install T=%s %s" % (target, extra_options), "# ", build_time)
@@ -188,6 +189,7 @@ class DPDKdut(Dut):
         """
         # clean all
         self.send_expect("rm -rf " + target, "#")
+        self.send_expect("rm -rf %s" % r'./app/test/test_resource_c.res.o' , "#")
 
         # compile
         out = self.send_expect("make -j %d install T=%s CC=gcc48" % (self.number_of_cores,
@@ -312,6 +314,7 @@ class DPDKdut(Dut):
         """
         Build dpdk sample applications on linux.
         """
+        self.send_expect("rm -rf %s" % r'./app/test/test_resource_c.res.o' , "#")
         return self.send_expect("make -j -C %s %s" % (folder, extra_options),
                                 "# ", 90)
 
@@ -319,6 +322,7 @@ class DPDKdut(Dut):
         """
         Build dpdk sample applications on Freebsd.
         """
+        self.send_expect("rm -rf %s" % r'./app/test/test_resource_c.res.o' , "#")
         return self.send_expect("make -j -C %s %s CC=gcc48" % (folder, extra_options),
                                 "# ", 90)
 
