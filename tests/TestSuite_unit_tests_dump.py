@@ -132,7 +132,7 @@ class TestUnitTestsDump(TestCase):
         """
         Run memzone dump test case.
         """
-        self.dut.send_expect("./%s/app/testpmd -n 1 -c ffffi -- -i" % (self.target), "testpmd>", self.start_test_time)
+        self.dut.send_expect("./%s/app/testpmd -n 1 -c ffff -- -i" % (self.target), "testpmd>", self.start_test_time)
         out = self.dut.send_expect("dump_memzone", "testpmd>", self.run_cmd_time * 2)
         self.dut.send_expect("quit", "# ")
 
