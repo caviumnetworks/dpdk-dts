@@ -152,9 +152,19 @@ class TestL2fwdCrypto(TestCase):
                 test_vectors, "qat_h_SHA1_HMAC_01"):
             result = False
 
+        self.logger.info("Test qat_h_SHA224_HMAC_01")
+        if not self.__execute_l2fwd_crypto_test(
+                test_vectors, "qat_h_SHA224_HMAC_01"):
+            result = False
+
         self.logger.info("Test qat_h_SHA256_HMAC_01")
         if not self.__execute_l2fwd_crypto_test(
                 test_vectors, "qat_h_SHA256_HMAC_01"):
+            result = False
+
+        self.logger.info("Test qat_h_SHA384_HMAC_01")
+        if not self.__execute_l2fwd_crypto_test(
+                test_vectors, "qat_h_SHA384_HMAC_01"):
             result = False
 
         self.logger.info("Test qat_h_SHA512_HMAC_01")
@@ -547,6 +557,25 @@ test_vectors = {
         "output_hash": "12E2EF8B7EBFE556C73307B04E1E46D12BA34884"
     },
 
+    "qat_h_SHA224_HMAC_01": {
+        "vdev": "",
+        "chain": "HASH_ONLY",
+        "cdev_type": "ANY",
+        "cipher_algo": "",
+        "cipher_op": "",
+        "cipher_key": "",
+        "iv": "",
+        "auth_algo": "SHA224_HMAC",
+        "auth_op": "GENERATE",
+        "auth_key": "000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f",
+        "auth_key_random_size": "",
+        "aad": "",
+        "aad_random_size": "",
+        "input": "11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111100000000000000000000000000000000",
+        "output_cipher": "",
+        "output_hash": "45BBF9A798501F225E2C9671863B96BF2DD1C5DAC5DB554A7B9BDB6D"
+    },
+
     "qat_h_SHA256_HMAC_01": {
         "vdev": "",
         "chain": "HASH_ONLY",
@@ -564,6 +593,26 @@ test_vectors = {
         "input": "11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111100000000000000000000000000000000",
         "output_cipher": "",
         "output_hash": "AC9E0BA3A0716F4F4A2734B407BE28D6F276CE0472B827D6EE47B7E518C2BC0D"
+    },
+
+    "qat_h_SHA384_HMAC_01": {
+        "vdev": "",
+        "chain": "HASH_ONLY",
+        "cdev_type": "ANY",
+        "cipher_algo": "",
+        "cipher_op": "",
+        "cipher_key": "",
+        "iv": "",
+        "auth_algo": "SHA384_HMAC",
+        "auth_op": "GENERATE",
+        "auth_key": "000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f",
+        "auth_key_random_size": "",
+        "auth_key_random_size": "",
+        "aad": "",
+        "aad_random_size": "",
+        "input": "11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111100000000000000000000000000000000",
+        "output_cipher": "",
+        "output_hash": "2CE1BD8F18A93A63AF04C21EDE42EE4D8468C6DFD17474B64D2C36E6CAA9F9D177B424F91DAB8D2D4CAF2AAF63FFAE09"
     },
 
     "qat_h_SHA512_HMAC_01": {
