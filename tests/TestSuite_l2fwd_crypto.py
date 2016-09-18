@@ -29,6 +29,10 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import hmac
+import hashlib
+import binascii
+
 import dts
 import time
 
@@ -39,8 +43,8 @@ class TestL2fwdCrypto(TestCase):
 
     def set_up_all(self):
 
-        self.core_config = "1S/4C/1T"
-        self.number_of_ports = 2
+        self.core_config = "1S/2C/1T"
+        self.number_of_ports = 1
         self.dut_ports = self.dut.get_ports(self.nic)
         self.verify(len(self.dut_ports) >= self.number_of_ports,
                     "Not enough ports for " + self.nic)
@@ -54,11 +58,10 @@ class TestL2fwdCrypto(TestCase):
         self.core_mask = dts.create_mask(self.dut.get_core_list(
                                          self.core_config,
                                          socket=self.ports_socket))
-        self.port_mask = dts.create_mask([self.dut_ports[0],
-                                         self.dut_ports[1]])
+        self.port_mask = dts.create_mask([self.dut_ports[0]])
 
         self.tx_port = self.tester.get_local_port(self.dut_ports[0])
-        self.rx_port = self.tester.get_local_port(self.dut_ports[1])
+        self.rx_port = self.tester.get_local_port(self.dut_ports[0])
 
         self.tx_interface = self.tester.get_interface(self.tx_port)
         self.rx_interface = self.tester.get_interface(self.rx_port)
@@ -77,6 +80,7 @@ class TestL2fwdCrypto(TestCase):
         self.dut.send_expect("sed -i 's/CONFIG_RTE_LIBRTE_PMD_NULL_CRYPTO=n$/CONFIG_RTE_LIBRTE_PMD_NULL_CRYPTO=y/' config/common_base", "# ")
         self.dut.send_expect("sed -i 's/CONFIG_RTE_LIBRTE_PMD_SNOW3G=n$/CONFIG_RTE_LIBRTE_PMD_SNOW3G=y/' config/common_base", "# ")
         self.dut.send_expect("sed -i 's/CONFIG_RTE_LIBRTE_PMD_KASUMI=n$/CONFIG_RTE_LIBRTE_PMD_KASUMI=y/' config/common_base", "# ")
+        self.dut.skip_setup = False
         self.dut.build_install_dpdk(self.dut.target)
 
         # l2fwd-crypto compile
@@ -115,6 +119,28 @@ class TestL2fwdCrypto(TestCase):
                 test_vectors, "qat_c_AES_GCM_01"):
             result = False
 
+        self.verify(result, True)
+
+    def test_qat_MD5(self):
+        """
+        Validate MD5 HMAC digest with Intel QuickAssist device
+        """
+
+        result = True
+
+        self.logger.info("Test qat_h_MD5_HMAC_01")
+
+        # if output_hash not existed, calculate it automatically
+        vector = test_vectors['qat_h_MD5_HMAC_01']
+        if not vector['output_hash']:
+            key = binascii.a2b_hex(vector['auth_key'])
+            msg = binascii.a2b_hex(vector['input'])
+            digest = hmac.new(key, msg, hashlib.md5).digest()
+            vector['output_hash'] = binascii.b2a_hex(digest)
+
+        if not self.__execute_l2fwd_crypto_test(
+                test_vectors, "qat_h_MD5_HMAC_01"):
+            result = False
         self.verify(result, True)
 
     def test_qat_SHA(self):
@@ -246,7 +272,7 @@ class TestL2fwdCrypto(TestCase):
         self.dut.send_expect(cmd_str, "==", 30)
 
         self.tester.send_expect("rm -rf %s.pcap" % (self.rx_interface), "#")
-        self.tester.send_expect("tcpdump -w %s.pcap -i %s &" % (self.rx_interface, self.rx_interface), "#")
+        self.tester.send_expect("tcpdump -P in -w %s.pcap -i %s &" % (self.rx_interface, self.rx_interface), "#")
         # Wait 5 sec for tcpdump stable
         time.sleep(5)
 
@@ -481,6 +507,25 @@ test_vectors = {
         "input": "111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
         "output_cipher": "1b851aa4507fe154e0d28549d742fb4b1372fd85770963878bcbec1e5ab51ecd0b3c85a2000db4e9acd3d95cdd38fd56",
         "output_hash": "",
+    },
+
+    "qat_h_MD5_HMAC_01": {
+        "vdev": "",
+        "chain": "HASH_ONLY",
+        "cdev_type": "ANY",
+        "cipher_algo": "",
+        "cipher_op": "",
+        "cipher_key": "",
+        "iv": "",
+        "auth_algo": "MD5_HMAC",
+        "auth_op": "GENERATE",
+        "auth_key": "000102030405060708090a0b0c0d0e0f",
+        "auth_key_random_size": "",
+        "aad": "",
+        "aad_random_size": "",
+        "input": "11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111100000000000000000000000000000000",
+        "output_cipher": "",
+        "output_hash": None
     },
 
     "qat_h_SHA1_HMAC_01": {
