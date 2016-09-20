@@ -45,12 +45,12 @@ class TestBlackList(TestCase):
         Requirements:
             Two Ports
         """
-        self.ports = self.dut.get_ports()
+        self.ports = self.dut.get_ports(self.nic)
         self.verify(len(self.ports) >= 2, "Insufficient ports for testing")
         [arch, machine, self.env, toolchain] = self.target.split('-')
 
         if self.env == 'bsdapp':
-            self.regexp_blacklisted_port = "EAL: PCI device %02x:%s on NUMA socket [-0-9]+[^\n]*\nEAL:   Device is blacklisted, not initializing"
+            self.regexp_blacklisted_port = "EAL: PCI device 0000:%02x:%s on NUMA socket [-0-9]+[^\n]*\nEAL:   Device is blacklisted, not initializing"
         else:
             self.regexp_blacklisted_port = "EAL: PCI device %s on NUMA socket [-0-9]+[^\n]*\nEAL:   Device is blacklisted, not initializing"
         self.pmdout = PmdOutput(self.dut)
