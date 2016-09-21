@@ -422,7 +422,11 @@ class NetDevice(object):
             self.__send_expect("ifconfig %s up" % intf, "# ")
 
     def enable_ipv6_freebsd(self, intf):
-        pass
+        self.__send_expect("sysctl net.ipv6.conf.%s.disable_ipv6=0" %
+                           intf, "# ")
+        self.__send_expect("ifconfig %s down" % intf, "# ")
+        self.__send_expect("ifconfig %s up" % intf, "# ")
+
 
     @nic_has_driver
     def disable_ipv6(self):
@@ -443,7 +447,10 @@ class NetDevice(object):
                            intf, "# ")
 
     def disable_ipv6_freebsd(self, intf):
-        pass
+        self.__send_expect("sysctl net.ipv6.conf.%s.disable_ipv6=1" %
+                           intf, "# ")
+        self.__send_expect("ifconfig %s down" % intf, "# ")
+        self.__send_expect("ifconfig %s up" % intf, "# ")
 
     @nic_has_driver
     def get_ipv6_addr(self):
