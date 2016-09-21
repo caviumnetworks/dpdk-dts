@@ -52,8 +52,8 @@ virtual ethernet devices with full rx&tx functions.
 The steps to run the unit test manually are as follow::
   
   # make -C ./app/test/
-  # ./app/test/test -n 1 -c ffff --vdev='eth_ring0,nodeaction=:0:CREATE' 
-      --vdev='eth_ring1,nodeaction=:0:CREATE'  --vdev='eth ring2,nodeaction=:0:CREATE'
+  # ./app/test/test -n 1 -c ffff --vdev='net_ring0' 
+      --vdev='net_ring1'  
   RTE>> ring_pmd_autotest
 
 The final output of the test has to be "Test OK"

@@ -69,7 +69,7 @@ class TestUnitTestsRingPmd(TestCase):
         """
         Run Inter-VM share memory test.
         """
-        dev_str = "--vdev=eth_ring0 --vdev=eth_ring1"
+        dev_str = "--vdev=net_ring0 --vdev=net_ring1"
 
         self.dut.send_expect("./%s/app/test -n 1 -c ffff" % self.target, "R.*T.*E.*>.*>", 10)
         out = self.dut.send_expect("ring_pmd_autotest", "RTE>>", 120)
