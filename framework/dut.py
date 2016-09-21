@@ -320,7 +320,7 @@ class Dut(Crb):
         Setup Freebsd hugepages.
         """
         if hugepages is -1:
-            hugepages = 2048
+            hugepages = 4096
 
         num_buffers = hugepages / 1024
         if num_buffers:
