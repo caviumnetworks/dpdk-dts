@@ -314,9 +314,14 @@ class DPDKdut(Dut):
         """
         Build dpdk sample applications on linux.
         """
+        # icc compile need more time
+        if 'icc' in self.target:
+            timeout = 300
+        else:
+            timeout = 90
         self.send_expect("rm -rf %s" % r'./app/test/test_resource_c.res.o' , "#")
         return self.send_expect("make -j -C %s %s" % (folder, extra_options),
-                                "# ", 90)
+                                "# ", timeout)
 
     def build_dpdk_apps_freebsd(self, folder, extra_options):
         """
@@ -324,7 +329,7 @@ class DPDKdut(Dut):
         """
         self.send_expect("rm -rf %s" % r'./app/test/test_resource_c.res.o' , "#")
         return self.send_expect("make -j -C %s %s CC=gcc48" % (folder, extra_options),
-                                "# ", 90)
+                                "# ", 180)
 
     def get_blacklist_string(self, target, nic):
         """
