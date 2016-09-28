@@ -83,16 +83,21 @@ class TestUnitTestsLpmIpv6(TestCase):
         """
         [arch, machine, env, toolchain] = self.target.split('-')
         self.verify(arch == "x86_64", "lpm6 request huge memory")
-
-        hugepage_ori = self.dut.get_total_huge_pages()
-        self.dut.set_huge_pages(4096)
-        hugepage_num = self.dut.get_total_huge_pages()
-        self.verify(hugepage_num >= 4096, "failed to request huge memory")
+        if env == 'bsdapp':
+            pass
+        else:
+            hugepage_ori = self.dut.get_total_huge_pages()
+            self.dut.set_huge_pages(4096)
+            hugepage_num = self.dut.get_total_huge_pages()
+            self.verify(hugepage_num >= 4096, "failed to request huge memory")
 
         self.dut.send_expect("./app/test/test -n 1 -c ffff", "R.*T.*E.*>.*>", 60)
         out = self.dut.send_expect("lpm6_autotest", "RTE>>", 3600)
         self.dut.send_expect("quit", "# ")
-        self.dut.set_huge_pages(hugepage_ori)
+        if env == 'bsdapp':
+            pass
+        else:
+            self.dut.set_huge_pages(hugepage_ori)
         self.verify("Test OK" in out, "Test failed")
 
     def tear_down(self):
