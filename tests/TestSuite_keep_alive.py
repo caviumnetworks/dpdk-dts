@@ -35,10 +35,10 @@ DPDK Test suite.
 Test keep alive
 """
 
-import dts
 import string
 import time
 import re
+import utils
 from test_case import TestCase
 from plotting import Plotting 
 from settings import HEADER_SIZE   
@@ -55,7 +55,7 @@ class TestKeepAlive(TestCase):
         self.dut_ports = self.dut.get_ports(self.nic)
         self.verify(len(self.dut_ports) >= 2, "Insufficient ports")
         cores = self.dut.get_core_list("1S/4C/1T")
-        self.coremask = dts.create_mask(cores)
+        self.coremask = utils.create_mask(cores)
 
         self.path = "./examples/l2fwd-keepalive/build/l2fwd-keepalive" 
 

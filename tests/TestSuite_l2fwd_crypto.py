@@ -33,7 +33,7 @@ import hmac
 import hashlib
 import binascii
 
-import dts
+import utils
 import time
 
 from test_case import TestCase
@@ -55,10 +55,10 @@ class TestL2fwdCrypto(TestCase):
         self.logger.info("dut ports = " + str(self.dut_ports))
         self.logger.info("ports_socket = " + str(self.ports_socket))
 
-        self.core_mask = dts.create_mask(self.dut.get_core_list(
+        self.core_mask = utils.create_mask(self.dut.get_core_list(
                                          self.core_config,
                                          socket=self.ports_socket))
-        self.port_mask = dts.create_mask([self.dut_ports[0]])
+        self.port_mask = utils.create_mask([self.dut_ports[0]])
 
         self.tx_port = self.tester.get_local_port(self.dut_ports[0])
         self.rx_port = self.tester.get_local_port(self.dut_ports[0])

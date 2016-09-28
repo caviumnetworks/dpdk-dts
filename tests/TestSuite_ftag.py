@@ -38,7 +38,6 @@ Test ftag feature
 
 """
 
-import dts
 import re
 import os
 import time

@@ -39,7 +39,7 @@ inside virtual point-to-point links over an Internet Protocol network.
 Fortville support GRE packet detecting, checksum computing and filtering.
 """
 
-import dts
+import utils
 import re
 import time
 import os
@@ -62,7 +62,7 @@ class TestIpgre(TestCase):
         """
         Run at the start of each test suite.
         """
-        self.printFlag = dts.debug_mode
+        self.printFlag = self._enable_debug
         ports = self.dut.get_ports()
         self.verify(self.nic.startswith("fortville"),
                     "GRE tunnel packet type only support by Fortville")
@@ -110,11 +110,11 @@ class TestIpgre(TestCase):
                 if self.printFlag:# debug output
                     print pkt_layer_name
                 if pkt_layer_name not in out:
-                    print dts.RED("Fail to detect %s" % pkt_layer_name)
+                    print utils.RED("Fail to detect %s" % pkt_layer_name)
                     if not self.printFlag:
                         raise VerifyFailure("Failed to detect %s" % pkt_layer_name)
             else:
-                print dts.GREEN("Detected %s successfully" % pkt_type)
+                print utils.GREEN("Detected %s successfully" % pkt_type)
 	        time.sleep(1)
 
     def save_ref_packet(self, pkt_types, layer_configs=None):
@@ -169,7 +169,7 @@ class TestIpgre(TestCase):
         # verify saved pcap checksum same to expected checksum
         for key in chksums_ref:
             self.verify(int(chksums[key], 16) == int(chksums_ref[key], 16), "%s not matched to %s" % (key, chksums_ref[key]))
-        print dts.GREEN("Checksum is ok")
+        print utils.GREEN("Checksum is ok")
 
     def test_GRE_ipv4_packet_detect(self):
         """

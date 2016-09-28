@@ -38,7 +38,7 @@ import re
 import time
 import sys
 
-import dts
+import utils
 from qemu_kvm import QEMUKvm
 from test_case import TestCase
 from pmd_output import PmdOutput
@@ -59,7 +59,7 @@ class TestEtag(TestCase):
         self.src_mac =  self.tester.get_mac(self.tester.get_local_port(0))
         self.dst_mac = self.dut.get_mac_address(0)
         self.vm0 = None
-        self.printFlag = dts.debug_mode
+        self.printFlag = self._enable_debug
         self.dut.send_expect('ls', '#')
         self.setup_vm_env_flag = 0
         self.preset_host_cmds = list()
@@ -159,10 +159,10 @@ class TestEtag(TestCase):
                     if self.printFlag:# debug output
                         print pkt_attribute
                     if pkt_attribute not in out:
-                        print dts.RED('Fail to detect %s' % pkt_attribute)
+                        print utils.RED('Fail to detect %s' % pkt_attribute)
                         if not self.printFlag:# print out all info in debug mode
                             raise VerifyFailure('Failed to detect %s' % pkt_attribute)
-                print dts.GREEN('VM detected %s successfully' % pkt_type)
+                print utils.GREEN('VM detected %s successfully' % pkt_type)
 
             # check dut testpmd packet received information
             if 'dut' in pkt_types[pkt_type].keys():
@@ -173,10 +173,10 @@ class TestEtag(TestCase):
                     if self.printFlag:# debug output
                         print pkt_attribute
                     if pkt_attribute not in out:
-                        print dts.RED('Fail to detect %s' % pkt_attribute)
+                        print utils.RED('Fail to detect %s' % pkt_attribute)
                         if not self.printFlag:# print out all info in debug mode
                             raise VerifyFailure('Failed to detect %s' % pkt_attribute)
-                print dts.GREEN('DUT detected %s successfully' % pkt_type)
+                print utils.GREEN('DUT detected %s successfully' % pkt_type)
             time.sleep(1)
 
     def preset_host_testpmd(self, core_mask, eal_param):
