@@ -104,7 +104,7 @@ class TestCoremask(TestCase):
         Check coremask parsing for more cores than available.
         """
 
-        command_line = """./%s/app/test -c %s -n %d --log-level 8 2 > &1 |tee out"""
+        command_line = """./%s/app/test -c %s -n %d --log-level 8 2>&1 |tee out"""
 
         # Default big coremask value 128
         big_coremask_size = 128
