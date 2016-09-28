@@ -36,7 +36,7 @@ Interface for bulk traffic generators.
 import re
 import subprocess
 from time import sleep
-from settings import NICS
+from settings import NICS, load_global_setting, PERF_SETTING
 from crb import Crb
 from net_device import GetNicObj
 from etgen import IxiaPacketGenerator, SoftwarePacketGenerator
@@ -111,7 +111,7 @@ class Tester(Crb):
         """
         Check whether IXIA generator is ready for performance test.
         """
-        return self.want_perf_tests and self.has_external_traffic_generator()
+        return load_global_setting(PERF_SETTING) == 'yes' and self.has_external_traffic_generator()
 
     def tester_prerequisites(self):
         """
@@ -293,7 +293,12 @@ class Tester(Crb):
             if port_info['type'] == 'ixia':
                 continue
 
-            port = GetNicObj(self, port_info['pci'], port_info['type'])
+            addr_array = port_info['pci'].split(':')
+            domain_id = addr_array[0]
+            bus_id = addr_array[1]
+            devfun_id = addr_array[2]
+
+            port = GetNicObj(self, domain_id, bus_id, devfun_id)
             intf = port.get_interface_name()
 
             self.logger.info("Tester cached: [000:%s %s] %s" % (

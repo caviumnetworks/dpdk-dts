@@ -34,7 +34,7 @@ DPDK Test suite.
 Test HelloWorld example.
 """
 
-import dts
+import utils
 from test_case import TestCase
 
 class TestHelloWorld(TestCase):
@@ -65,7 +65,7 @@ class TestHelloWorld(TestCase):
 
         # get the mask for the first core
         cores = self.dut.get_core_list('1S/1C/1T')
-        coreMask = dts.create_mask(cores)
+        coreMask = utils.create_mask(cores)
         cmdline = "./examples/helloworld/build/app/helloworld -n 1 -c " + coreMask
         out = self.dut.send_expect(cmdline, "# ", 30)
         self.verify("hello from core %s" % cores[0] in out, "EAL not started on core%s" % cores[0])
@@ -78,7 +78,7 @@ class TestHelloWorld(TestCase):
 
         # get the maximun logical core number
         cores = self.dut.get_core_list('all')
-        coreMask = dts.create_mask(cores)
+        coreMask = utils.create_mask(cores)
 
         cmdline = "./examples/helloworld/build/app/helloworld -n 1 -c " + coreMask
         out = self.dut.send_expect(cmdline, "# ", 50)

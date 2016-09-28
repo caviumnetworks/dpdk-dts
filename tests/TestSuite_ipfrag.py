@@ -34,7 +34,7 @@ DPDK Test suite.
 Test IPv4 fragmentation features in DPDK.
 """
 
-import dts
+import utils
 import string
 import re
 import time
@@ -127,8 +127,8 @@ l3fwd_ipv4_route_array[] = {\\\n"
         Perform functional fragmentation checks.
         """
 
-        coremask = dts.create_mask(cores)
-        portmask = dts.create_mask([P0, P1])
+        coremask = utils.create_mask(cores)
+        portmask = utils.create_mask([P0, P1])
         numPortThread = len([P0, P1]) / len(cores)
         result = True
         errString = ''
@@ -185,8 +185,8 @@ l3fwd_ipv4_route_array[] = {\\\n"
         """
         Perform functional fragmentation checks.
         """
-        coremask = dts.create_mask(cores)
-        portmask = dts.create_mask([P0, P1])
+        coremask = utils.create_mask(cores)
+        portmask = utils.create_mask([P0, P1])
         numPortThread = len([P0, P1]) / len(cores)
         result = True
         errString = ''
@@ -308,11 +308,11 @@ l3fwd_ipv4_route_array[] = {\\\n"
         Pct = dict()
 
         if int(lcore[0]) == 1:
-            core_mask = dts.create_mask(self.dut.get_core_list(lcore, socket=self.ports_socket))
+            core_mask = utils.create_mask(self.dut.get_core_list(lcore, socket=self.ports_socket))
         else:
-            core_mask = dts.create_mask(self.dut.get_core_list(lcore))
+            core_mask = utils.create_mask(self.dut.get_core_list(lcore))
 
-        portmask = dts.create_mask([P0, P1])
+        portmask = utils.create_mask([P0, P1])
 
         self.dut.send_expect("examples/ip_fragmentation/build/ip_fragmentation -c %s -n %d -- -p %s -q %s" % (
             core_mask, self.dut.get_memory_channels(), portmask, num_pthreads), "IP_FRAG:", 120)
@@ -350,7 +350,7 @@ l3fwd_ipv4_route_array[] = {\\\n"
             result.append(Pps[str(size)])
             result.append(Pct[str(size)])
 
-        dts.results_table_add_row(result)
+        self.result_table_add(result)
 
         self.dut.send_expect("^C", "#")
 
@@ -368,7 +368,7 @@ l3fwd_ipv4_route_array[] = {\\\n"
             tblheader.append("%dB Mpps" % size)
             tblheader.append("%d" % size)
 
-        dts.results_table_add_header(tblheader)
+        self.result_table_create(tblheader)
 
         lcores = [("1S/1C/1T", 2), ("1S/1C/2T", 2), ("1S/2C/1T", 2), ("2S/1C/1T", 2)]
         index = 1
@@ -376,7 +376,7 @@ l3fwd_ipv4_route_array[] = {\\\n"
             self.benchmark(index, lcore, numThr, sizes)
             index += 1
 
-        dts.results_table_print()
+        self.result_table_print()
 
         self.tester.send_expect("ifconfig %s mtu 1500" % self.tester.get_interface(self.tester.get_local_port(P0)), "#")
         self.tester.send_expect("ifconfig %s mtu 1500" % self.tester.get_interface(self.tester.get_local_port(P1)), "#")

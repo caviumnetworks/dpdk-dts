@@ -36,7 +36,7 @@ DPDK Test suite.
 Test Kernel NIC Interface.
 """
 
-import dts
+import utils
 import re
 import time
 from random import randint
@@ -288,7 +288,7 @@ class TestKni(TestCase):
         self.dut.kill_all()
         out = self.dut.send_expect("rmmod rte_kni", "# ", 10)
         self.verify("in use" not in out, "Error unloading KNI module: " + out)
-        if dts.drivername == "igb_uio":
+        if self.drivername == "igb_uio":
             self.dut.send_expect("rmmod igb_uio", "# ", 5)
             self.dut.send_expect(
                 'insmod ./%s/kmod/igb_uio.ko' % (self.target), "# ", 20)
@@ -298,8 +298,8 @@ class TestKni(TestCase):
 
         self.verify("Error" not in out, "Error loading KNI module: " + out)
 
-        port_mask = dts.create_mask(self.config['ports'])
-        core_mask = dts.create_mask(
+        port_mask = utils.create_mask(self.config['ports'])
+        core_mask = utils.create_mask(
             self.config['rx_cores'] + self.config['tx_cores'] + self.config['kernel_cores'])
 
         config_param = self.build_config_param()
@@ -311,7 +311,7 @@ class TestKni(TestCase):
 
         time.sleep(5)
         if kthread_mode == 'single':
-            kthread_mask = dts.create_mask(self.config['kernel_cores'])
+            kthread_mask = utils.create_mask(self.config['kernel_cores'])
             out = self.dut.send_expect(
                 "taskset -p %s `pgrep -fl kni_single | awk '{print $1}'`" % kthread_mask, "#")
             self.verify(
@@ -438,7 +438,7 @@ class TestKni(TestCase):
         dut_ports = self.dut.get_ports(self.nic)
         self.dut.restore_interfaces()
         allPort = self.dut.ports_info
-        if dts.drivername in ["igb_uio"]:
+        if self.drivername in ["igb_uio"]:
             self.dut.send_expect(
                 "insmod ./" + self.target + "/kmod/igb_uio.ko", "#")
         for port in range(0, len(allPort)):
@@ -824,7 +824,7 @@ class TestKni(TestCase):
         for size in packet_sizes_loopback:
             header.append('%d (pps)' % size)
 
-        dts.results_table_add_header(header)
+        self.result_table_create(header)
 
         # Execute the permutations of the test
         for step in loopback_performance_steps:
@@ -834,7 +834,7 @@ class TestKni(TestCase):
             total_cores = len(self.config['tx_cores'] + self.config[
                               'rx_cores'] + self.config['kernel_cores'])
             if total_cores > self.dut_physical_cores():
-                print dts.RED("Skiping step %s (%d cores needed, got %d)" %
+                print utils.RED("Skiping step %s (%d cores needed, got %d)" %
                               (step['config'], total_cores,
                                self.dut_physical_cores())
                               )
@@ -873,17 +873,17 @@ class TestKni(TestCase):
             ports_number = len(self.config['ports'])
             results_row = [step['lo_mode'], step['kthread_mode'], ports_number,
                            self.stripped_config_param()] + pps_results
-            dts.results_table_add_row(results_row)
+            self.result_table_add(results_row)
 
             self.dut.kill_all()
 
-        dts.results_table_print()
+        self.result_table_print()
 
     def test_perf_bridge(self):
         """
         KNI performance bridge mode.
         """
-        dts.results_table_add_header(bridge_perf_results_header)
+        self.result_table_create(bridge_perf_results_header)
 
         self.tester.scapy_append('srcmac="00:00:00:00:00:01"')
         self.tester.scapy_append(
@@ -897,7 +897,7 @@ class TestKni(TestCase):
             total_cores = len(self.config['tx_cores'] + self.config[
                               'rx_cores'] + self.config['kernel_cores'])
             if total_cores > self.dut_physical_cores():
-                print dts.RED("Skiping step %s (%d cores needed, got %d)" %
+                print utils.RED("Skiping step %s (%d cores needed, got %d)" %
                               (step['config'], total_cores,
                                self.dut_physical_cores())
                               )
@@ -943,18 +943,18 @@ class TestKni(TestCase):
             results_row = [step['kthread_mode'], step['flows'],
                            self.stripped_config_param(), (float(pps) / 10 ** 6)]
 
-            dts.results_table_add_row(results_row)
+            self.result_table_add(results_row)
 
             self.dut.send_expect("ifconfig br_kni down", "# ")
             self.dut.send_expect("brctl delbr \"br_kni\"", "# ", 10)
 
-        dts.results_table_print()
+        self.result_table_print()
 
     def test_perf_bridge_without_kni(self):
         """
         Bridge mode performance without KNI.
         """
-        dts.results_table_add_header(bridge_perf_no_kni_results_header)
+        self.result_table_create(bridge_perf_no_kni_results_header)
 
         self.dut.kill_all()
 
@@ -998,7 +998,7 @@ class TestKni(TestCase):
                 tgenInput.append((rx_port, tx_port, "kni.pcap"))
 
             _, pps = self.tester.traffic_generator_throughput(tgenInput)
-            dts.results_table_add_row([flows, float(pps) / 10 ** 6])
+            self.result_table_add([flows, float(pps) / 10 ** 6])
 
         self.dut.send_expect("ifconfig br1 down", "# ")
         self.dut.send_expect("brctl delbr \"br1\"", "# ", 30)
@@ -1006,7 +1006,7 @@ class TestKni(TestCase):
         for port in white_list:
             self.dut.send_expect(
                 "./tools/dpdk-devbind.py -b igb_uio %s" % (port), "# ")
-        dts.results_table_print()
+        self.result_table_print()
 
     def test_perf_routing(self):
         """
@@ -1018,7 +1018,7 @@ class TestKni(TestCase):
         for size in packet_sizes_routing:
             header.append("%d Mpps" % size)
 
-        dts.results_table_add_header(header)
+        self.result_table_create(header)
 
         self.dut.send_expect("echo 1 > /proc/sys/net/ipv4/ip_forward", "# ")
 
@@ -1103,9 +1103,9 @@ class TestKni(TestCase):
                 _, pps = self.tester.traffic_generator_throughput(tgen_input)
                 resutls_row.append(float(pps) / 10 ** 6)
 
-            dts.results_table_add_row(resutls_row)
+            self.result_table_add(resutls_row)
 
-        dts.results_table_print()
+        self.result_table_print()
 
     def test_perf_routing_without_kni(self):
         """
@@ -1117,7 +1117,7 @@ class TestKni(TestCase):
         for size in packet_sizes_routing:
             header.append("%d Mpps" % size)
 
-        dts.results_table_add_header(header)
+        self.result_table_create(header)
 
         self.dut.kill_all()
         self.dut.send_expect("rmmod rte_kni", "# ", 20)
@@ -1176,7 +1176,7 @@ class TestKni(TestCase):
             # Get throughput with 1 port
             _, pps = self.tester.traffic_generator_throughput(tgen_input)
             one_port_resutls_row.append(float(pps) / 10 ** 6)
-            dts.results_table_add_row(one_port_resutls_row)
+            self.result_table_add(one_port_resutls_row)
 
             # Prepare test with 'ports_without_kni' ports
             self.tester.scapy_append('flows = []')
@@ -1195,13 +1195,13 @@ class TestKni(TestCase):
             # Get throughput with 'ports_without_kni' ports
             _, pps = self.tester.traffic_generator_throughput(tgen_input)
             two_port_resutls_row.append(float(pps) / 10 ** 6)
-            dts.results_table_add_row(two_port_resutls_row)
+            self.result_table_add(two_port_resutls_row)
 
-        dts.results_table_print()
+        self.result_table_print()
 
         for port in white_list:
             self.dut.send_expect(
-                "./tools/dpdk-devbind.py -b %s %s" % (dts.drivername, port), "# ")
+                "./tools/dpdk-devbind.py -b %s %s" % (self.drivername, port), "# ")
 
     def tear_down(self):
         """

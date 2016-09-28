@@ -36,7 +36,7 @@ Vxlan sample test suite.
 """
 
 import os
-import dts
+import utils
 import string
 import re
 import time
@@ -154,7 +154,7 @@ class TestVxlanSample(TestCase):
         Run before each test case.
         """
         # create coremask
-        self.coremask = dts.create_mask(self.cores)
+        self.coremask = utils.create_mask(self.cores)
 
         if "2VM" not in self.running_case:
             vm_num = 1
@@ -220,7 +220,7 @@ class TestVxlanSample(TestCase):
             if self.vm_dut is None:
                 raise Exception("Set up VM ENV failed!")
         except Exception as e:
-            print dts.RED("Failure for %s" % str(e))
+            print utils.RED("Failure for %s" % str(e))
 
         # create another vm
         if vm_num == 2:
@@ -331,10 +331,10 @@ class TestVxlanSample(TestCase):
                     self.verify(ord(payload[i]) == 88, "Check udp data failed")
             except:
                 case_pass = False
-                print dts.RED("Failure in checking packet payload")
+                print utils.RED("Failure in checking packet payload")
 
             if case_pass:
-                print dts.GREEN("Check normal udp packet forward pass on "
+                print utils.GREEN("Check normal udp packet forward pass on "
                                 "virtIO port %d" % vf_id)
 
         if pkt_type == "vxlan_udp_decap":
@@ -353,7 +353,7 @@ class TestVxlanSample(TestCase):
             vxlan_pkt.send_pcap(tester_iface)
             time.sleep(5)
 
-            # transfer capture pcap to dts server
+            # transfer capture pcap to server
             pkts = self.transfer_capture_file()
             # check packet number and payload
             self.verify(len(pkts) >= 1, "Failed to capture packets")
@@ -366,10 +366,10 @@ class TestVxlanSample(TestCase):
                     self.verify(ord(payload[i]) == 88, "Check udp data failed")
             except:
                 case_pass = False
-                print dts.RED("Failure in checking packet payload")
+                print utils.RED("Failure in checking packet payload")
 
             if case_pass:
-                print dts.GREEN("Check vxlan packet decap pass on virtIO port"
+                print utils.GREEN("Check vxlan packet decap pass on virtIO port"
                                 " %d" % vf_id)
 
         if pkt_type == "vxlan_udp":
@@ -388,7 +388,7 @@ class TestVxlanSample(TestCase):
             vxlan_pkt.send_pcap(tester_iface)
             time.sleep(5)
 
-            # transfer capture pcap to dts server
+            # transfer capture pcap to server
             pkts = self.transfer_capture_file()
             # check packet number and payload
             self.verify(len(pkts) >= 1, "Failed to capture packets")
@@ -400,10 +400,10 @@ class TestVxlanSample(TestCase):
                     self.verify(ord(payload[i]) == 88, "Check udp data failed")
             except:
                 case_pass = False
-                print dts.RED("Failure in checking packet payload")
+                print utils.RED("Failure in checking packet payload")
 
             if case_pass:
-                print dts.GREEN("Check vxlan packet decap and encap pass on "
+                print utils.GREEN("Check vxlan packet decap and encap pass on "
                                 "virtIO port %d" % vf_id)
 
         if pkt_type == "vxlan_udp_chksum":
@@ -423,7 +423,7 @@ class TestVxlanSample(TestCase):
             vxlan_pkt = VxlanTestConfig(self, **params)
             vxlan_pkt.create_pcap()
             chksums_ref = vxlan_pkt.get_chksums()
-            print dts.GREEN("Checksum reference: %s" % chksums_ref)
+            print utils.GREEN("Checksum reference: %s" % chksums_ref)
 
             params['inner_ip_invalid'] = 1
             params['inner_l4_invalid'] = 1
@@ -436,21 +436,21 @@ class TestVxlanSample(TestCase):
             self.start_capture(tester_iface, pkt_smac=self.pf_mac)
             vxlan_pkt.send_pcap(tester_iface)
             time.sleep(5)
-            # transfer capture pcap to dts server
+            # transfer capture pcap to server
             pkts = self.transfer_capture_file()
             # check packet number and payload
             self.verify(len(pkts) >= 1, "Failed to capture packets")
             self.verify(pkts[0].haslayer(Vxlan) == 1,
                         "Packet not encapsulated")
             chksums = vxlan_pkt.get_chksums(pcap='vxlan_cap.pcap')
-            print dts.GREEN("Checksum : %s" % chksums)
+            print utils.GREEN("Checksum : %s" % chksums)
             for key in chksums_ref:
                 if 'inner' in key:  # only check inner packet chksum
                     self.verify(chksums[key] == chksums_ref[key],
                                 "%s not matched to %s"
                                 % (key, chksums_ref[key]))
 
-            print dts.GREEN("%s checksum pass" % params['inner_l4_type'])
+            print utils.GREEN("%s checksum pass" % params['inner_l4_type'])
 
         if pkt_type == "vxlan_tcp_tso":
             # create vxlan packet pf mac + vni=1000 + inner virtIO port0 mac +
@@ -470,7 +470,7 @@ class TestVxlanSample(TestCase):
             vxlan_pkt.send_pcap(tester_iface)
             time.sleep(5)
 
-            # transfer capture pcap to dts server
+            # transfer capture pcap to server
             pkts = self.transfer_capture_file()
             # check packet number and payload
             self.verify(len(pkts) == 4, "Failed to capture tso packets")
@@ -485,11 +485,11 @@ class TestVxlanSample(TestCase):
                     length += len(payload)
                 except:
                     case_pass = False
-                    print dts.RED("Failure in checking tso payload")
+                    print utils.RED("Failure in checking tso payload")
 
             self.verify(length == 892, "Total tcp payload size not match")
             if case_pass:
-                print dts.GREEN("Vxlan packet tso pass on virtIO port %d"
+                print utils.GREEN("Vxlan packet tso pass on virtIO port %d"
                                 % vf_id)
 
     def test_perf_vxlan_sample(self):
@@ -501,7 +501,7 @@ class TestVxlanSample(TestCase):
             HEADER_SIZE['ip'] - HEADER_SIZE['udp'] + 4
 
         vxlansample_header = ['Type', 'Queue', 'Mpps', '% linerate']
-        dts.results_table_add_header(vxlansample_header)
+        self.result_table_create(vxlansample_header)
         for perf_cfg in self.perf_cfg:
             func = perf_cfg['Func']
             if func is 'Decap':
@@ -592,11 +592,11 @@ class TestVxlanSample(TestCase):
             table_row = [perf_cfg['Func'], perf_cfg['VirtIO'],
                          perf_cfg['Mpps'], perf_cfg['pct']]
 
-            dts.results_table_add_row(table_row)
+            self.result_table_add(table_row)
 
             self.tear_down()
 
-        dts.results_table_print()
+        self.result_table_print()
 
     def combine_pcap(self, dest_pcap, src_pcap):
         pkts = rdpcap(dest_pcap)

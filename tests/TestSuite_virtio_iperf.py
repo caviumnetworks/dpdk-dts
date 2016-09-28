@@ -33,8 +33,9 @@ DPDK Test suite
 Test DPDK vhost + virtio scenarios
 """
 import re
-import dts
+import utils
 import time
+import os
 
 from test_case import TestCase
 from qemu_kvm import QEMUKvm
@@ -56,7 +57,7 @@ class TestVirtioIperf(TestCase):
         netdev = self.dut.ports_info[self.phy_function]['port']
         self.socket = netdev.get_nic_socket()
         self.cores = self.dut.get_core_list("1S/3C/1T", socket=self.socket)
-        self.coremask = dts.create_mask(self.cores)
+        self.coremask = utils.create_mask(self.cores)
         
     def set_up(self):
         pass
@@ -124,11 +125,10 @@ class TestVirtioIperf(TestCase):
         fp = open("./iperf_client.log")
         fmsg = fp.read()
         iperfdata = re.compile('[\d+]*.[\d+] [M|G]bits/sec').findall(fmsg)
-        dts.results_table_add_header(['Data', 'Unit'])
+        self.result_table_create(['Data', 'Unit'])
         for data in iperfdata:
-            dts.results_table_add_row([data.split()[0], data.split()[1]])
-        dts.results_table_print()
-        import os
+            self.results_table_add([data.split()[0], data.split()[1]])
+        self.result_table_print()
         os.popen("rm -rf ./iperf_client.log")
         
     def test_perf_vhost_legacy_virtio_iperf(self):
@@ -148,7 +148,7 @@ class TestVirtioIperf(TestCase):
         self.dut_execut_cmd('modprobe cuse')
         self.dut_execut_cmd('insmod ./x86_64-native-linuxapp-gcc/kmod/igb_uio.ko')
         self.dut_execut_cmd('insmod ./lib/librte_vhost/eventfd_link/eventfd_link.ko')
-        self.dut.bind_interfaces_linux(dts.drivername)
+        self.dut.bind_interfaces_linux(self.drivername)
         self.launch_vhost_switch(self.coremask, 4, 0, 1)
 
         self.vm1 = QEMUKvm(self.dut, 'vm0', 'virtio_iperf')
@@ -164,7 +164,7 @@ class TestVirtioIperf(TestCase):
             if self.vm1_dut is None:
                 raise Exception('VM1 start failed')
         except Exception as e0:
-            print dts.RED('VM1 already exist, powerdown it first')
+            print utils.RED('VM1 already exist, powerdown it first')
         self.vm1_dut.restore_interfaces()
         
         self.vm2 = QEMUKvm(self.dut, 'vm1', 'virtio_iperf')
@@ -180,7 +180,7 @@ class TestVirtioIperf(TestCase):
             if self.vm2_dut is None:
                 raise Exception('VM2 start failed')
         except Exception as e1:
-            print dts.RED('VM2 already exist, powerdown it first')
+            print utils.RED('VM2 already exist, powerdown it first')
         self.vm2_dut.restore_interfaces()
         
         #self.start_iperf_server()
@@ -228,7 +228,7 @@ class TestVirtioIperf(TestCase):
         #self.dut_execut_cmd('modprobe cuse')
         self.dut_execut_cmd('insmod ./x86_64-native-linuxapp-gcc/kmod/igb_uio.ko')
         self.dut_execut_cmd('insmod ./lib/librte_vhost/eventfd_link/eventfd_link.ko')
-        self.dut.bind_interfaces_linux(dts.drivername)
+        self.dut.bind_interfaces_linux(self.drivername)
         self.launch_vhost_switch(self.coremask, 4, 0, 1)
         
         self.vm1 = QEMUKvm(self.dut, 'vm0', 'virtio_iperf')
@@ -242,7 +242,7 @@ class TestVirtioIperf(TestCase):
             if self.vm1_dut is None:
                 raise Exception('VM1 start failed')
         except Exception as e0:
-            print dts.RED('VM1 already exist, powerdown it first')
+            print utils.RED('VM1 already exist, powerdown it first')
         self.vm1_dut.restore_interfaces()
 
         self.vm2 = QEMUKvm(self.dut, 'vm1', 'virtio_iperf')
@@ -256,7 +256,7 @@ class TestVirtioIperf(TestCase):
             if self.vm2_dut is None:
                 raise Exception('VM2 start failed')
         except Exception as e1:
-            print dts.RED('VM2 already exist, powerdown it first')
+            print utils.RED('VM2 already exist, powerdown it first')
         
         self.vm2_dut.restore_interfaces()
         

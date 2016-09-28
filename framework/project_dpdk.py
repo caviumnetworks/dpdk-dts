@@ -31,9 +31,9 @@
 
 import os
 import re
-import dts
 
-from settings import NICS
+from settings import NICS, load_global_setting, accepted_nic
+from settings import DPDK_RXMODE_SETTING, HOST_DRIVER_SETTING
 from ssh_connection import SSHConnection
 from crb import Crb
 from dut import Dut
@@ -71,10 +71,11 @@ class DPDKdut(Dut):
 
         self.set_rxtx_mode()
 
-        #Enable MLNX driver before installing dpdk
-        if dts.drivername == DRIVERS['ConnectX4']:
+        # Enable MLNX driver before installing dpdk
+        drivername = load_global_setting(HOST_DRIVER_SETTING)
+        if drivername == DRIVERS['ConnectX4']:
             self.send_expect("sed -i -e 's/CONFIG_RTE_LIBRTE_MLX5_PMD=n/"
-                             + "CONFIG_RTE_LIBRTE_MLX5_PMD=y/' config/common_base" , "# ", 30)
+                             + "CONFIG_RTE_LIBRTE_MLX5_PMD=y/' config/common_base", "# ", 30)
 
         if not self.skip_setup:
             self.build_install_dpdk(target)
@@ -83,7 +84,7 @@ class DPDKdut(Dut):
         self.setup_modules(target)
 
         if bind_dev and self.get_os_type() == 'linux':
-            self.bind_interfaces_linux(dts.drivername)
+            self.bind_interfaces_linux(drivername)
         self.extra_nic_setup()
 
     def setup_modules(self, target):
@@ -94,7 +95,8 @@ class DPDKdut(Dut):
         setup_modules(target)
 
     def setup_modules_linux(self, target):
-        if dts.drivername == "vfio-pci":
+        drivername = load_global_setting(HOST_DRIVER_SETTING)
+        if drivername == "vfio-pci":
             self.send_expect("rmmod vfio_pci", "#", 70)
             self.send_expect("rmmod vfio_iommu_type1", "#", 70)
             self.send_expect("rmmod vfio", "#", 70)
@@ -119,7 +121,7 @@ class DPDKdut(Dut):
         binding_list = ''
 
         for (pci_bus, pci_id) in self.pci_devices_info:
-            if dts.accepted_nic(pci_id):
+            if accepted_nic(pci_id):
                 binding_list += '%s,' % (pci_bus)
 
         self.send_expect("kldunload if_ixgbe.ko", "#")
@@ -133,11 +135,8 @@ class DPDKdut(Dut):
         Set default RX/TX PMD function, now only take effect on ixgbe.
         """
         [arch, machine, env, toolchain] = self.target.split('-')
-        if dts.rx_mode is None:
-            mode = 'default'
-        else:
-            mode = dts.rx_mode
 
+        mode = load_global_setting(DPDK_RXMODE_SETTING)
         if mode == 'scalar':
             self.send_expect("sed -i -e 's/CONFIG_RTE_IXGBE_INC_VECTOR=.*$/"
                              + "CONFIG_RTE_IXGBE_INC_VECTOR=n/' config/common_%s" % env, "# ", 30)
@@ -153,6 +152,10 @@ class DPDKdut(Dut):
                              + "CONFIG_RTE_IXGBE_INC_VECTOR=y/' config/common_%s" % env, "# ", 30)
             self.send_expect("sed -i -e 's/CONFIG_RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC=.*$/"
                              + "CONFIG_RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC=y/' config/common_%s" % env, "# ", 30)
+
+    def set_package(self, pkg_name="", patch_list=[]):
+        self.package = pkg_name
+        self.patches = patch_list
 
     def build_install_dpdk(self, target, extra_options=''):
         """
@@ -205,9 +208,9 @@ class DPDKdut(Dut):
         assert ("Error" not in out), "Compilation error..."
         assert ("No rule to make" not in out), "No rule to make error..."
 
-    def prepare_package(self, pkgName, patch):
+    def prepare_package(self):
         if not self.skip_setup:
-            assert (os.path.isfile(pkgName) is True), "Invalid package"
+            assert (os.path.isfile(self.package) is True), "Invalid package"
 
             p_dir, _ = os.path.split(self.base_dir)
             # ToDo: make this configurable
@@ -219,11 +222,11 @@ class DPDKdut(Dut):
                 raise ValueError("Directiry %s or %s does not exist,"
                                  "please check params -d"
                                  % (p_dir, dst_dir))
-            self.session.copy_file_to(pkgName, dst_dir)
+            self.session.copy_file_to(self.package, dst_dir)
 
             # put patches to p_dir/patches/
-            if (patch is not None):
-                for p in patch:
+            if (self.patches is not None):
+                for p in self.patches:
                     self.session.copy_file_to('dep/' + p, dst_dir)
 
             self.kill_all()
@@ -236,7 +239,7 @@ class DPDKdut(Dut):
 
             # unpack dpdk
             out = self.send_expect("tar zxf %s%s -C %s" %
-                                   (dst_dir, pkgName.split('/')[-1], p_dir),
+                                   (dst_dir, self.package.split('/')[-1], p_dir),
                                    "# ", 20, verify=True)
             if out == -1:
                 raise ValueError("Extract dpdk package to %s failure,"
@@ -250,17 +253,17 @@ class DPDKdut(Dut):
                 raise ValueError("dpdk dir %s mismatch, please check params -d"
                                  % self.base_dir)
 
-            if (patch is not None):
-                for p in patch:
+            if (self.patches is not None):
+                for p in self.patches:
                     out = self.send_expect("patch -d %s -p1 < %s" %
                                            (self.base_dir, dst_dir + p), "# ")
                     assert "****" not in out
 
-    def prerequisites(self, pkgName, patch):
+    def prerequisites(self):
         """
         Copy DPDK package to DUT and apply patch files.
         """
-        self.prepare_package(pkgName, patch)
+        self.prepare_package()
         self.dut_prerequisites()
         self.stage = "post-init"
 
@@ -277,7 +280,6 @@ class DPDKdut(Dut):
         Bind the interfaces to the selected driver. nics_to_bind can be None
         to bind all interfaces or an array with the port indexes
         """
-
         binding_list = '--bind=%s ' % driver
 
         current_nic = 0

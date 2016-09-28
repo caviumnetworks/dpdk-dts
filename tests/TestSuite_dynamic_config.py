@@ -36,7 +36,7 @@ Test the dynamic driver configuration feature.
 
 """
 
-import dts
+import utils
 
 from test_case import TestCase
 
@@ -70,8 +70,8 @@ class TestDynamicConfig(TestCase):
 
         # Prepare cores and ports
         cores = self.dut.get_core_list('1S/2C/2T')
-        self.coreMask = dts.create_mask(cores)
-        self.portMask = dts.create_mask(self.dut_ports[:2])
+        coreMask = utils.create_mask(cores)
+        portMask = utils.create_mask(self.dut_ports[:2])
 
         # launch app
         cmd = "./%s/build/app/test-pmd/testpmd -c %s -n 3 -- -i --rxpt=0 \
@@ -86,7 +86,7 @@ class TestDynamicConfig(TestCase):
         self.dest = self.dut.get_mac_address(self.dut_ports[0])
         mac_scanner = r"MAC address: (([\dA-F]{2}:){5}[\dA-F]{2})"
 
-        ret = dts.regexp(out, mac_scanner)
+        ret = utils.regexp(out, mac_scanner)
 
         self.verify(ret is not None, "MAC address not found")
         self.verify(cmp(ret.lower(), self.dest) == 0, "MAC address wrong")
@@ -129,14 +129,14 @@ class TestDynamicConfig(TestCase):
         # get the current rx statistic
         out = self.dut.send_expect("clear port stats all" , "testpmd> ")
         out = self.dut.send_expect("show port stats %d" % self.dut_ports[1], "testpmd> ")
-        cur_rxpkt = dts.regexp(out, "TX-packets: ([0-9]+)")
+        cur_rxpkt = utils.regexp(out, "TX-packets: ([0-9]+)")
 
         # send one packet with different MAC address than the portid
         self.dynamic_config_send_packet(portid)
 
         pre_rxpkt = cur_rxpkt
         out = self.dut.send_expect("show port stats %d" % self.dut_ports[1], "testpmd> ")
-        cur_rxpkt = dts.regexp(out, "TX-packets: ([0-9]+)")
+        cur_rxpkt = utils.regexp(out, "TX-packets: ([0-9]+)")
 
         # check the pakcet increasment
         self.verify(int(cur_rxpkt) == int(pre_rxpkt)
@@ -147,7 +147,7 @@ class TestDynamicConfig(TestCase):
 
         pre_rxpkt = cur_rxpkt
         out = self.dut.send_expect("show port stats %d" % self.dut_ports[1], "testpmd> ")
-        cur_rxpkt = dts.regexp(out, "TX-packets: ([0-9]+)")
+        cur_rxpkt = utils.regexp(out, "TX-packets: ([0-9]+)")
 
         # check the pakcet increasment
         self.verify(int(cur_rxpkt) == int(pre_rxpkt)
@@ -163,20 +163,20 @@ class TestDynamicConfig(TestCase):
         self.dut.send_expect("set promisc all off", "testpmd> ")
         out = self.dut.send_expect(
              "show port stats %d" % self.dut_ports[1], "testpmd> ")
-        cur_rxpkt = dts.regexp(out, "TX-packets: ([0-9]+)")
+        cur_rxpkt = utils.regexp(out, "TX-packets: ([0-9]+)")
 
         self.dynamic_config_send_packet(portid)
         pre_rxpkt = cur_rxpkt
         out = self.dut.send_expect(
               "show port stats %d" % self.dut_ports[1], "testpmd> ")
-        cur_rxpkt = dts.regexp(out, "TX-packets: ([0-9]+)")
+        cur_rxpkt = utils.regexp(out, "TX-packets: ([0-9]+)")
         self.verify(int(cur_rxpkt) == int(
               pre_rxpkt), "1st packet increasment error")
         self.dynamic_config_send_packet(portid, self.dest)
         pre_rxpkt = cur_rxpkt
         out = self.dut.send_expect(
               "show port stats %d" % self.dut_ports[1], "testpmd> ")
-        cur_rxpkt = dts.regexp(out, "TX-packets: ([0-9]+)")
+        cur_rxpkt = utils.regexp(out, "TX-packets: ([0-9]+)")
         self.verify(int(cur_rxpkt) == int(
               pre_rxpkt) + 1, "2nd packet increasment error")
 
@@ -195,7 +195,7 @@ class TestDynamicConfig(TestCase):
         self.dynamic_config_send_packet(self.dut_ports[0],"ff:ff:ff:ff:ff:ff")
         out = self.dut.send_expect("show port stats %d" % self.dut_ports[1], "testpmd> ")
           
-        cur_rxpkt = dts.regexp(out, "TX-packets: ([0-9]+)")
+        cur_rxpkt = utils.regexp(out, "TX-packets: ([0-9]+)")
         self.verify(int(cur_rxpkt) == 1, "not received broadcast packet")
           
         self.dut.send_expect("clear port stats all", "testpmd> ")
@@ -203,7 +203,7 @@ class TestDynamicConfig(TestCase):
         self.dynamic_config_send_packet(self.dut_ports[0])
         out = self.dut.send_expect("show port stats %d" % self.dut_ports[1], "testpmd> ")
           
-        cur_rxpkt = dts.regexp(out, "TX-packets: ([0-9]+)")
+        cur_rxpkt = utils.regexp(out, "TX-packets: ([0-9]+)")
         self.verify(int(cur_rxpkt) == 0, "disable promisc, received a dst mac not match packet")
 
     def test_dynamic_config_allmulticast(self):
@@ -221,7 +221,7 @@ class TestDynamicConfig(TestCase):
         self.dynamic_config_send_packet(self.dut_ports[0],"01:00:00:33:00:01")
         out = self.dut.send_expect("show port stats %d" % self.dut_ports[1], "testpmd> ")
             
-        cur_rxpkt = dts.regexp(out, "TX-packets: ([0-9]+)")
+        cur_rxpkt = utils.regexp(out, "TX-packets: ([0-9]+)")
         self.verify(int(cur_rxpkt) == 1, "enable allmulti switch, not received allmulti packet")
            
         self.dut.send_expect("clear port stats all", "testpmd> ")
@@ -230,7 +230,7 @@ class TestDynamicConfig(TestCase):
         self.dynamic_config_send_packet(self.dut_ports[0],"01:00:00:33:00:01")
         out = self.dut.send_expect("show port stats %d" % self.dut_ports[1], "testpmd> ")
  
-        cur_rxpkt = dts.regexp(out, "TX-packets: ([0-9]+)")
+        cur_rxpkt = utils.regexp(out, "TX-packets: ([0-9]+)")
         self.verify(int(cur_rxpkt) == 0, "disable allmulti switch, received allmulti packet")
            
     def test_dynamic_config_enable_promiscuous(self):
@@ -244,14 +244,14 @@ class TestDynamicConfig(TestCase):
 
         # get the current rx statistic
         out = self.dut.send_expect("show port stats %d" % self.dut_ports[1], "testpmd> ")
-        cur_rxpkt = dts.regexp(out, "TX-packets: ([0-9]+)")
+        cur_rxpkt = utils.regexp(out, "TX-packets: ([0-9]+)")
 
         # send one packet with different MAC address than the portid
         self.dynamic_config_send_packet(portid)
 
         pre_rxpkt = cur_rxpkt
         out = self.dut.send_expect("show port stats %d" % self.dut_ports[1], "testpmd> ")
-        cur_rxpkt = dts.regexp(out, "TX-packets: ([0-9]+)")
+        cur_rxpkt = utils.regexp(out, "TX-packets: ([0-9]+)")
 
         # check the pakcet increasment
         self.verify(int(cur_rxpkt) == int(pre_rxpkt)
@@ -262,7 +262,7 @@ class TestDynamicConfig(TestCase):
 
         pre_rxpkt = cur_rxpkt
         out = self.dut.send_expect("show port stats %d" % self.dut_ports[1], "testpmd> ")
-        cur_rxpkt = dts.regexp(out, "TX-packets: ([0-9]+)")
+        cur_rxpkt = utils.regexp(out, "TX-packets: ([0-9]+)")
 
         # check the pakcet increasment
         self.verify(int(cur_rxpkt) == int(pre_rxpkt)

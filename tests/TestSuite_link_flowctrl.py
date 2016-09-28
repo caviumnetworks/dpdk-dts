@@ -34,7 +34,7 @@ DPDK Test suite.
 Test for Ethernet Link Flow Control Features by Poll Mode Drivers
 """
 
-import dts
+import utils
 import re
 
 from time import sleep
@@ -72,7 +72,7 @@ class TestLinkFlowctrl(TestCase):
 
         self.tx_port = self.dutPorts[1]
 
-        self.portMask = dts.create_mask([self.rx_port, self.tx_port])
+        self.portMask = utils.create_mask([self.rx_port, self.tx_port])
         self.memChannels = self.dut.get_memory_channels()
 
         self.pmdout = PmdOutput(self.dut)

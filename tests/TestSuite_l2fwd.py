@@ -34,7 +34,7 @@ DPDK Test suite.
 Test Layer-2 Forwarding support
 """
 
-import dts
+import utils
 from test_case import TestCase
 from settings import HEADER_SIZE
 
@@ -77,7 +77,7 @@ class TestL2fwd(TestCase):
             self.table_header.append("%d queues Mpps" % queue['queues'])
             self.table_header.append("% linerate")
 
-        dts.results_table_add_header(self.table_header)
+        self.result_table_create(self.table_header)
 
     def set_up(self):
         """
@@ -94,7 +94,7 @@ class TestL2fwd(TestCase):
         Check port forwarding.
         """
         # the cases use the first two ports
-        port_mask = dts.create_mask([self.dut_ports[0], self.dut_ports[1]])
+        port_mask = utils.create_mask([self.dut_ports[0], self.dut_ports[1]])
 
         self.dut.send_expect("./examples/l2fwd/build/app/l2fwd -n 1 -c f -- -q 8 -p %s  &" % port_mask, "L2FWD: entering main loop", 60)
 
@@ -124,9 +124,9 @@ class TestL2fwd(TestCase):
         Check port forwarding.
         """
         # the cases use the first two ports
-        port_mask = dts.create_mask([self.dut_ports[0], self.dut_ports[1]])
+        port_mask = utils.create_mask([self.dut_ports[0], self.dut_ports[1]])
 
-        core_mask = dts.create_mask(self.dut.get_core_list(self.core_config,
+        core_mask = utils.create_mask(self.dut.get_core_list(self.core_config,
                                                            socket=self.ports_socket))
         for queues in self.test_queues:
 
@@ -154,8 +154,8 @@ class TestL2fwd(TestCase):
         for port in xrange(self.number_of_ports):
             ports.append(self.dut_ports[port])
 
-        port_mask = dts.create_mask(ports)
-        core_mask = dts.create_mask(self.dut.get_core_list(self.core_config,
+        port_mask = utils.create_mask(ports)
+        core_mask = utils.create_mask(self.dut.get_core_list(self.core_config,
                                                            socket=self.ports_socket))
 
         for frame_size in self.frame_sizes:
@@ -180,14 +180,15 @@ class TestL2fwd(TestCase):
                     (self.dut.get_memory_channels(), core_mask,
                      str(queues['queues']), port_mask)
 
-                self.dut.send_expect(command_line, "memory mapped", 60)
+#                self.dut.send_expect(command_line, "memory mapped", 60)
+                self.dut.send_expect(command_line, "L2FWD: entering main loop", 60)
 
                 info = "Executing l2fwd using %s queues, frame size %d and %s setup.\n" % \
                        (queues['queues'], frame_size, self.core_config)
 
                 self.logger.info(info)
-                dts.report(info, annex=True)
-                dts.report(command_line + "\n\n", frame=True, annex=True)
+                self.rst_report(info, annex=True)
+                self.rst_report(command_line + "\n\n", frame=True, annex=True)
                 _, pps = self.tester.traffic_generator_throughput(tgen_input)
                 Mpps = pps / 1000000.0
                 queues['Mpps'][frame_size] = Mpps
@@ -212,9 +213,9 @@ class TestL2fwd(TestCase):
                 results_row.append(queue['Mpps'][frame_size])
                 results_row.append(queue['pct'][frame_size])
 
-            dts.results_table_add_row(results_row)
+            self.result_table_add(results_row)
 
-        dts.results_table_print()
+        self.result_table_print()
 
     def tear_down(self):
         """

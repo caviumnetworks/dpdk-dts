@@ -34,7 +34,7 @@ DPDK Test suite.
 Test userland 10Gb PMD
 """
 
-import dts
+import utils
 import re
 import time
 from test_case import TestCase
@@ -88,7 +88,7 @@ class TestPmd(TestCase,IxiaPacketGenerator):
         """
         PMD Performance Benchmarking with 4 ports.
         """
-        all_cores_mask = dts.create_mask(self.dut.get_core_list("all"))
+        all_cores_mask = utils.create_mask(self.dut.get_core_list("all"))
 
         # prepare traffic generator input
         self.verify(len(self.dut_ports) >= 4,
@@ -120,17 +120,17 @@ class TestPmd(TestCase,IxiaPacketGenerator):
             else:
                 queues = 1
 
-            core_mask = dts.create_mask(core_list)
-            port_mask = dts.create_mask(self.dut.get_ports())
+            core_mask = utils.create_mask(core_list)
+            port_mask = utils.create_mask(self.dut.get_ports())
 
             self.pmdout.start_testpmd(core_config, " --rxq=%d --txq=%d --portmask=%s --rss-ip --txrst=32 --txfreet=32 --txd=128 --txqflags=0xf01" % (queues, queues, port_mask), socket=self.ports_socket)
 	    command_line = self.pmdout.get_pmd_cmd()
 
             info = "Executing PMD (mac fwd) using %s\n" % test_cycle['cores']
-            dts.report(info, annex=True)
+            self.rst_report(info, annex=True)
             self.logger.info(info)
 
-            dts.report(command_line + "\n\n", frame=True, annex=True)
+            self.rst_report(command_line + "\n\n", frame=True, annex=True)
 
             # self.dut.send_expect("set fwd mac", "testpmd> ", 100)
             self.dut.send_expect("start", "testpmd> ")
@@ -162,7 +162,7 @@ class TestPmd(TestCase,IxiaPacketGenerator):
                             frame_size] is not 0, "No traffic detected")
 
         # Print results
-        dts.results_table_add_header(self.table_header)
+        self.result_table_create(self.table_header)
 
         for frame_size in self.frame_sizes:
             table_row = [frame_size]
@@ -172,16 +172,16 @@ class TestPmd(TestCase,IxiaPacketGenerator):
                 table_row.append(test_cycle['Mpps'][frame_size])
                 table_row.append(test_cycle['pct'][frame_size])
 
-            dts.results_table_add_row(table_row)
+            self.result_table_add(table_row)
 
-        dts.results_table_print()
+        self.result_table_print()
 
     def test_perf_pmd_performance_2ports(self):
         """
         PMD Performance Benchmarking with 2 ports.
         """
 
-        all_cores_mask = dts.create_mask(self.dut.get_core_list("all"))
+        all_cores_mask = utils.create_mask(self.dut.get_core_list("all"))
 
         # prepare traffic generator input
         tgen_input = []
@@ -204,8 +204,8 @@ class TestPmd(TestCase,IxiaPacketGenerator):
             else:
                 queues = 1
 
-            core_mask = dts.create_mask(core_list)
-            port_mask = dts.create_mask([self.dut_ports[0], self.dut_ports[1]])
+            core_mask = utils.create_mask(core_list)
+            port_mask = utils.create_mask([self.dut_ports[0], self.dut_ports[1]])
 
             #self.pmdout.start_testpmd("all", "--coremask=%s --rxq=%d --txq=%d --portmask=%s" % (core_mask, queues, queues, port_mask))
             self.pmdout.start_testpmd(core_config, " --rxq=%d --txq=%d --portmask=%s --rss-ip --txrst=32 --txfreet=32 --txd=128" % (queues, queues, port_mask), socket=self.ports_socket)
@@ -213,8 +213,8 @@ class TestPmd(TestCase,IxiaPacketGenerator):
 
             info = "Executing PMD using %s\n" % test_cycle['cores']
             self.logger.info(info)
-            dts.report(info, annex=True)
-            dts.report(command_line + "\n\n", frame=True, annex=True)
+            self.rst_report(info, annex=True)
+            self.rst_report(command_line + "\n\n", frame=True, annex=True)
 
             self.dut.send_expect("start", "testpmd> ")
             for frame_size in self.frame_sizes:
@@ -244,7 +244,7 @@ class TestPmd(TestCase,IxiaPacketGenerator):
                             frame_size] > 0, "No traffic detected")
 
         # Print results
-        dts.results_table_add_header(self.table_header)
+        self.result_table_create(self.table_header)
         for frame_size in self.frame_sizes:
             table_row = [frame_size]
             for test_cycle in self.test_cycles:
@@ -252,9 +252,9 @@ class TestPmd(TestCase,IxiaPacketGenerator):
                 table_row.append(test_cycle['Mpps'][frame_size])
                 table_row.append(test_cycle['pct'][frame_size])
 
-            dts.results_table_add_row(table_row)
+            self.result_table_add(table_row)
 
-        dts.results_table_print()
+        self.result_table_print()
 
     def test_checksum_checking(self):
         """
@@ -263,7 +263,7 @@ class TestPmd(TestCase,IxiaPacketGenerator):
 
         self.dut.kill_all()
 
-        port_mask = dts.create_mask([self.dut_ports[0], self.dut_ports[1]])
+        port_mask = utils.create_mask([self.dut_ports[0], self.dut_ports[1]])
 
         for rxfreet_value in self.rxfreet_values:
 
@@ -290,7 +290,7 @@ class TestPmd(TestCase,IxiaPacketGenerator):
 
         self.dut.kill_all()
 
-        port_mask = dts.create_mask([self.dut_ports[0], self.dut_ports[1]])
+        port_mask = utils.create_mask([self.dut_ports[0], self.dut_ports[1]])
 
         self.pmdout.start_testpmd("1S/2C/1T", "--portmask=%s" % port_mask, socket=self.ports_socket)
         self.dut.send_expect("start", "testpmd> ")

@@ -36,10 +36,10 @@ Test support of RX/TX Checksum Offload Features by Poll Mode Drivers.
 
 """
 
-import dts
 import string
 import re
 import rst
+import utils
 
 from test_case import TestCase
 from pmd_output import PmdOutput
@@ -56,19 +56,18 @@ class TestChecksumOffload(TestCase):
         # Verify that enough ports are available
         self.verify(len(self.dut_ports) >= 1, "Insufficient ports for testing")
         self.pmdout = PmdOutput(self.dut)
-        self.portMask = dts.create_mask([self.dut_ports[0]])
+        self.portMask = utils.create_mask([self.dut_ports[0]])
         self.ports_socket = self.dut.get_numa_id(self.dut_ports[0])
 
     def set_up(self):
         """
         Run before each test case.
         """
-        if self.dut.want_func_tests:
-            self.pmdout.start_testpmd("Default", "--portmask=%s " %
-                                      (self.portMask) + "--disable-hw-vlan --enable-rx-cksum " +
-                                      "--crc-strip --port-topology=loop", socket=self.ports_socket)
-            self.dut.send_expect("set verbose 1", "testpmd>")
-            self.dut.send_expect("set fwd csum", "testpmd>")
+        self.pmdout.start_testpmd("Default", "--portmask=%s " %
+                                  (self.portMask) + "--disable-hw-vlan --enable-rx-cksum " +
+                                  "--crc-strip --port-topology=loop", socket=self.ports_socket)
+        self.dut.send_expect("set verbose 1", "testpmd>")
+        self.dut.send_expect("set fwd csum", "testpmd>")
 
     def checksum_enablehw(self, port):
             self.dut.send_expect("csum set ip hw %d" % port, "testpmd>")
@@ -272,7 +271,7 @@ class TestChecksumOffload(TestCase):
             result.append(Pps[str(size)])
             result.append(Pct[str(size)])
 
-        dts.results_table_add_row(result)
+        self.result_table_add(result)
 
     def test_perf_checksum_throughtput(self):
         """
@@ -293,7 +292,7 @@ class TestChecksumOffload(TestCase):
             del pkts['IP/SCTP']
 
         lcore = "1S/2C/1T"
-        portMask = dts.create_mask([self.dut_ports[0], self.dut_ports[1]])
+        portMask = utils.create_mask([self.dut_ports[0], self.dut_ports[1]])
         for mode in ["sw", "hw"]:
             self.logger.info("%s performance" % mode)
             rst.write_text(mode + " Performance" + '\r\n')
@@ -301,7 +300,7 @@ class TestChecksumOffload(TestCase):
             for size in sizes:
                 tblheader.append("%sB mpps" % str(size))
                 tblheader.append("%sB %%   " % str(size))
-            dts.results_table_add_header(tblheader)
+            self.result_table_create(tblheader)
             self.pmdout.start_testpmd(
                 lcore, "--portmask=%s" % self.portMask, socket=self.ports_socket)
 
@@ -321,14 +320,13 @@ class TestChecksumOffload(TestCase):
 
             self.dut.send_expect("stop", "testpmd> ")
             self.dut.send_expect("quit", "#", 10)
-            dts.results_table_print()
+            self.result_table_print()
 
     def tear_down(self):
         """
         Run after each test case.
         """
-        if self.dut.want_func_tests:
-            self.dut.send_expect("quit", "#")
+        self.dut.send_expect("quit", "#")
 
     def tear_down_all(self):
         """

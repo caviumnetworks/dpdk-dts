@@ -30,12 +30,13 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import os
-import dts
 import shutil
 from plotgraph import Plot2DGraph
 from docutils.parsers.rst.directives import path
 from rst import path2Result
 import plotgraph
+import utils
+from exception import VerifyFailure
 
 
 """
@@ -94,7 +95,7 @@ class Plotting(object):
             self.plots_path = path
 
         except Exception as e:
-            raise dts.VerifyFailure("Plot Error: " + str(e))
+            raise VerifyFailure("Plot Error: " + str(e))
 
     def clear_all_plots(self, crb, target):
         shutil.rmtree(self.plots_path, True)
@@ -105,7 +106,7 @@ class Plotting(object):
 
         for yseries in ydata:
             if len(xdata) != len(yseries):
-                print dts.RED("The number of items in X axis (%s) and Y axis (%s) does not match." % (xdata, ydata))
+                print utils.RED("The number of items in X axis (%s) and Y axis (%s) does not match." % (xdata, ydata))
                 return ''
 
         image_path = "%s/%s.%s" % (self.plots_path, image_filename,
@@ -204,7 +205,7 @@ class Plotting(object):
         pgraph.titleYOffset = 0.96
         pgraph.titleXOffset = 0.35
 
-        if True == addHline:
+        if addHline:
             pgraph.horizontalLine = True
             pgraph.hLineName = hLine['name']
             pgraph.hLine = hLine['value']

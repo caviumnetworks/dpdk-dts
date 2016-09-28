@@ -34,7 +34,7 @@ DPDK Test suite.
 Test the support of Whitelist Features by Poll Mode Drivers
 """
 
-import dts
+import utils
 import time
 from test_case import TestCase
 from pmd_output import PmdOutput
@@ -54,7 +54,7 @@ class TestWhitelist(TestCase):
         self.dutPorts = self.dut.get_ports()
         # Verify that enough ports are available
         self.verify(len(self.dutPorts) >= 1, "Insufficient ports")
-        portMask = dts.create_mask(self.dutPorts[:1])
+        portMask = utils.create_mask(self.dutPorts[:1])
 
         self.pmdout = PmdOutput(self.dut)
         self.pmdout.start_testpmd("Default", "--portmask=%s" % portMask)
@@ -68,11 +68,11 @@ class TestWhitelist(TestCase):
         self.dest = self.dut.get_mac_address(self.dutPorts[0])
         mac_scanner = r"MAC address: (([\dA-F]{2}:){5}[\dA-F]{2})"
 
-        ret = dts.regexp(out, mac_scanner)
+        ret = utils.regexp(out, mac_scanner)
         self.verify(ret is not None, "MAC address not found")
         self.verify(cmp(ret.lower(), self.dest) == 0, "MAC address wrong")
 
-        self.max_mac_addr = dts.regexp(out, "Maximum number of MAC addresses: ([0-9]+)")
+        self.max_mac_addr = utils.regexp(out, "Maximum number of MAC addresses: ([0-9]+)")
 
     def set_up(self):
         """
@@ -103,12 +103,12 @@ class TestWhitelist(TestCase):
         self.dut.send_expect("clear port stats all", "testpmd> ")
 
         out = self.dut.send_expect("show port stats %d" % portid, "testpmd> ")
-        pre_rxpkt = dts.regexp(out, "RX-packets: ([0-9]+)")
+        pre_rxpkt = utils.regexp(out, "RX-packets: ([0-9]+)")
 
         # send one packet with the portid MAC address
         self.whitelist_send_packet(portid, self.dest)
         out = self.dut.send_expect("show port stats %d" % portid, "testpmd> ")
-        cur_rxpkt = dts.regexp(out, "RX-packets: ([0-9]+)")
+        cur_rxpkt = utils.regexp(out, "RX-packets: ([0-9]+)")
         # check the packet increase
         self.verify(int(cur_rxpkt) == int(pre_rxpkt) + self.frames_to_send,
                     "Packet has not been received on default address")
@@ -118,7 +118,7 @@ class TestWhitelist(TestCase):
 
         pre_rxpkt = cur_rxpkt
         out = self.dut.send_expect("show port stats %d" % portid, "testpmd> ")
-        cur_rxpkt = dts.regexp(out, "RX-packets: ([0-9]+)")
+        cur_rxpkt = utils.regexp(out, "RX-packets: ([0-9]+)")
 
         # check the packet DO NOT increase
         self.verify(int(cur_rxpkt) == int(pre_rxpkt),
@@ -131,7 +131,7 @@ class TestWhitelist(TestCase):
 
         pre_rxpkt = cur_rxpkt
         out = self.dut.send_expect("show port stats %d" % portid, "testpmd> ")
-        cur_rxpkt = dts.regexp(out, "RX-packets: ([0-9]+)")
+        cur_rxpkt = utils.regexp(out, "RX-packets: ([0-9]+)")
 
         # check the packet increase
         self.verify(int(cur_rxpkt) == int(pre_rxpkt) + self.frames_to_send,
@@ -145,7 +145,7 @@ class TestWhitelist(TestCase):
 
         pre_rxpkt = cur_rxpkt
         out = self.dut.send_expect("show port stats %d" % portid, "testpmd> ")
-        cur_rxpkt = dts.regexp(out, "RX-packets: ([0-9]+)")
+        cur_rxpkt = utils.regexp(out, "RX-packets: ([0-9]+)")
 
         # check the packet increase
         self.verify(int(cur_rxpkt) == int(pre_rxpkt),

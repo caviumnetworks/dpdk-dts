@@ -187,7 +187,7 @@ class PortConf(UserConf):
 
 
 class CrbsConf(UserConf):
-    DEF_CRB = {'IP': '', 'name': 'CrownPassCRB1', 'user': '',
+    DEF_CRB = {'IP': '', 'board': 'default', 'user': '',
                'pass': '', 'tester IP': '', 'tester pass': '',
                IXIA: None, 'memory channels': 4,
                'bypass core0': True}
@@ -236,6 +236,8 @@ class CrbsConf(UserConf):
                         crb['bypass core0'] = True
                     else:
                         crb['bypass core0'] = False
+                elif key == 'board':
+                    crb['board'] = value
 
             self.crbs_cfg.append(crb)
         return self.crbs_cfg

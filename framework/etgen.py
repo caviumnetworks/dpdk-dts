@@ -32,18 +32,20 @@
 import re
 import string
 import time
-import dts
 from config import IxiaConf
 from ssh_connection import SSHConnection
 from settings import SCAPY2IXIA
 from logger import getLogger
 from exception import VerifyFailure
+from utils import create_mask
 
 
 class SoftwarePacketGenerator():
+
     """
     Software WindRiver packet generator for performance measurement.
     """
+
     def __init__(self, tester):
         self.tester = tester
 
@@ -86,7 +88,7 @@ class SoftwarePacketGenerator():
             pcap_cmd += " -s %d:%s" % (port_map[tx_port], pcap_file)
 
         # Selected 2 for -n to optimize results on Burage
-        cores_mask = dts.create_mask(self.tester.get_core_list("all"))
+        cores_mask = create_mask(self.tester.get_core_list("all"))
 
         self.tester.send_expect("./pktgen -n 2 -c %s --proc-type auto --socket-mem 256,256 -- -P -m \"%s\" %s"
                                 % (cores_mask, map_cmd, pcap_cmd), "Pktgen >", 100)
@@ -156,10 +158,10 @@ class IxiaPacketGenerator(SSHConnection):
         self.ixiaVersion = ixiaPorts[ixiaRef]["Version"]
         self.ports = ixiaPorts[ixiaRef]["Ports"]
 
-        if ixiaPorts[ixiaRef].has_key('force100g'): 
+        if ixiaPorts[ixiaRef].has_key('force100g'):
             self.enable100g = ixiaPorts[ixiaRef]['force100g']
         else:
-            self.enable100g = 'disable' 
+            self.enable100g = 'disable'
 
         self.logger.info(self.ixiaVersion)
         self.logger.info(self.ports)
@@ -416,8 +418,8 @@ class IxiaPacketGenerator(SSHConnection):
         for item in pList:
             self.add_tcl_cmd("port setFactoryDefaults chasId %d %d" % (
                 item['card'], item['port']))
-            #if the line rate is 100G and we need this port work in 100G mode,
-            #we need to add some configure to make it so.
+            # if the line rate is 100G and we need this port work in 100G mode,
+            # we need to add some configure to make it so.
             if int(self.get_line_rate(self.chasId, item).strip()) == 100000 and self.enable100g == 'enable':
                 self.add_tcl_cmd("port config -ieeeL1Defaults 0")
                 self.add_tcl_cmd("port config -autonegotiate false")
@@ -818,11 +820,11 @@ class IxiaPacketGenerator(SSHConnection):
         Returns the number of packets captured by IXIA on a previously set
         port. Call self.stat_get_stat_all_stats(port) before.
         """
-        if self._stat_cget_value('framesReceived') !=0:
+        if self._stat_cget_value('framesReceived') != 0:
             return self._stat_cget_value('framesReceived')
         else:
-        #if the packet size is large than 1518, this line will avoid return
-        #a wrong number
+            # if the packet size is large than 1518, this line will avoid return
+            # a wrong number
             return self._stat_cget_value('oversize')
 
     def get_flow_control_frames(self):

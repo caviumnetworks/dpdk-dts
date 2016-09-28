@@ -36,7 +36,7 @@ Test the support of VLAN Offload Features by Poll Mode Drivers.
 
 """
 
-import dts
+import utils
 import time
 import re
 
@@ -67,7 +67,7 @@ class TestGeneric_filter(TestCase):
         global valports
         valports = [_ for _ in ports if self.tester.get_local_port(_) != -1]
         global portMask
-        portMask = dts.create_mask(valports[:2])
+        portMask = utils.create_mask(valports[:2])
         self.pmdout = PmdOutput(self.dut)
         self.ethertype_filter = "off"
 
@@ -769,7 +769,7 @@ class TestGeneric_filter(TestCase):
             "ethertype": 'Ether(dst="%s")/ARP(pdst="192.168.1.1")' % tx_mac,
             "5tuple": 'flows.append(Ether(dst="%s")/IP(src="2.2.2.4",dst="2.2.2.5")/TCP(sport=1,dport=1,flags=0)/("X"*%d))',
         }
-        dts.results_table_add_header(
+        self.result_table_create(
             ['pack_size', "filter_type", "enable", "disable", "perf_compare"])
         for key in test_type.keys():
             if "5tuple" != key:
@@ -789,7 +789,7 @@ class TestGeneric_filter(TestCase):
                     _, pps = self.tester.traffic_generator_throughput(
                         tgen_input)
                     pps_lists.append(pps)
-                dts.results_table_add_row(
+                self.result_table_add(
                     ["defult", key, pps_lists[0], pps_lists[1], (pps_lists[0] - pps_lists[1]) / float(pps_lists[1])])
             # this is a TCP/IP package, need test different payload_size
             if ("5tuple" == key) and ("niantic" == self.nic):
@@ -816,9 +816,9 @@ class TestGeneric_filter(TestCase):
                         _, pps = self.tester.traffic_generator_throughput(
                             tgen_input)
                         pps_lists.append(pps)
-                    dts.results_table_add_row(
+                    self.result_table_add(
                         [package_size, key, pps_lists[0], pps_lists[1], (pps_lists[0] - pps_lists[1]) / float(pps_lists[1])])
-        dts.results_table_print()
+        self.result_table_print()
 
     def tear_down(self):
         """

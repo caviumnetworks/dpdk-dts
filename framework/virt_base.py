@@ -33,7 +33,7 @@ import traceback
 from random import randint
 from itertools import imap
 
-import dts
+import utils
 import exception
 from dut import Dut
 from config import VirtConf
@@ -167,9 +167,9 @@ class VirtBase(object):
                     for option in value:
                         param_func(**option)
                 else:
-                    print dts.RED("Virt %s function not callable!!!" % key)
+                    print utils.RED("Virt %s function not callable!!!" % key)
             except AttributeError:
-                    print dts.RED("Virt %s function not implemented!!!" % key)
+                    print utils.RED("Virt %s function not implemented!!!" % key)
             except Exception:
                 raise exception.VirtConfigParamException(key)
 
@@ -252,9 +252,9 @@ class VirtBase(object):
 
         except Exception as vm_except:
             if self.handle_exception(vm_except):
-                print dts.RED("Handled expection " + str(type(vm_except)))
+                print utils.RED("Handled expection " + str(type(vm_except)))
             else:
-                print dts.RED("Unhandled expection " + str(type(vm_except)))
+                print utils.RED("Unhandled expection " + str(type(vm_except)))
 
             if callable(self.callback):
                 self.callback()
@@ -273,9 +273,9 @@ class VirtBase(object):
                 vm_dut = self.instantiate_vm_dut(set_target, cpu_topo, bind_dev=False)
         except Exception as vm_except:
             if self.handle_exception(vm_except):
-                print dts.RED("Handled expection " + str(type(vm_except)))
+                print utils.RED("Handled expection " + str(type(vm_except)))
             else:
-                print dts.RED("Unhandled expection " + str(type(vm_except)))
+                print utils.RED("Unhandled expection " + str(type(vm_except)))
 
             return None
 
@@ -364,15 +364,16 @@ class VirtBase(object):
         skip_setup = self.host_dut.skip_setup
         base_dir = self.host_dut.base_dir
         vm_dut.set_speedup_options(read_cache, skip_setup)
-        func_only = self.host_dut.want_func_tests
-        perf_only = self.host_dut.want_perf_tests
-        vm_dut.set_test_types(func_tests=func_only, perf_tests=perf_only)
+
+        # package and patch should be set before prerequisites
+        vm_dut.set_package(self.host_dut.package, self.host_dut.patches)
+
         # base_dir should be set before prerequisites
         vm_dut.set_directory(base_dir)
 
         try:
             # setting up dpdk in vm, must call at last
-            vm_dut.prerequisites(dts.Package, dts.Patches)
+            vm_dut.prerequisites(self.host_dut.package, self.host_dut.patches)
             if set_target:
                 target = self.host_dut.target
                 vm_dut.set_target(target, bind_dev)

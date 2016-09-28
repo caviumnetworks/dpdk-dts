@@ -35,7 +35,7 @@ DPDK Test suite.
 This TestSuite runs the unit tests included in DPDK for pmd performance.
 """
 
-import dts
+import utils
 import re
 from test_case import TestCase
 
@@ -108,7 +108,7 @@ class TestUnitTestsPmdPerf(TestCase):
 
         self.table_header = ['Mode']
         self.table_header += self.anchors
-        dts.results_table_add_header(self.table_header)
+        self.result_table_create(self.table_header)
         print self.table_header
 
         for mode in self.rxtx_modes:
@@ -129,9 +129,9 @@ class TestUnitTestsPmdPerf(TestCase):
                 table_row.append(result.group(1))
 
             self.dut.send_expect("quit", "# ")
-            dts.results_table_add_row(table_row)
+            self.result_table_add(table_row)
 
-        dts.results_table_print()
+        self.result_table_print()
 
     def tear_down(self):
         """

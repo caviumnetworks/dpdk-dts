@@ -7,7 +7,7 @@ Test coremask parsing in DPDK.
 
 """
 
-import dts
+import utils
 
 from exception import VerifyFailure
 from test_case import TestCase
@@ -35,7 +35,7 @@ class TestCoremask(TestCase):
         Coremask Prerequisites.
         """
 
-        self.port_mask = dts.create_mask(self.dut.get_ports(self.nic))
+        self.port_mask = utils.create_mask(self.dut.get_ports(self.nic))
         self.mem_channel = self.dut.get_memory_channels()
 
         self.all_cores = self.dut.get_core_list("all")
@@ -58,7 +58,7 @@ class TestCoremask(TestCase):
 
         for core in self.all_cores:
 
-            core_mask = dts.create_mask([core])
+            core_mask = utils.create_mask([core])
 
             command = command_line % (self.target, core_mask,
                                       self.mem_channel)
@@ -78,7 +78,7 @@ class TestCoremask(TestCase):
         Check coremask parsing for all the cores at once.
         """
 
-        core_mask = dts.create_mask(self.all_cores)
+        core_mask = utils.create_mask(self.all_cores)
 
         command = command_line % (self.target, core_mask, self.mem_channel)
 

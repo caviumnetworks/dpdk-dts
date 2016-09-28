@@ -35,7 +35,7 @@ DPDK Test suite.
 Vhost user one-copy sample test suite.
 """
 import os
-import dts
+import utils
 import string
 import re
 import time
@@ -139,7 +139,7 @@ class TestVhostUserOneCopyOneVm(TestCase, IxiaPacketGenerator):
         #
         # Launch the vhost sample with different parameters
         #
-        self.coremask = dts.create_mask(self.cores)
+        self.coremask = utils.create_mask(self.cores)
         self.vhostapp_testcmd = self.vhost_test % (
             self.coremask, self.memory_channel, self.jumbo, self.zero_copy, self.vm2vm)
         self.dut.send_expect(self.vhostapp_testcmd, "# ", 40)
@@ -155,7 +155,7 @@ class TestVhostUserOneCopyOneVm(TestCase, IxiaPacketGenerator):
             else:
                 print "Launch vhost sample finished"
         except Exception as e:
-            print dts.RED("Failed to launch vhost sample: %s" % str(e))
+            print utils.RED("Failed to launch vhost sample: %s" % str(e))
 
     def start_onevm(self):
         #
@@ -177,7 +177,7 @@ class TestVhostUserOneCopyOneVm(TestCase, IxiaPacketGenerator):
             if self.vm_dut is None:
                 raise Exception("Set up VM ENV failed")
         except Exception as e:
-            print dts.RED("Failure for %s" % str(e))
+            print utils.RED("Failure for %s" % str(e))
 
         return True
 
@@ -299,7 +299,7 @@ class TestVhostUserOneCopyOneVm(TestCase, IxiaPacketGenerator):
         return (txRate,recvRate)
 
     def send_verify(self, case, frame_sizes, vlan_id1=0, vlan_id2=0):
-        dts.results_table_add_header(self.header_row)
+        self.result_table_create(self.header_row)
         for frame_size in frame_sizes:
             info = "Running test %s, and %d frame size." % (case, frame_size)
             self.logger.info(info)
@@ -323,8 +323,8 @@ class TestVhostUserOneCopyOneVm(TestCase, IxiaPacketGenerator):
             sendpkt /= 1000000.0
             pct = sendpkt * 100 / recvpkt
             data_row = [frame_size, str(recvpkt), str(sendpkt), str(pct)]
-            dts.results_table_add_row(data_row)
-        dts.results_table_print()
+            self.result_table_add(data_row)
+        self.result_table_print()
 
     def test_perf_user_one_vm_legacy_fwd(self):
         #

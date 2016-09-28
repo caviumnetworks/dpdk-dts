@@ -32,7 +32,7 @@
 '''
 '''
 from test_case import TestCase
-import dts
+import utils
 
 from time import sleep
 from scapy.all import *
@@ -116,7 +116,7 @@ class TestPmdPcap(TestCase):
         out_pcap = '/tmp/out_pmdpcap.pcap'
 
         two_cores = self.dut.get_core_list("1S/2C/1T")
-        core_mask = dts.create_mask(two_cores)
+        core_mask = utils.create_mask(two_cores)
 
         self.create_pcap_file(in_pcap, TestPmdPcap.pcap_file_sizes[0])
         self.dut.session.copy_file_to(in_pcap)
@@ -147,7 +147,7 @@ class TestPmdPcap(TestCase):
         out_pcap2 = '/tmp/out2_pmdpcap.pcap'
 
         four_cores = self.dut.get_core_list("1S/4C/1T")
-        core_mask = dts.create_mask(four_cores)
+        core_mask = utils.create_mask(four_cores)
 
         self.create_pcap_file(in_pcap1, TestPmdPcap.pcap_file_sizes[0])
         self.dut.session.copy_file_to(in_pcap1)

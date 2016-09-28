@@ -35,7 +35,7 @@ DPDK Test suite.
 Test Netmap_compat.
 """
 
-import dts
+import utils
 import string
 import time
 import re
@@ -54,7 +54,7 @@ class TestNetmapCompat(TestCase):
         self.dut_ports = self.dut.get_ports(self.nic)
         self.verify(len(self.dut_ports) >= 2, "Insufficient ports")
         cores = self.dut.get_core_list("1S/4C/1T")
-        self.coremask = dts.create_mask(cores)
+        self.coremask = utils.create_mask(cores)
 
         self.path = "./examples/netmap_compat/build/bridge" 
 

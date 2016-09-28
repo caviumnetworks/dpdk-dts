@@ -34,7 +34,7 @@ DPDK Test suite.
 Layer-3 forwarding exact-match test script.
 """
 
-import dts
+import utils
 import string
 import re
 from test_case import TestCase
@@ -157,7 +157,7 @@ class TestL3fwdEM(TestCase,IxiaPacketGenerator):
 
         header_row = ["Frame", "mode", "S/C/T", "Mpps", "% linerate"]
         self.l3fwd_test_results['header'] = header_row
-        dts.results_table_add_header(header_row)
+        self.result_table_create(header_row)
         self.l3fwd_test_results['data'] = []
 
         for frame_size in TestL3fwdEM.frame_sizes:
@@ -197,7 +197,7 @@ class TestL3fwdEM(TestCase,IxiaPacketGenerator):
                     rtCmdLines[key] = pat.sub(self.repl, rtCmdLines[key])
 
                 self.logger.info("%s\n" % str(corelist))
-                coreMask[key] = dts.create_mask(set(corelist))
+                coreMask[key] = utils.create_mask(set(corelist))
 
             # measure by two different mode
             for mode in TestL3fwdEM.methods:
@@ -211,13 +211,13 @@ class TestL3fwdEM(TestCase,IxiaPacketGenerator):
                            mode, cores, frame_size)
 
                     self.logger.info(info)
-                    dts.report(info, annex=True)
+                    self.rst_report(info, annex=True)
 
                     subtitle.append(cores)
                     cmdline = rtCmdLines[cores] % (TestL3fwdEM.path + "l3fwd", coreMask[cores],
-                                                   self.dut.get_memory_channels(), dts.create_mask(valports[:2]))
+                                                   self.dut.get_memory_channels(), utils.create_mask(valports[:2]))
 
-                    dts.report(cmdline + "\n", frame=True, annex=True)
+                    self.rst_report(cmdline + "\n", frame=True, annex=True)
 
                     out = self.dut.send_expect(cmdline, "L3FWD: entering main loop", 120)
             
@@ -252,10 +252,10 @@ class TestL3fwdEM(TestCase,IxiaPacketGenerator):
                     # Stop l3fwd
                     self.dut.send_expect("^C", "#")
                     data_row = [frame_size, mode, cores, str(pps), str(pct)]
-                    dts.results_table_add_row(data_row)
+                    self.result_table_add(data_row)
                     self.l3fwd_test_results['data'].append(data_row)
 
-        dts.results_table_print()
+        self.result_table_print()
 
 
     def ip(self, port, frag, src, proto, tos, dst, chksum, len, options, version, flags, ihl, ttl, id):

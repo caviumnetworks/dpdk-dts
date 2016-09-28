@@ -1,6 +1,6 @@
 # BSD LICENSE
 #
-# Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+# Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -43,129 +43,78 @@ import copy         # copy module for duplicate variable
 
 import rst          # rst file support
 import sys          # system module
-from settings import FOLDERS, NICS, LOG_NAME_SEP
+import settings     # dts settings
 from tester import Tester
 from dut import Dut
 from serializer import Serializer
-from exception import VerifyFailure
 from test_case import TestCase
 from test_result import Result
 from stats_reporter import StatsReporter
 from excel_reporter import ExcelReporter
-from utils import *
+import utils
 from exception import TimeoutException, ConfigParseException, VerifyFailure
 from logger import getLogger
 import logger
 import debugger
-from virt_scene import VirtScene
 from config import CrbsConf
-from checkCase import *
+from checkCase import parse_file, check_case_skip, check_case_support
+from utils import get_subclasses, copy_instance_attr
 import sys
 reload(sys)
 sys.setdefaultencoding('UTF8')
 
-PROJECT_MODULE_PREFIX = 'project_'
 
-debug_mode = False
-debug_case = False
-config = None
-table = None
-results_table_rows = []
-results_table_header = []
-performance_only = False
-functional_only = False
-nic = None
-rx_mode = None
 requested_tests = None
-dut = None
-duts = []
-virtduts = []
-tester = None
 result = None
 excel_report = None
-stats = None
+stats_report = None
 log_handler = None
-module = None
-Package = ''
-Patches = []
-drivername = ""
-interrupttypr = ""
-dts_commands = []
 
 
-def report(text, frame=False, annex=False):
-    """
-    Save report text into rst file.
-    """
-    if frame:
-        rst.write_frame(text, annex)
-    else:
-        rst.write_text(text, annex)
-
-
-def close_all_sessions():
-    """
-    Close session to DUT and tester.
-    """
-    # close all nics
-    for dutobj in duts:
-        if getattr(dutobj, 'ports_info', None) and dutobj.ports_info:
-            for port_info in dutobj.ports_info:
-                netdev = port_info['port']
-                netdev.close()
-        # close all session
-        dutobj.close()
-    if tester is not None:
-        tester.close()
-    log_handler.info("DTS ended")
-
-
-def get_crb_os(crb):
-    if 'OS' in crb:
-        return crb['OS']
-
-    return 'linux'
-
-
-def dts_parse_param(section):
+def dts_parse_param(config, section):
     """
     Parse execution file parameters.
     """
-    global performance_only
-    global functional_only
-    global paramDict
-    global drivername
-    performance_only = False
-    functional_only = False
+    # default value
+    performance = False
+    functional = False
     # Set parameters
     parameters = config.get(section, 'parameters').split(':')
     drivername = config.get(section, 'drivername').split('=')[-1]
+
+    settings.save_global_setting(settings.HOST_DRIVER_SETTING, drivername)
+
     paramDict = dict()
     for param in parameters:
         (key, _, value) = param.partition('=')
         paramDict[key] = value
 
     if 'perf' in paramDict and paramDict['perf'] == 'true':
-        performance_only = True
+        performance = True
     if 'func' in paramDict and paramDict['func'] == 'true':
-        functional_only = True
+        functional = True
 
-    if not functional_only and not performance_only:
-        functional_only = True
+    if 'nic_type' not in paramDict:
+        paramDict['nic_type'] = 'any'
+
+    settings.save_global_setting(settings.HOST_NIC_SETTING, paramDict['nic_type'])
+
+    # save perf/funtion setting in enviornment
+    if performance:
+        settings.save_global_setting(settings.PERF_SETTING, 'yes')
+    else:
+        settings.save_global_setting(settings.PERF_SETTING, 'no')
+
+    if functional:
+        settings.save_global_setting(settings.FUNC_SETTING, 'yes')
+    else:
+        settings.save_global_setting(settings.FUNC_SETTING, 'no')
 
 
-def dts_parse_config(section):
+def dts_parse_config(config, section):
     """
     Parse execution file configuration.
     """
-    try:
-        scenario = config.get(section, 'scenario')
-    except:
-        scenario = ''
-
-    global nic
-    global rx_mode
-
     duts = [dut_.strip() for dut_ in config.get(section,
                                                 'crbs').split(',')]
     targets = [target.strip()
@@ -175,30 +124,31 @@ def dts_parse_config(section):
     try:
         rx_mode = config.get(section, 'rx_mode').strip()
     except:
-        rx_mode = None
+        rx_mode = 'default'
+
+    settings.save_global_setting(settings.DPDK_RXMODE_SETTING, rx_mode)
 
     for suite in test_suites:
         if suite == '':
             test_suites.remove(suite)
 
-    nic = [_.strip() for _ in paramDict['nic_type'].split(',')][0]
-
-    return duts, targets, test_suites, nic, scenario
+    return duts, targets, test_suites
 
 
 def dts_parse_commands(commands):
     """
     Parse command information from dts arguments
     """
+    dts_commands = []
+
     if commands is None:
-        return
+        return dts_commands
 
     args_format = {"shell": 0,
                    "crb": 1,
                    "stage": 2,
                    "check": 3,
                    "max_num": 4}
-    global dts_commands
     cmd_fmt = r"\[(.*)\]"
 
     for command in commands:
@@ -234,12 +184,13 @@ def dts_parse_commands(commands):
 
         dts_commands.append(dts_command)
 
+    return dts_commands
 
-def dts_run_commands(crb):
+
+def dts_run_commands(crb, dts_commands):
     """
     Run dts input commands
     """
-    global dts_commands
     for dts_command in dts_commands:
         command = dts_command['command']
         if crb.NAME == dts_command['host']:
@@ -255,8 +206,8 @@ def get_project_obj(project_name, super_class, crbInst, serializer):
     """
     Load project module and return crb instance.
     """
-    global PROJECT_MODULE_PREFIX
     project_obj = None
+    PROJECT_MODULE_PREFIX = 'project_'
     try:
         project_module = __import__(PROJECT_MODULE_PREFIX + project_name)
 
@@ -271,22 +222,16 @@ def get_project_obj(project_name, super_class, crbInst, serializer):
     return project_obj
 
 
-def dts_log_testsuite(test_suite, log_handler, test_classname):
+def dts_log_testsuite(duts, tester, suite_obj, log_handler, test_classname):
     """
     Change to SUITE self logger handler.
     """
-    test_suite.logger = getLogger(test_classname)
-    test_suite.logger.config_suite(test_classname)
     log_handler.config_suite(test_classname, 'dts')
     tester.logger.config_suite(test_classname, 'tester')
 
     for dutobj in duts:
         dutobj.logger.config_suite(test_classname, 'dut')
         dutobj.test_classname = test_classname
-
-    if len(virtduts):
-        for crb in virtduts:
-            crb.logger.config_suite(test_classname, 'virtdut')
 
     try:
         if tester.it_uses_external_generator():
@@ -296,7 +241,7 @@ def dts_log_testsuite(test_suite, log_handler, test_classname):
         pass
 
 
-def dts_log_execution(log_handler):
+def dts_log_execution(duts, tester, log_handler):
     """
     Change to DTS default logger handler.
     """
@@ -304,11 +249,8 @@ def dts_log_execution(log_handler):
     tester.logger.config_execution('tester')
 
     for dutobj in duts:
-        dutobj.logger.config_execution('dut' + LOG_NAME_SEP + '%s' % dutobj.crb['My IP'])
+        dutobj.logger.config_execution('dut' + settings.LOG_NAME_SEP + '%s' % dutobj.crb['My IP'])
 
-    if len(virtduts):
-        for crb in virtduts:
-            crb.logger.config_execution('virtdut')
     try:
         if tester.it_uses_external_generator():
             getattr(tester, 'ixia_packet_gen')
@@ -317,14 +259,13 @@ def dts_log_execution(log_handler):
         pass
 
 
-def dts_crbs_init(crbInsts, skip_setup, read_cache, project, base_dir, nic, virttype):
+def dts_crbs_init(crbInsts, skip_setup, read_cache, project, base_dir, serializer, virttype):
     """
     Create dts dut/tester instance and initialize them.
     """
-    global dut
-    global duts
-    global tester
-    serializer.set_serialized_filename(FOLDERS['Output'] +
+    duts = []
+
+    serializer.set_serialized_filename(settings.FOLDERS['Output'] +
                                        '/.%s.cache' % crbInsts[0]['IP'])
     serializer.load_from_file()
 
@@ -338,44 +279,47 @@ def dts_crbs_init(crbInsts, skip_setup, read_cache, project, base_dir, nic, virt
         dutobj = get_project_obj(project, Dut, dutInst, serializer)
         duts.append(dutobj)
 
-    dut = duts[0]
-
-    dts_log_execution(log_handler)
+    dts_log_execution(duts, tester, log_handler)
 
     tester.duts = duts
     show_speedup_options_messages(read_cache, skip_setup)
     tester.set_speedup_options(read_cache, skip_setup)
-    tester.set_test_types(func_tests=functional_only, perf_tests=performance_only)
     tester.init_ext_gen()
 
+    nic = settings.load_global_setting(settings.HOST_NIC_SETTING)
     for dutobj in duts:
         dutobj.tester = tester
         dutobj.set_virttype(virttype)
         dutobj.set_speedup_options(read_cache, skip_setup)
         dutobj.set_directory(base_dir)
+        # save execution nic setting
         dutobj.set_nic_type(nic)
-        dutobj.set_test_types(func_tests=functional_only, perf_tests=performance_only)
+
+    return duts, tester
 
 
-def dts_crbs_exit():
+def dts_crbs_exit(duts, tester):
     """
     Call dut and tester exit function after execution finished
     """
-    dut.crb_exit()
+    for dutobj in duts:
+        dutobj.crb_exit()
+
     tester.crb_exit()
 
 
-def dts_run_prerequisties(pkgName, patch):
+def dts_run_prerequisties(duts, tester, pkgName, patch, dts_commands, serializer):
     """
     Run dts prerequisties function.
     """
     try:
-        dts_run_commands(tester)
-        tester.prerequisites(performance_only)
-        dts_run_commands(tester)
+        dts_run_commands(tester, dts_commands)
+        tester.prerequisites()
+        dts_run_commands(tester, dts_commands)
         for dutobj in duts:
-            dutobj.prerequisites(pkgName, patch)
-            dts_run_commands(dutobj)
+            dutobj.set_package(pkgName, patch)
+            dutobj.prerequisites()
+            dts_run_commands(dutobj, dts_commands)
 
         serializer.save_to_file()
     except Exception as ex:
@@ -386,37 +330,22 @@ def dts_run_prerequisties(pkgName, patch):
         return False
 
 
-def dts_run_target(crbInsts, targets, test_suites, nic, scenario):
+def dts_run_target(duts, tester, targets, test_suites):
     """
     Run each target in execution targets.
     """
-    global drivername
-    if scenario != '':
-        scene = VirtScene(dut, tester, scenario)
-    else:
-        scene = None
-
-    if scene:
-        scene.load_config()
-        scene.create_scene()
-
     for target in targets:
         log_handler.info("\nTARGET " + target)
         result.target = target
 
         try:
-            if scene:
-                scene.set_target(target)
-                # skip set_target when host has been setup by scenario
-                if not scene.host_bound:
-                    dut.set_target(target, bind_dev=False)
+            drivername = settings.load_global_setting(settings.HOST_DRIVER_SETTING)
+            if drivername == "":
+                for dutobj in duts:
+                    dutobj.set_target(target, bind_dev=False)
             else:
-                if drivername == "":
-                    for dutobj in duts:
-                        dutobj.set_target(target, bind_dev=False)
-                else:
-                    for dutobj in duts:
-                        dutobj.set_target(target)
+                for dutobj in duts:
+                    dutobj.set_target(target)
         except AssertionError as ex:
             log_handler.error(" TARGET ERROR: " + str(ex))
             result.add_failed_target(result.dut, target, str(ex))
@@ -426,15 +355,7 @@ def dts_run_target(crbInsts, targets, test_suites, nic, scenario):
             result.add_failed_target(result.dut, target, str(ex))
             continue
 
-        if 'nic_type' not in paramDict:
-            paramDict['nic_type'] = 'any'
-            nic = 'any'
-
-        dts_run_suite(crbInsts, test_suites, target, nic, scene)
-
-    if scene:
-        scene.destroy_scene()
-        scene = None
+        dts_run_suite(duts, tester, test_suites, target)
 
     tester.restore_interfaces()
 
@@ -443,52 +364,49 @@ def dts_run_target(crbInsts, targets, test_suites, nic, scenario):
         dutobj.restore_interfaces()
 
 
-def dts_run_suite(crbInsts, test_suites, target, nic, scene):
+def dts_run_suite(duts, tester, test_suites, target):
     """
     Run each suite in test suite list.
     """
-    try:
-        for test_suite in test_suites:
-            # prepare rst report file
-            result.test_suite = test_suite
-            rst.generate_results_rst(crbInsts[0]['name'], target, nic, test_suite, performance_only)
-            test_module = __import__('TestSuite_' + test_suite)
-            global module
-            module = test_module
-            for test_classname, test_class in get_subclasses(test_module, TestCase):
+    for suite_name in test_suites:
+        try:
+            result.test_suite = suite_name
+            suite_module = __import__('TestSuite_' + suite_name)
+            for test_classname, test_class in get_subclasses(suite_module, TestCase):
 
-                if scene and scene.vm_dut_enable:
-                    global virtduts
-                    virtduts = scene.get_vm_duts()
-                    tester.dut = virtduts[0]
-                    tester.duts = virtduts
-                    test_suite = test_class(virtduts, tester, target, test_suite)
-                else:
-                    test_suite = test_class(duts, tester, target, test_suite)
-                result.nic = test_suite.nic
+                suite_obj = test_class(duts, tester, target, suite_name)
+                suite_obj.set_requested_cases(requested_tests)
+                suite_obj.set_check_inst(check=check_case_inst, support=support_case_inst)
+                result.nic = suite_obj.nic
 
-                dts_log_testsuite(test_suite, log_handler, test_classname)
+                dts_log_testsuite(duts, tester, suite_obj, log_handler, test_classname)
 
                 log_handler.info("\nTEST SUITE : " + test_classname)
-                log_handler.info("NIC :        " + nic)
-                if execute_test_setup_all(test_suite):
-                    execute_all_test_cases(test_suite)
-                    execute_test_tear_down_all(test_suite)
-                else:
-                    test_cases_as_blocked(test_suite)
+                log_handler.info("NIC :        " + result.nic)
+
+                if suite_obj.execute_setup_all():
+                    suite_obj.execute_test_cases()
+                    suite_obj.execute_tear_downall()
+
+                # save suite cases result
+                result.copy_suite(suite_obj.get_result())
+                save_all_results()
 
                 log_handler.info("\nTEST SUITE ENDED: " + test_classname)
-                dts_log_execution(log_handler)
-
-            dut.kill_all()
-    except VerifyFailure:
-        log_handler.error(" !!! DEBUG IT: " + traceback.format_exc())
-    except KeyboardInterrupt:
-        log_handler.error(" !!! STOPPING DCTS")
-    except Exception as e:
-        log_handler.error(str(e))
-    finally:
-        execute_test_tear_down_all(test_suite)
+                dts_log_execution(duts, tester, log_handler)
+        except VerifyFailure:
+            log_handler.error(" !!! DEBUG IT: " + traceback.format_exc())
+        except KeyboardInterrupt:
+            # stop/save result/skip execution
+            log_handler.error(" !!! STOPPING DTS")
+            suite_obj.execute_tear_downall()
+            save_all_results()
+            break
+        except Exception as e:
+            log_handler.error(str(e))
+        finally:
+            suite_obj.execute_tear_downall()
+            save_all_results()
 
 
 def run_all(config_file, pkgName, git, patch, skip_setup,
@@ -499,30 +417,25 @@ def run_all(config_file, pkgName, git, patch, skip_setup,
     Main process of DTS, it will run all test suites in the config file.
     """
 
-    global config
-    global serializer
-    global nic
     global requested_tests
     global result
     global excel_report
-    global stats
+    global stats_report
     global log_handler
-    global debug_mode
-    global debug_case
-    global Package
-    global Patches
-    global scenario
     global check_case_inst
     global support_case_inst
+
     # save global variable
-    Package = pkgName
-    Patches = patch
+    serializer = Serializer()
+
+    # load check/support case lists
     check_case = parse_file()
     check_case.set_filter_case()
     check_case.set_support_case()
+
     # prepare the output folder
     if output_dir == '':
-        output_dir = FOLDERS['Output']
+        output_dir = settings.FOLDERS['Output']
 
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
@@ -532,9 +445,9 @@ def run_all(config_file, pkgName, git, patch, skip_setup,
 
     # enable debug mode
     if debug is True:
-        debug_mode = True
+        settings.save_global_setting(settings.DEBUG_SETTING, 'yes')
     if debugcase is True:
-        debug_case = True
+        settings.save_global_setting(settings.DEBUG_CASE_SETTING, 'yes')
 
     # init log_handler handler
     if verbose is True:
@@ -554,20 +467,17 @@ def run_all(config_file, pkgName, git, patch, skip_setup,
         raise ConfigParseException(config_file)
 
     # parse commands
-    dts_parse_commands(commands)
-
-    # register exit action
-    atexit.register(close_all_sessions)
+    dts_commands = dts_parse_commands(commands)
 
     os.environ["TERM"] = "dumb"
 
-    serializer = Serializer()
-
-    # excel report and statistics file
-    result = Result()
+    # change rst output folder
     rst.path2Result = output_dir
+
+    # report objects
     excel_report = ExcelReporter(output_dir + '/test_results.xls')
-    stats = StatsReporter(output_dir + '/statistics.txt')
+    stats_report = StatsReporter(output_dir + '/statistics.txt')
+    result = Result()
 
     crbInsts = []
     crbs_conf = CrbsConf()
@@ -575,10 +485,10 @@ def run_all(config_file, pkgName, git, patch, skip_setup,
 
     # for all Exectuion sections
     for section in config.sections():
-        dts_parse_param(section)
+        dts_parse_param(config, section)
 
         # verify if the delimiter is good if the lists are vertical
-        dutIPs, targets, test_suites, nics, scenario = dts_parse_config(section)
+        dutIPs, targets, test_suites = dts_parse_config(config, section)
         for dutIP in dutIPs:
             log_handler.info("\nDUT " + dutIP)
 
@@ -597,260 +507,24 @@ def run_all(config_file, pkgName, git, patch, skip_setup,
         result.dut = dutIPs[0]
 
         # init dut, tester crb
-        dts_crbs_init(crbInsts, skip_setup, read_cache, project, base_dir, nics, virttype)
+        duts, tester = dts_crbs_init(crbInsts, skip_setup, read_cache, project, base_dir, serializer, virttype)
 
-        check_case_inst = check_case_skip(dut)
-        support_case_inst = check_case_support(dut)
+        # register exit action
+        atexit.register(close_all_sessions, duts, tester)
+
+        check_case_inst = check_case_skip(duts[0])
+        support_case_inst = check_case_support(duts[0])
 
         # Run DUT prerequisites
-        if dts_run_prerequisties(pkgName, patch) is False:
-            dts_crbs_exit()
+        if dts_run_prerequisties(duts, tester, pkgName, patch, dts_commands, serializer) is False:
+            dts_crbs_exit(duts, tester)
             continue
 
-        dts_run_target(crbInsts, targets, test_suites, nics, scenario)
+        dts_run_target(duts, tester, targets, test_suites)
 
-        dts_crbs_exit()
+        dts_crbs_exit(duts, tester)
 
     save_all_results()
-
-
-def test_cases_as_blocked(test_suite):
-    """
-    Save result as test case blocked.
-    """
-    if functional_only:
-        for test_case in get_functional_test_cases(test_suite):
-            result.test_case = test_case.__name__
-            result.test_case_blocked('set_up_all failed')
-    if performance_only:
-        for test_case in get_performance_test_cases(test_suite):
-            result.test_case = test_case.__name__
-            result.test_case_blocked('set_up_all failed')
-
-
-def get_subclasses(module, clazz):
-    """
-    Get module attribute name and attribute.
-    """
-    for subclazz_name, subclazz in inspect.getmembers(module):
-        if hasattr(subclazz, '__bases__') and clazz in subclazz.__bases__:
-            yield (subclazz_name, subclazz)
-
-
-def copy_instance_attr(from_inst, to_inst):
-    for key in from_inst.__dict__.keys():
-            to_inst.__dict__[key] = from_inst.__dict__[key]
-
-
-def get_functional_test_cases(test_suite):
-    """
-    Get all functional test cases.
-    """
-    return get_test_cases(test_suite, r'test_(?!perf_)')
-
-
-def get_performance_test_cases(test_suite):
-    """
-    Get all performance test cases.
-    """
-    return get_test_cases(test_suite, r'test_perf_')
-
-
-def has_it_been_requested(test_case, test_name_regex):
-    """
-    Check whether test case has been requested for validation.
-    """
-    name_matches = re.match(test_name_regex, test_case.__name__)
-
-    if requested_tests is not None:
-        return name_matches and test_case.__name__ in requested_tests
-
-    return name_matches
-
-
-def get_test_cases(test_suite, test_name_regex):
-    """
-    Return case list which name matched regex.
-    """
-    for test_case_name in dir(test_suite):
-        test_case = getattr(test_suite, test_case_name)
-        if callable(test_case) and has_it_been_requested(test_case, test_name_regex):
-            yield test_case
-
-
-def execute_test_setup_all(test_case):
-    """
-    Execute suite setup_all function before cases.
-    """
-    try:
-        # clear all previous output
-        test_case.dut.get_session_output(timeout=0.1)
-        test_case.tester.get_session_output(timeout=0.1)
-        test_case.set_up_all()
-        return True
-    except Exception:
-        log_handler.error('set_up_all failed:\n' + traceback.format_exc())
-        return False
-
-
-def execute_all_test_cases(test_suite):
-    """
-    Execute all test cases in one suite.
-    """
-    if functional_only:
-        for test_case in get_functional_test_cases(test_suite):
-            execute_test_case(test_suite, test_case)
-    if performance_only:
-        for test_case in get_performance_test_cases(test_suite):
-            execute_test_case(test_suite, test_case)
-
-
-def execute_test_case(test_suite, test_case):
-    """
-    Execute specified test case in specified suite. If any exception occured in
-    validation process, save the result and tear down this case.
-    """
-    global debug_mode
-    global debug_case
-    global module
-    result.test_case = test_case.__name__
-    rst.write_title("Test Case: " + test_case.__name__)
-    if check_case_inst.case_skip(test_case.__name__[len("test_"):]):
-        log_handler.info('Test Case %s Result SKIPED:' % test_case.__name__)
-        rst.write_result("N/A")
-        result.test_case_skip(check_case_inst.comments)
-        save_all_results()
-        return
-
-    if not support_case_inst.case_support(test_case.__name__[len("test_"):]):
-        log_handler.info('Test Case %s Result SKIPED:' % test_case.__name__)
-        rst.write_result("N/A")
-        result.test_case_skip(support_case_inst.comments)
-        save_all_results()
-        return
-
-    if performance_only:
-        rst.write_annex_title("Annex: " + test_case.__name__)
-    try:
-        log_handler.info('Test Case %s Begin' % test_case.__name__)
-        test_suite.running_case = test_case.__name__
-        # clear all previous output
-        test_suite.dut.get_session_output(timeout=0.1)
-        test_suite.tester.get_session_output(timeout=0.1)
-        # run set_up function for each case
-        test_suite.set_up()
-        # prepare debugger re-run case environment
-        if debug_mode or debug_case:
-            debugger.AliveSuite = test_suite
-            debugger.AliveModule = module
-            debugger.AliveCase = test_case.__name__
-        if debug_case:
-            debugger.keyboard_handle(signal.SIGINT, None)
-        else:
-            test_case()
-
-        result.test_case_passed()
-
-        if dut.want_perf_tests:
-            log_handler.info('Test Case %s Result FINISHED:' % test_case.__name__)
-        else:
-            rst.write_result("PASS")
-            log_handler.info('Test Case %s Result PASSED:' % test_case.__name__)
-
-    except VerifyFailure as v:
-        result.test_case_failed(str(v))
-        rst.write_result("FAIL")
-        log_handler.error('Test Case %s Result FAILED: ' % (test_case.__name__) + str(v))
-    except KeyboardInterrupt:
-        result.test_case_blocked("Skipped")
-        log_handler.error('Test Case %s SKIPED: ' % (test_case.__name__))
-        raise KeyboardInterrupt("Stop DCTS")
-    except TimeoutException as e:
-        rst.write_result("FAIL")
-        msg = str(e)
-        result.test_case_failed(msg)
-        log_handler.error('Test Case %s Result FAILED: ' % (test_case.__name__) + msg)
-        log_handler.error('%s' % (e.get_output()))
-    except Exception:
-        trace = traceback.format_exc()
-        result.test_case_failed(trace)
-        log_handler.error('Test Case %s Result ERROR: ' % (test_case.__name__) + trace)
-    finally:
-        test_suite.tear_down()
-        save_all_results()
-
-
-def execute_test_tear_down_all(test_case):
-    """
-    execute suite tear_down_all function
-    """
-    try:
-        test_case.tear_down_all()
-    except Exception:
-        log_handler.error('tear_down_all failed:\n' + traceback.format_exc())
-
-    dut.kill_all()
-    tester.kill_all()
-
-
-def results_table_add_header(header):
-    """
-    Add the title of result table.
-    Usage:
-    results_table_add_header(header)
-    results_table_add_row(row)
-    results_table_print()
-    """
-    global table, results_table_header, results_table_rows
-
-    results_table_rows = []
-    results_table_rows.append([])
-    table = texttable.Texttable(max_width=150)
-    results_table_header = header
-
-
-def results_table_add_row(row):
-    """
-    Add one row to result table.
-    """
-    results_table_rows.append(row)
-
-
-def results_table_print():
-    """
-    Show off result table.
-    """
-    table.add_rows(results_table_rows)
-    table.header(results_table_header)
-
-    alignments = []
-    # all header align to left
-    for _ in results_table_header:
-        alignments.append("l")
-    table.set_cols_align(alignments)
-
-    out = table.draw()
-    rst.write_text('\n' + out + '\n\n')
-    log_handler.info('\n' + out)
-
-
-def results_plot_print(image, width=90):
-    """
-    Includes an image in the report file.
-    The image name argument must include the path. <path>/<image name>
-    """
-    rst.include_image(image, width)
-
-
-def create_mask(indexes):
-    """
-    Convert index to hex mask.
-    """
-    val = 0
-    for index in indexes:
-        val |= 1 << int(index)
-
-    return hex(val).rstrip("L")
 
 
 def show_speedup_options_messages(read_cache, skip_setup):
@@ -870,23 +544,21 @@ def save_all_results():
     Save all result to files.
     """
     excel_report.save(result)
-    stats.save(result)
+    stats_report.save(result)
 
 
-def accepted_nic(pci_id):
+def close_all_sessions(duts, tester):
     """
-    Return True if the pci_id is a known NIC card in the settings file and if
-    it is selected in the execution file, otherwise it returns False.
+    Close session to DUT and tester.
     """
-    global nic
-    if pci_id not in NICS.values():
-        return False
-
-    if nic is 'any':
-        return True
-
-    else:
-        if pci_id == NICS[nic]:
-            return True
-
-    return False
+    # close all nics
+    for dutobj in duts:
+        if getattr(dutobj, 'ports_info', None) and dutobj.ports_info:
+            for port_info in dutobj.ports_info:
+                netdev = port_info['port']
+                netdev.close()
+        # close all session
+        dutobj.close()
+    if tester is not None:
+        tester.close()
+    log_handler.info("DTS ended")

@@ -1116,7 +1116,7 @@ class QEMUKvm(VirtBase):
                 (self.host_dut.NAME, self.vm_name))
             return None
 
-        self.host_session.send_expect('nc -U %s' % self.monitor_sock_path, '(qemu)', 2)
+        self.host_session.send_expect('nc -U %s' % self.monitor_sock_path, '(qemu)')
 
         cmd = command
         for arg in args:
@@ -1127,7 +1127,7 @@ class QEMUKvm(VirtBase):
             self.host_session.send_command('%s' % cmd)
             out = self.host_session.send_expect(' ', '#')
         else:
-            out = self.host_session.send_expect('%s' % cmd, '(qemu)')
+            out = self.host_session.send_expect('%s' % cmd, '(qemu)', 30)
         self.host_session.send_expect('^C', "# ")
         return out
 

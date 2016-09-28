@@ -3,7 +3,6 @@
 import re
 import time
 
-import dts
 from qemu_kvm import QEMUKvm
 from test_case import TestCase
 from exception import VirtDutInitException

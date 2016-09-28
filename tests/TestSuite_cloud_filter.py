@@ -5,7 +5,6 @@ Test Cloud Filters features in DPDK.
 
 """
 
-import dts
 import string
 import re
 import time

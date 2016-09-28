@@ -43,7 +43,7 @@ import random
 from socket import htons, htonl
 from functools import wraps
 
-import dts
+import utils
 from test_case import TestCase
 from exception import TimeoutException
 from settings import TIMEOUT
@@ -498,7 +498,7 @@ UDP(sport=srcport, dport=destport)/Raw(load="\x50"*%s)], iface="%s", count=%d)' 
         Add the ports into the bonding device as slaves.
         """
         if len(slave_port) <= 0:
-            dts.RED("No port exist when add slave to bonded device")
+            utils.RED("No port exist when add slave to bonded device")
         for slave_id in slave_port:
             self.__send_expect("add bonding slave %d %d" % (slave_id, bond_port), "testpmd> ")
 
@@ -515,7 +515,7 @@ UDP(sport=srcport, dport=destport)/Raw(load="\x50"*%s)], iface="%s", count=%d)' 
         Remove the specified slave port from the bonding device.
         """
         if len(slave_port) <= 0:
-            dts.RED("No port exist when remove slave from bonded device")
+            utils.RED("No port exist when remove slave from bonded device")
         for slave_id in slave_port:
             self.dut.send_expect("remove bonding slave %d %d" % (int(slave_id), bond_port), "testpmd> ")
             out = self.get_info_from_bond_config("Slaves: \[", "\d*( \d*)*", bond_port)
@@ -794,13 +794,13 @@ UDP(sport=srcport, dport=destport)/Raw(load="\x50"*%s)], iface="%s", count=%d)' 
 
         self.dut_ports = self.dut.get_ports()
 
-        self.port_mask = dts.create_mask(self.dut_ports)
+        self.port_mask = utils.create_mask(self.dut_ports)
 
         self.verify(len(self.dut_ports) >= 4, "Insufficient ports")
 
         self.ports_socket = self.dut.get_numa_id(self.dut_ports[0])
 
-        self.all_cores_mask = dts.create_mask(self.dut.get_core_list("all"))
+        self.all_cores_mask = utils.create_mask(self.dut.get_core_list("all"))
 
         self.pmdout = PmdOutput(self.dut)
 
@@ -810,16 +810,12 @@ UDP(sport=srcport, dport=destport)/Raw(load="\x50"*%s)], iface="%s", count=%d)' 
         """
         Run before each test case.
         """
-        if self.dut.want_func_tests:
-            self.launch_app()
-        elif self.dut.want_perf_tests:
+        if self._enable_perf:
             pmd_param = "--burst=32 --rxfreet=32 --mbcache=250 --txpt=32 \
 --rxht=8 --rxwt=0 --txfreet=32 --txrst=32 --txqflags=0xf01"
             self.launch_app(pmd_param)
         else:
-            self.verify(False,
-                        "Test type not etting," +
-                        "please check framework to set test type to be function or performance.")
+            self.launch_app()
 
     def verify_bound_basic_opt(self, mode_set):
         """

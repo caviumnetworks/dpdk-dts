@@ -34,7 +34,7 @@ DPDK Test suite.
 Multi-process Test.
 """
 
-import dts
+import utils
 import time
 from etgen import IxiaPacketGenerator
 executions = []
@@ -84,7 +84,7 @@ class TestMultiprocess(TestCase, IxiaPacketGenerator):
         """
         # Send message from secondary to primary
         cores = self.dut.get_core_list('1S/2C/1T')
-        coremask = dts.create_mask(cores)
+        coremask = utils.create_mask(cores)
         self.dut.send_expect("./examples/multi_process/simple_mp/simple_mp/%s/simple_mp -n 1 -c %s --proc-type=primary" % (self.target, coremask), "Finished Process Init", 100)
         time.sleep(20)
         coremask = hex(int(coremask, 16) * 0x10000).rstrip("L")
@@ -97,7 +97,7 @@ class TestMultiprocess(TestCase, IxiaPacketGenerator):
         self.verify("Received 'hello_primary'" in out, "Message not received on primary process")
         # Send message from primary to secondary
         cores = self.dut.get_core_list('1S/2C/1T')
-        coremask = dts.create_mask(cores)
+        coremask = utils.create_mask(cores)
         self.session_secondary.send_expect("./examples/multi_process/simple_mp/simple_mp/%s/simple_mp -n 1 -c %s --proc-type=primary " % (self.target, coremask), "Finished Process Init", 100)
         time.sleep(20)
         coremask = hex(int(coremask, 16) * 0x10000).rstrip("L")
@@ -116,7 +116,7 @@ class TestMultiprocess(TestCase, IxiaPacketGenerator):
         """
 
         cores = self.dut.get_core_list('1S/2C/1T')
-        coremask = dts.create_mask(cores)
+        coremask = utils.create_mask(cores)
         self.session_secondary.send_expect("./examples/multi_process/simple_mp/simple_mp/%s/simple_mp -n 1 -c %s --proc-type=primary" % (self.target, coremask), "Finished Process Init", 100)
         time.sleep(20)
         coremask = hex(int(coremask, 16) * 0x10000).rstrip("L")
@@ -140,7 +140,7 @@ class TestMultiprocess(TestCase, IxiaPacketGenerator):
 
         # Send message from secondary to primary (auto process type)
         cores = self.dut.get_core_list('1S/2C/1T')
-        coremask = dts.create_mask(cores)
+        coremask = utils.create_mask(cores)
         out = self.dut.send_expect("./examples/multi_process/simple_mp/simple_mp/%s/simple_mp -n 1 -c %s --proc-type=auto " % (self.target, coremask), "Finished Process Init", 100)
         self.verify("EAL: Auto-detected process type: PRIMARY" in out, "The type of process (PRIMARY) was not detected properly")
         time.sleep(20)
@@ -157,7 +157,7 @@ class TestMultiprocess(TestCase, IxiaPacketGenerator):
 
         # Send message from primary to secondary (auto process type)
         cores = self.dut.get_core_list('1S/2C/1T')
-        coremask = dts.create_mask(cores)
+        coremask = utils.create_mask(cores)
         out = self.session_secondary.send_expect("./examples/multi_process/simple_mp/simple_mp/%s/simple_mp -n 1 -c %s --proc-type=auto" % (self.target, coremask), "Finished Process Init", 100)
         self.verify("EAL: Auto-detected process type: PRIMARY" in out, "The type of process (PRIMARY) was not detected properly")
         time.sleep(20)
@@ -178,7 +178,7 @@ class TestMultiprocess(TestCase, IxiaPacketGenerator):
         """
 
         cores = self.dut.get_core_list('1S/2C/1T')
-        coremask = dts.create_mask(cores)
+        coremask = utils.create_mask(cores)
         self.session_secondary.send_expect("./examples/multi_process/simple_mp/simple_mp/%s/simple_mp -n 1 -c %s -m 64" % (self.target, coremask), "Finished Process Init", 100)
         coremask = hex(int(coremask, 16) * 0x10000).rstrip("L")
         out = self.dut.send_expect("./examples/multi_process/simple_mp/simple_mp/%s/simple_mp -n 1 -c %s" % (self.target, coremask), "# ", 100)
@@ -216,15 +216,15 @@ class TestMultiprocess(TestCase, IxiaPacketGenerator):
         for execution in validExecutions:
             coreList = self.dut.get_core_list(execution['cores'])
 
-            coreMask = dts.create_mask(self.dut.get_core_list('1S/1C/1T'))
-            portMask = dts.create_mask([dutPorts[0], dutPorts[1]])
+            coreMask = utils.create_mask(self.dut.get_core_list('1S/1C/1T'))
+            portMask = utils.create_mask([dutPorts[0], dutPorts[1]])
             self.dut.send_expect("./examples/multi_process/client_server_mp/mp_server/client_server_mp/mp_server/%s/mp_server -n %d -c %s -- -p %s -n %d" % (self.target, self.dut.get_memory_channels(), "0xA0", portMask, execution['nprocs']), "Finished Process Init", 20)
             self.dut.send_expect("^Z", "\r\n")
             self.dut.send_expect("bg", "# ")
 
             for n in range(execution['nprocs']):
                 time.sleep(5)
-                coreMask = dts.create_mask([coreList[n]])
+                coreMask = utils.create_mask([coreList[n]])
                 self.dut.send_expect("./examples/multi_process/client_server_mp/mp_client/client_server_mp/mp_client/%s/mp_client -n %d -c %s --proc-type=secondary -- -n %d" % (self.target, self.dut.get_memory_channels(), coreMask, n), "Finished Process Init")
                 self.dut.send_expect("^Z", "\r\n")
                 self.dut.send_expect("bg", "# ")
@@ -239,12 +239,12 @@ class TestMultiprocess(TestCase, IxiaPacketGenerator):
         for n in range(len(executions)):
             self.verify(executions[n]['pps'] is not 0, "No traffic detected")
 
-        dts.results_table_add_header(['Server threads', 'Server Cores/Threads', 'Num-procs', 'Sockets/Cores/Threads', 'Num Ports', 'Frame Size', '%-age Line Rate', 'Packet Rate(mpps)'])
+        self.result_table_create(['Server threads', 'Server Cores/Threads', 'Num-procs', 'Sockets/Cores/Threads', 'Num Ports', 'Frame Size', '%-age Line Rate', 'Packet Rate(mpps)'])
 
         for execution in validExecutions:
-            dts.results_table_add_row([1, '1S/1C/1T', execution['nprocs'], execution['cores'], 2, 64, execution['pps'] / float(100000000 / (8 * 84)), execution['pps'] / float(1000000)])
+            self.result_table_add([1, '1S/1C/1T', execution['nprocs'], execution['cores'], 2, 64, execution['pps'] / float(100000000 / (8 * 84)), execution['pps'] / float(1000000)])
 
-        dts.results_table_print()
+        self.result_table_print()
 
     def ip(self, port, frag, src, proto, tos, dst, chksum, len, options, version, flags, ihl, ttl, id):
         self.add_tcl_cmd("protocol config -name ip")

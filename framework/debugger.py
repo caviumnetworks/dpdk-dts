@@ -27,9 +27,9 @@ import os
 import signal
 import code
 import time
-import dts
 import imp
-import dts
+from settings import load_global_setting, DEBUG_SETTING
+from utils import get_subclasses, copy_instance_attr
 
 from test_case import TestCase
 
@@ -90,20 +90,20 @@ def rerun_command():
     target = AliveSuite.__dict__['target']
     suite = AliveSuite.__dict__['suite']
 
-    for test_classname, test_class in dts.get_subclasses(new_module, TestCase):
+    for test_classname, test_class in get_subclasses(new_module, TestCase):
         suite_obj = test_class(duts, tester, target, suite)
 
         # copy all element from previous suite to reloaded suite
-        dts.copy_instance_attr(AliveSuite, suite_obj)
+        copy_instance_attr(AliveSuite, suite_obj)
         # re-run specified test case
-        for case in dts.get_test_cases(suite_obj, r'%s' % AliveCase):
+        for case in suite_obj._get_test_cases(suite_obj, r'%s' % AliveCase):
             if callable(case):
                 case()
 
 
 def exit_command():
     """
-    Exit dts framework.
+    Exit framework.
     """
     global debug_cmd
     debug_cmd = 'exit'
@@ -163,7 +163,7 @@ def ignore_keyintr():
     """
     Temporary disable interrupt handler.
     """
-    if dts.debug_mode is False:
+    if load_global_setting(DEBUG_SETTING) != 'yes':
         return
 
     global debug_cmd
@@ -179,7 +179,7 @@ def aware_keyintr():
     """
     Reenable interrupt handler.
     """
-    if dts.debug_mode is False:
+    if load_global_setting(DEBUG_SETTING) != 'yes':
         return
 
     return signal.signal(signal.SIGINT, keyboard_handle)

@@ -38,7 +38,6 @@ Test short live dpdk app Feature
 
 """
 
-import dts
 import time
 import re
 import os

@@ -32,6 +32,7 @@
 """
 Generic result container and reporters
 """
+import texttable    # text format
 
 
 class Result(object):
@@ -151,13 +152,16 @@ class Result(object):
         self.__test_result = result
         self.__message = message
 
+    def copy_suite(self, suite_result):
+        self.__current_suites()[self.__test_suite + 1] = suite_result.__current_cases()
+
     def test_case_passed(self):
         """
         Set last test case added as PASSED
         """
         self.__set_test_case_result(result='PASSED', message='')
 
-    def test_case_skip(self,message):
+    def test_case_skip(self, message):
         """
         set last test case add as N/A
         """
@@ -290,3 +294,60 @@ class Result(object):
     message = property(__get_message)
     nic = property(__get_nic, __set_nic)
     internals = property(__get_internals)
+
+
+class ResultTable(object):
+
+    def __init__(self, header):
+        """
+        Add the title of result table.
+        Usage:
+        rt = ResultTable(header)
+        rt.add_row(row)
+        rt.table_print()
+        """
+        self.results_table_rows = []
+        self.results_table_rows.append([])
+        self.table = texttable.Texttable(max_width=150)
+        self.results_table_header = header
+        self.logger = None
+        self.rst = None
+
+    def set_rst(self, rst):
+        self.rst = rst
+
+    def set_logger(self, logger):
+        self.logger = logger
+
+    def add_row(self, row):
+        """
+        Add one row to result table.
+        """
+        self.results_table_rows.append(row)
+
+    def table_print(self):
+        """
+        Show off result table.
+        """
+        self.table.add_rows(self.results_table_rows)
+        self.table.header(self.results_table_header)
+
+        alignments = []
+        # all header align to left
+        for _ in self.results_table_header:
+            alignments.append("l")
+        self.table.set_cols_align(alignments)
+
+        out = self.table.draw()
+        if self.rst:
+            self.rst.write_text('\n' + out + '\n\n')
+        if self.logger:
+            self.logger.info('\n' + out)
+
+###############################################################################
+###############################################################################
+if __name__ == "__main__":
+    rt = ResultTable(header=['name', 'age'])
+    rt.add_row(['Jane', '30'])
+    rt.add_row(['Mark', '32'])
+    rt.table_print()
