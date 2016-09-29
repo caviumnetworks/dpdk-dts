@@ -275,14 +275,14 @@ def accepted_nic(pci_id):
     it is selected in the execution file, otherwise it returns False.
     """
     nic = load_global_setting(HOST_NIC_SETTING)
-    if pci_id not in settings.NICS.values():
+    if pci_id not in NICS.values():
         return False
 
     if nic is 'any':
         return True
 
     else:
-        if pci_id == settings.NICS[nic]:
+        if pci_id == NICS[nic]:
             return True
 
     return False
