@@ -70,8 +70,8 @@ class TestDynamicConfig(TestCase):
 
         # Prepare cores and ports
         cores = self.dut.get_core_list('1S/2C/2T')
-        coreMask = utils.create_mask(cores)
-        portMask = utils.create_mask(self.dut_ports[:2])
+        self.coreMask = utils.create_mask(cores)
+        self.portMask = utils.create_mask(self.dut_ports[:2])
 
         # launch app
         cmd = "./%s/build/app/test-pmd/testpmd -c %s -n 3 -- -i --rxpt=0 \
