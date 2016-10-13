@@ -57,12 +57,7 @@ class TestUnitTestsCmdline(TestCase):
         Run at the start of each test suite.
         """
         # icc compilation cost long long time.
-        if "icc" in self.target:
-            out = self.dut.send_expect("make -j -C ./app/test/", "# ", 300)
-        else:
-            out = self.dut.build_dpdk_apps('./app/test/')
-        self.verify('make: Leaving directory' in out, "Compilation failed")
-
+        pass
     def set_up(self):
         """
         Run before each test case.
@@ -74,7 +69,7 @@ class TestUnitTestsCmdline(TestCase):
         Run cmdline autotests in RTE comand line.
         """
 
-        self.dut.send_expect("./app/test/test -n 1 -c ffff", "R.*T.*E.*>.*>", 60)
+        self.dut.send_expect("./%s/app/test -n 1 -c ffff" % self.target, "R.*T.*E.*>.*>", 60)
         out = self.dut.send_expect("cmdline_autotest", "RTE>>", 60)
         self.dut.send_expect("quit", "# ")
         self.verify("Test OK" in out, "Test failed")

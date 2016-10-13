@@ -57,9 +57,7 @@ class TestUnitTestsPower(TestCase):
 
         Power Prerequisites
         """
-        out = self.dut.build_dpdk_apps('./app/test/')
-        self.verify('make: Leaving directory' in out, "Compilation failed")
-
+        pass
     def set_up(self):
         """
         Run before each test case.
@@ -71,7 +69,7 @@ class TestUnitTestsPower(TestCase):
         Run power autotest.
         """
 
-        self.dut.send_expect("./app/test/test -n 1 -c ffff", "R.*T.*E.*>.*>", 60)
+        self.dut.send_expect("./%s/app/test -n 1 -c ffff" % self.target, "R.*T.*E.*>.*>", 60)
         out = self.dut.send_expect("power_autotest", "RTE>>", 60)
         self.dut.send_expect("quit", "# ")
         self.verify("Test OK" in out, "Test failed")
@@ -81,7 +79,7 @@ class TestUnitTestsPower(TestCase):
         Run power acpi cpu frequency autotest.
         """
 
-        self.dut.send_expect("./app/test/test -n 1 -c ffff", "R.*T.*E.*>.*>", 60)
+        self.dut.send_expect("./%s/app/test -n 1 -c ffff" % self.target, "R.*T.*E.*>.*>", 60)
         out = self.dut.send_expect("power_acpi_cpufreq_autotest", "RTE>>", 60)
         self.dut.send_expect("quit", "# ")
         self.verify("Test OK" in out, "Test failed")

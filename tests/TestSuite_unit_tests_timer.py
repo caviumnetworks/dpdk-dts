@@ -56,9 +56,7 @@ class TestUnitTestsTimer(TestCase):
         """
         Run at the start of each test suite.
         """
-        out = self.dut.build_dpdk_apps('./app/test/')
-        self.verify('make: Leaving directory' in out, "Compilation failed")
-
+        pass
     def set_up(self):
         """
         Run before each test case.
@@ -69,7 +67,7 @@ class TestUnitTestsTimer(TestCase):
         """
         Run timer autotest.
         """
-        self.dut.send_expect("./app/test/test -n 1 -c ffff", "R.*T.*E.*>.*>", 60)
+        self.dut.send_expect("./%s/app/test -n 1 -c ffff" % self.target, "R.*T.*E.*>.*>", 60)
         out = self.dut.send_expect("timer_autotest", "RTE>>", 60)
         self.dut.send_expect("quit", "# ")
         self.verify("Test OK" in out, "Test failed")
@@ -78,7 +76,7 @@ class TestUnitTestsTimer(TestCase):
         """
         Run timer autotest.
         """
-        self.dut.send_expect("./app/test/test -n 1 -c ffff", "R.*T.*E.*>.*>", 60)
+        self.dut.send_expect("./%s/app/test -n 1 -c ffff" % self.target, "R.*T.*E.*>.*>", 60)
         out = self.dut.send_expect("timer_perf_autotest", "RTE>>", 60)
         self.dut.send_expect("quit", "# ")
         self.verify("Test OK" in out, "Test failed")

@@ -59,9 +59,7 @@ class TestUnitTestsLpmIpv6(TestCase):
 
         Qos Prerequisites
         """
-        out = self.dut.build_dpdk_apps('./app/test/')
-        self.verify('make: Leaving directory' in out, "Compilation failed")
-
+        pass
     def set_up(self):
         """
         Run before each test case.
@@ -72,7 +70,7 @@ class TestUnitTestsLpmIpv6(TestCase):
         """
         Run lpm for IPv6 autotest.
         """
-        self.dut.send_expect("./app/test/test -n 1 -c ffff", "R.*T.*E.*>.*>", 60)
+        self.dut.send_expect("./%s/app/test -n 1 -c ffff" % self.target, "R.*T.*E.*>.*>", 60)
         out = self.dut.send_expect("lpm_autotest", "RTE>>", 120)
         self.dut.send_expect("quit", "# ")
         self.verify("Test OK" in out, "Test failed")
@@ -91,7 +89,7 @@ class TestUnitTestsLpmIpv6(TestCase):
             hugepage_num = self.dut.get_total_huge_pages()
             self.verify(hugepage_num >= 4096, "failed to request huge memory")
 
-        self.dut.send_expect("./app/test/test -n 1 -c ffff", "R.*T.*E.*>.*>", 60)
+        self.dut.send_expect("./%s/app/test -n 1 -c ffff" % self.target, "R.*T.*E.*>.*>", 60)
         out = self.dut.send_expect("lpm6_autotest", "RTE>>", 3600)
         self.dut.send_expect("quit", "# ")
         if env == 'bsdapp':

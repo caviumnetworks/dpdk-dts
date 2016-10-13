@@ -58,9 +58,7 @@ class TestUnitTestsQos(TestCase):
 
         Qos Prerequisites
         """
-        out = self.dut.build_dpdk_apps('./app/test/')
-        self.verify('make: Leaving directory' in out, "Compilation failed")
-
+        pass
     def set_up(self):
         """
         Run before each test case.
@@ -72,7 +70,7 @@ class TestUnitTestsQos(TestCase):
         Run RED autotest.
         """
 
-        self.dut.send_expect("./app/test/test -n 1 -c ffff", "R.*T.*E.*>.*>", 30)
+        self.dut.send_expect("./%s/app/test -n 1 -c ffff" % self.target, "R.*T.*E.*>.*>", 30)
         out = self.dut.send_expect("red_autotest", "RTE>>", 180)
         self.dut.send_expect("quit", "# ")
         self.verify("Test OK" in out, "Test failed")
@@ -82,7 +80,7 @@ class TestUnitTestsQos(TestCase):
         Run meter autotest.
         """
 
-        self.dut.send_expect("./app/test/test -n 1 -c ffff", "R.*T.*E.*>.*>", 30)
+        self.dut.send_expect("./%s/app/test -n 1 -c ffff" % self.target, "R.*T.*E.*>.*>", 30)
         out = self.dut.send_expect("meter_autotest", "RTE>>", 5)
         self.dut.send_expect("quit", "# ")
         self.verify("Test OK" in out, "Test failed")
@@ -95,7 +93,7 @@ class TestUnitTestsQos(TestCase):
         [arch, machine, env, toolchain] = self.target.split('-')
         self.verify(arch == "x86_64", "Sched auto_test not support in i686")
 
-        self.dut.send_expect("./app/test/test -n 1 -c ffff", "R.*T.*E.*>.*>", 30)
+        self.dut.send_expect("./%s/app/test -n 1 -c ffff" % self.target, "R.*T.*E.*>.*>", 30)
         out = self.dut.send_expect("sched_autotest", "RTE>>", 5)
         self.dut.send_expect("quit", "# ")
         self.verify("Test OK" in out, "Test failed")

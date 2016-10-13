@@ -56,9 +56,7 @@ class TestUnitTestsMempool(TestCase):
         """
         Run at the start of each test suite.
         """
-        out = self.dut.build_dpdk_apps('./app/test/')
-        self.verify('make: Leaving directory' in out, "Compilation failed")
-
+        pass
     def set_up(self):
         """
         Run before each test case.
@@ -70,7 +68,7 @@ class TestUnitTestsMempool(TestCase):
         Run memory pool autotest.
         """
 
-        self.dut.send_expect("./app/test/test -n 1 -c ffff", "R.*T.*E.*>.*>", 60)
+        self.dut.send_expect("./%s/app/test -n 1 -c ffff" % self.target, "R.*T.*E.*>.*>", 60)
         out = self.dut.send_expect("mempool_autotest", "RTE>>", 120)
         self.dut.send_expect("quit", "# ")
         self.verify("Test OK" in out, "Test failed")
@@ -79,7 +77,7 @@ class TestUnitTestsMempool(TestCase):
         """
         Run memory pool performance autotest.
         """
-        self.dut.send_expect("./app/test/test -n 1 -c fffe", "R.*T.*E.*>.*>", 60)
+        self.dut.send_expect("./%s/app/test -n 1 -c fffe" % self.target, "R.*T.*E.*>.*>", 60)
         out = self.dut.send_expect("mempool_perf_autotest", "RTE>>", 700)
         self.dut.send_expect("quit", "# ")
         self.verify("Test OK" in out, "Test failed")

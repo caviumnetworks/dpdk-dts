@@ -72,8 +72,6 @@ class TestUnitTestsKni(TestCase):
 
         KNI Prerequisites
         """
-        out = self.dut.send_expect("make -C ./app/test/", "# ", 120)
-        self.verify('make: Leaving directory' in out, "Compilation failed")
 
         self.insmod_kni()
 
@@ -87,7 +85,7 @@ class TestUnitTestsKni(TestCase):
         """
         Run kni autotest.
         """
-        self.dut.send_expect("./app/test/test -n 1 -c fffe", "R.*T.*E.*>.*>", 60)
+        self.dut.send_expect("./%s/app/test -n 1 -c fffe" % self.target, "R.*T.*E.*>.*>", 60)
         out = self.dut.send_expect("kni_autotest", "RTE>>", 60)
         self.dut.send_expect("quit", "# ")
 
