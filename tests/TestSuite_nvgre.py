@@ -525,17 +525,17 @@ class TestNvgre(TestCase):
         config = NvgreTestConfig(self, **args)
         # now cloud filter will default enable L2 mac filter, so dst mac must be same
         config.outer_mac_dst = self.dut_rx_port_mac
-        # csum function will change outer ipv src address
+        # csum function will not change outer ipv src address already
         if config.outer_ip6_src != "N/A":
-            config.outer_ip6_src = IncreaseIPv6(config.outer_ip6_src)
+            config.outer_ip6_src = config.outer_ip6_src
         else:
-            config.outer_ip_src = IncreaseIP(config.outer_ip_src)
+            config.outer_ip_src = config.outer_ip_src
 
-        # csum function will auto change nvgre inner ipv src address
+        # csum function will not auto change nvgre inner ipv src address already
         if config.inner_ip6_src != "N/A":
-            config.inner_ip6_src = IncreaseIPv6(config.inner_ip6_src)
+            config.inner_ip6_src = config.inner_ip6_src
         else:
-            config.inner_ip_src = IncreaseIP(config.inner_ip_src)
+            config.inner_ip_src = config.inner_ip_src
 
         # create abnormal package with wrong checksum
         config.create_pcap()

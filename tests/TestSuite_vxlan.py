@@ -409,18 +409,18 @@ class TestVxlan(TestCase, IxiaPacketGenerator):
         # now cloud filter will default enable L2 mac filter, so dst mac must
         # be same
         config.outer_mac_dst = self.dut_port_mac
-        # csum function will auto add outer ipv src address
+        # csum function will not auto add outer ip src address already, so update send packet src ip address
         if config.outer_ip6_src != "N/A":
-            config.outer_ip6_src = IncreaseIPv6(config.outer_ip6_src)
+            config.outer_ip6_src = config.outer_ip6_src
         else:
-            config.outer_ip_src = IncreaseIP(config.outer_ip_src)
+            config.outer_ip_src = config.outer_ip_src
 
-        # csum function will auto add vxlan inner ipv src address
+        # csum function will not auto add outer ip src address already, so update send packet src ip address
         if config.outer_udp_dst == VXLAN_PORT:
             if config.inner_ip6_src != "N/A":
-                config.inner_ip6_src = IncreaseIPv6(config.inner_ip6_src)
+                config.inner_ip6_src = config.inner_ip6_src
             else:
-                config.inner_ip_src = IncreaseIP(config.inner_ip_src)
+                config.inner_ip_src = config.inner_ip_src
 
         # extract the checksum value of vxlan packet
         config.create_pcap()
