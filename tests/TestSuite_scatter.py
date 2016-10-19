@@ -63,7 +63,7 @@ class TestScatter(TestCase):
         self.intf = self.tester.get_interface(tester_port)
 
         self.pmdout = PmdOutput(self.dut)
-        if self.nic in ["niantic", "sageville", "fortpark", "fortville_eagle",
+        if self.nic in ["magnolia_park", "niantic", "sageville", "fortpark", "fortville_eagle",
                         "fortville_spirit", "fortville_spirit_single",
                         "redrockcanyou", "atwood", "boulderrapid",
                         "ironpond", "twinpond", "springfountain", "fortpark_TLV"]:
