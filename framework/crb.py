@@ -607,7 +607,7 @@ class Crb(object):
         if config == 'all':
             return [n['thread'] for n in self.cores]
 
-        m = re.match("([1234])S/([1-9]+)C/([12])T", config)
+        m = re.match("([1234])S/([0-9]+)C/([12])T", config)
 
         if m:
             nr_sockets = int(m.group(1))
