@@ -33,6 +33,8 @@ import json         # json format
 import re
 import os
 import inspect
+import socket
+import struct
 
 DTS_ENV_PAT = r"DTS_*"
 
@@ -138,3 +140,23 @@ def create_mask(indexes):
         val |= 1 << int(index)
 
     return hex(val).rstrip("L")
+
+def convert_int2ip(value, ip_type):
+    if ip_type == 4:
+        ip_str = socket.inet_ntop(socket.AF_INET, struct.pack('!I', value))
+    else:
+        h = value >> 64
+        l = value & ((1 << 64) - 1)
+        ip_str = socket.inet_ntop(socket.AF_INET6, struct.pack('!QQ', h, l))
+
+    return ip_str
+
+def convert_ip2int(ip_str, ip_type):
+    if ip_type == 4:
+        ip_val = struct.unpack("!I", socket.inet_aton(ip_str))[0]
+    else:
+        _hex = socket.inet_pton(socket.AF_INET6, ip_str)
+        h, l = struct.unpack('!QQ', _hex)
+        ip_val = (h << 64) | l
+
+    return ip_val
