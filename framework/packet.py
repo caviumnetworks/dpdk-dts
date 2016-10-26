@@ -209,6 +209,21 @@ class scapy(object):
             value = layer.src
         elif element == 'dst':
             value = layer.dst
+        elif element == 'type':
+            value = layer.type
+
+        return value
+
+    def strip_layer3(self, element):
+        value = None
+        layer = self.pkt.getlayer(1)
+        if layer is None:
+            return None
+
+        if element == 'src':
+            value = layer.src
+        elif element == 'dst':
+            value = layer.dst
 
         return value
 
@@ -630,6 +645,9 @@ class Packet(object):
 
     def strip_element_layer2(self, element):
         return self.pktgen.strip_layer2(element)
+
+    def strip_element_layer3(self, element):
+        return self.pktgen.strip_layer3(element)
 
     def strip_element_vlan(self, element):
         return self.pktgen.strip_vlan(element)
