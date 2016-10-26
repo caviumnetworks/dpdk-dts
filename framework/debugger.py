@@ -88,7 +88,7 @@ def rerun_command():
     duts = AliveSuite.__dict__['duts']
     tester = AliveSuite.__dict__['tester']
     target = AliveSuite.__dict__['target']
-    suite = AliveSuite.__dict__['suite']
+    suite = AliveSuite.__dict__['suite_name']
 
     for test_classname, test_class in get_subclasses(new_module, TestCase):
         suite_obj = test_class(duts, tester, target, suite)
@@ -96,7 +96,7 @@ def rerun_command():
         # copy all element from previous suite to reloaded suite
         copy_instance_attr(AliveSuite, suite_obj)
         # re-run specified test case
-        for case in suite_obj._get_test_cases(suite_obj, r'%s' % AliveCase):
+        for case in suite_obj._get_test_cases(r'%s' % AliveCase):
             if callable(case):
                 case()
 
