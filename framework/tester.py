@@ -42,7 +42,7 @@ from net_device import GetNicObj
 from etgen import IxiaPacketGenerator, SoftwarePacketGenerator
 from settings import IXIA
 import random
-from utils import GREEN
+from utils import GREEN, convert_int2ip, convert_ip2int
 from exception import ParameterInvalidException
 
 
@@ -557,16 +557,25 @@ class Tester(Crb):
                     for param in params:
                         layer, config = param
                         pkt.config_layer(layer, config)
-                # sequence saved in layer4 source port
+                # hardcode src/dst port for some protocal may cause issue
                 if "TCP" in pkt_type:
-                    pkt.config_layer('tcp', {'src': num % 65536})
+                    pkt.config_layer('tcp', {'src': 65535, 'dst': 65535})
                 else:
-                    pkt.config_layer('udp', {'src': num % 65536})
+                    pkt.config_layer('udp', {'src': 65535, 'dst': 65535})
+                # sequence saved in layer3 source ip
+                if "IPv6" in pkt_type:
+                    ip_str = convert_int2ip(num, 6)
+                    pkt.config_layer('ipv6', {'src': ip_str})
+                else:
+                    ip_str = convert_int2ip(num, 4)
+                    pkt.config_layer('ipv4', {'src': ip_str})
+
                 pkts.append(pkt)
 
             # send and sniff packets
             save_f(pkts=pkts, filename="/tmp/%s_tx.pcap" % txIntf)
             inst = sniff_f(intf=rxIntf, count=pktnum, timeout=timeout)
+            print GREEN("Transmitting and sniffing packets, please wait few minutes...")
             send_f(intf=txIntf, pkts=pkts, interval=interval)
             recv_pkts = load_f(inst)
 
@@ -578,9 +587,19 @@ class Tester(Crb):
                     return False
 
             # check each received packet content
-            print GREEN("Comparing sniff packets, please wait few minutes...")
+            print GREEN("Comparing sniffed packets, please wait few minutes...")
             for idx in range(len(recv_pkts)):
-                t_idx = recv_pkts[idx].strip_element_layer4('src')
+                l3_type = recv_pkts[idx].strip_element_layer2('type')
+                sip = recv_pkts[idx].strip_element_layer3('src')
+                # ipv4 packet
+                if l3_type == 2048:
+                    t_idx = convert_ip2int(sip, 4)
+                # ipv6 packet
+                elif l3_type == 34525:
+                    t_idx = convert_ip2int(sip, 6)
+                else:
+                    continue
+
                 if compare_f(pkts[t_idx], recv_pkts[idx], "L4") is False:
                     print "Pkt recevied index %d not match original " \
                           "index %d" % (idx, t_idx)
