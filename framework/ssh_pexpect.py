@@ -176,11 +176,11 @@ class SSHPexpect(object):
         p = pexpect.spawn(scp_cmd)
         time.sleep(0.5)
         ssh_newkey = 'Are you sure you want to continue connecting'
-        i = p.expect([ssh_newkey, '[pP]ssword', "# ", pexpect.EOF,
+        i = p.expect([ssh_newkey, '[pP]assword', "# ", pexpect.EOF,
                       pexpect.TIMEOUT], 120)
         if i == 0:  # add once in trust list
             p.sendline('yes')
-            i = p.expect([ssh_newkey, '[pP]ssword', pexpect.EOF], 2)
+            i = p.expect([ssh_newkey, '[pP]assword', pexpect.EOF], 2)
 
         if i == 1:
             time.sleep(0.5)
