@@ -305,6 +305,8 @@ class Dut(Crb):
                 force_socket = True
             elif self.architecture == "ppc_64":
                 arch_huge_pages = hugepages if hugepages > 0 else 512
+            elif self.architecture == "arm64":
+                arch_huge_pages = hugepages if hugepages > 0 else 2048
 
             if total_huge_pages != arch_huge_pages:
                 # before all hugepage average distribution  by all socket,
