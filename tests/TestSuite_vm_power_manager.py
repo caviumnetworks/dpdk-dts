@@ -64,7 +64,7 @@ class TestVmPowerManager(TestCase, IxiaPacketGenerator):
         self.vcpu_map = []
         # start vm
         self.vm_name = "vm0"
-        self.vm = LibvirtKvm(self.dut, self.vm_name, self.suite)
+        self.vm = LibvirtKvm(self.dut, self.vm_name, self.suite_name)
         channels = [
             {'path': '/tmp/powermonitor/%s.0' %
                 self.vm_name, 'name': 'virtio.serial.port.poweragent.0'},
@@ -252,7 +252,7 @@ class TestVmPowerManager(TestCase, IxiaPacketGenerator):
         cpus = self.dut.get_core_list('1S/4C/1T', socket=1)
         self.verify(len(cpus) == 4, "Can't allocate cores from numa 1")
 
-        vm2 = LibvirtKvm(self.dut, vm_name, self.suite)
+        vm2 = LibvirtKvm(self.dut, vm_name, self.suite_name)
         channels = [
             {'path': '/tmp/powermonitor/%s.0' %
                 vm_name, 'name': 'virtio.serial.port.poweragent.0'},

@@ -77,6 +77,7 @@ Prerequisites
 	- Enable Kernel features Huge page, UIO, IOMMU, KVM
 	- Enable Intel IOMMU in kernel commnand
 	- Disable Selinux
+       - Disable intel_pstate
 
 3. Virtualization:
 	- QEMU emulator version 1.6.1
