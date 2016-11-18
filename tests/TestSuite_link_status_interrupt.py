@@ -109,7 +109,6 @@ class TestLinkStatusInterrupt(TestCase):
                 self.dut.send_expect("rmmod igb_uio", "# ")
                 self.dut.send_expect(
                     "insmod %s/kmod/igb_uio.ko %s" % (self.target, intr_mode[n]), "# ")
-                self.dut.send_expect("tools/dpdk-devbind.py --bind=igb_uio 03:00.0 03:00.1", "# ")
                 out = self.dut.send_expect(
                     "dmesg -c | grep '\<%s\>'" % (intr_mode_output[n]), "# ")
                 self.verify(
@@ -125,7 +124,7 @@ class TestLinkStatusInterrupt(TestCase):
             self.set_link_status_and_verify(testPorts[1], 'up')
             self.dut.send_expect("^C", "# ")
 
-    def FAILING_test_link_status_interrupt_port_available(self):
+    def test_link_status_interrupt_port_available(self):
         """
         Port available.
         """
