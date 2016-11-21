@@ -62,7 +62,7 @@ class TestUnitTestsPmdPerf(TestCase):
         self.dut_ports = self.dut.get_ports(self.nic)
         self.verify(len(self.dut_ports) >= 1, "Insufficient ports for testing")
         [self.arch, machine, env, toolchain] = self.target.split('-')
-        self.verify(self.arch == "x86_64", "pmd perf request running in x86_64")
+        self.verify(self.arch in ["x86_64", "arm64"], "pmd perf request running in x86_64 or arm64")
         self.burst_ctlmodes = ['poll_before_xmit', 'poll_after_xmit']
         self.rxtx_modes = ['vector', 'scalar', 'full', 'hybrid']
         self.anchors = ['rxtx', 'rxonly', 'txonly']
@@ -90,7 +90,7 @@ class TestUnitTestsPmdPerf(TestCase):
         Run pmd stream control mode burst test case.
         """
 
-        self.dut.send_expect("./app/test/test -n 1 -c ffff", "R.*T.*E.*>.*>", 60)
+        self.dut.send_expect("./app/test/test -n 1 -c f", "R.*T.*E.*>.*>", 60)
         for mode in self.burst_ctlmodes:
             self.dut.send_expect("set_rxtx_sc %s" % mode, "RTE>>", 10)
             out = self.dut.send_expect("pmd_perf_autotest", "RTE>>", 120)
@@ -113,9 +113,9 @@ class TestUnitTestsPmdPerf(TestCase):
 
         for mode in self.rxtx_modes:
             if mode is "scalar":
-                self.dut.send_expect("./app/test/test_scalar -n 1 -c ffff", "R.*T.*E.*>.*>", 60)
+                self.dut.send_expect("./app/test/test_scalar -n 1 -c f", "R.*T.*E.*>.*>", 60)
             else:
-                self.dut.send_expect("./app/test/test -n 1 -c ffff", "R.*T.*E.*>.*>", 60)
+                self.dut.send_expect("./app/test/test -n 1 -c f", "R.*T.*E.*>.*>", 60)
 
             table_row = [mode]
             self.dut.send_expect("set_rxtx_sc continuous", "RTE>>", 10)

@@ -71,12 +71,12 @@ class TestUnitTestsRingPmd(TestCase):
         """
         dev_str = "--vdev=net_ring0 --vdev=net_ring1"
 
-        self.dut.send_expect("./%s/app/test -n 1 -c ffff" % self.target, "R.*T.*E.*>.*>", 10)
+        self.dut.send_expect("./%s/app/test -n 1 -c f" % self.target, "R.*T.*E.*>.*>", 10)
         out = self.dut.send_expect("ring_pmd_autotest", "RTE>>", 120)
         self.dut.send_expect("quit", "# ")
         self.verify("Test OK" in out, "Default no eth_ring devices Test failed")
 
-        self.dut.send_expect("./%s/app/test -n 1 -c ffff %s" % (self.target, dev_str), "R.*T.*E.*>.*>", 10)
+        self.dut.send_expect("./%s/app/test -n 1 -c f %s" % (self.target, dev_str), "R.*T.*E.*>.*>", 10)
         out = self.dut.send_expect("ring_pmd_autotest", "RTE>>", 120)
         self.dut.send_expect("quit", "# ")
         self.verify("Test OK" in out, "Two eth_ring devices test failed")

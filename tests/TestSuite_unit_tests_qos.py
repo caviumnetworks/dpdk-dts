@@ -70,7 +70,7 @@ class TestUnitTestsQos(TestCase):
         Run RED autotest.
         """
 
-        self.dut.send_expect("./%s/app/test -n 1 -c ffff" % self.target, "R.*T.*E.*>.*>", 30)
+        self.dut.send_expect("./%s/app/test -n 1 -c f" % self.target, "R.*T.*E.*>.*>", 30)
         out = self.dut.send_expect("red_autotest", "RTE>>", 180)
         self.dut.send_expect("quit", "# ")
         self.verify("Test OK" in out, "Test failed")
@@ -80,7 +80,7 @@ class TestUnitTestsQos(TestCase):
         Run meter autotest.
         """
 
-        self.dut.send_expect("./%s/app/test -n 1 -c ffff" % self.target, "R.*T.*E.*>.*>", 30)
+        self.dut.send_expect("./%s/app/test -n 1 -c f" % self.target, "R.*T.*E.*>.*>", 30)
         out = self.dut.send_expect("meter_autotest", "RTE>>", 5)
         self.dut.send_expect("quit", "# ")
         self.verify("Test OK" in out, "Test failed")
@@ -91,9 +91,9 @@ class TestUnitTestsQos(TestCase):
         """
 
         [arch, machine, env, toolchain] = self.target.split('-')
-        self.verify(arch == "x86_64", "Sched auto_test not support in i686")
+        self.verify(arch in ["x86_64" ,"arm64"], "Sched auto_test only support in x86_64 or arm64")
 
-        self.dut.send_expect("./%s/app/test -n 1 -c ffff" % self.target, "R.*T.*E.*>.*>", 30)
+        self.dut.send_expect("./%s/app/test -n 1 -c f" % self.target, "R.*T.*E.*>.*>", 30)
         out = self.dut.send_expect("sched_autotest", "RTE>>", 5)
         self.dut.send_expect("quit", "# ")
         self.verify("Test OK" in out, "Test failed")

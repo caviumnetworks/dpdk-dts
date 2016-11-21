@@ -76,7 +76,7 @@ class TestUnitTestsDump(TestCase):
         """
         Run history log dump test case.
         """
-        self.dut.send_expect("./%s/app/test -n 1 -c ffff" % (self.target), "R.*T.*E.*>.*>", self.start_test_time)
+        self.dut.send_expect("./%s/app/test -n 1 -c f" % (self.target), "R.*T.*E.*>.*>", self.start_test_time)
         out = self.dut.send_expect("dump_log_history", "RTE>>", self.run_cmd_time * 2)
         self.dut.send_expect("quit", "# ")
         self.verify("EAL" in out, "Test failed")
@@ -112,7 +112,7 @@ class TestUnitTestsDump(TestCase):
         """
         Run physical memory dump test case.
         """
-        self.dut.send_expect("./%s/app/test -n 1 -c ffff" % (self.target), "R.*T.*E.*>.*>", self.start_test_time)
+        self.dut.send_expect("./%s/app/test -n 1 -c f" % (self.target), "R.*T.*E.*>.*>", self.start_test_time)
         out = self.dut.send_expect("dump_physmem", "RTE>>", self.run_cmd_time * 2)
         self.dut.send_expect("quit", "# ")
         elements = ['Segment', 'phys', 'len', 'virt', 'socket_id', 'hugepage_sz', 'nchannel', 'nrank']
@@ -132,7 +132,7 @@ class TestUnitTestsDump(TestCase):
         """
         Run memzone dump test case.
         """
-        self.dut.send_expect("./%s/app/testpmd -n 1 -c ffff -- -i" % (self.target), "testpmd>", self.start_test_time)
+        self.dut.send_expect("./%s/app/testpmd -n 1 -c f -- -i" % (self.target), "testpmd>", self.start_test_time)
         out = self.dut.send_expect("dump_memzone", "testpmd>", self.run_cmd_time * 2)
         self.dut.send_expect("quit", "# ")
 
@@ -154,7 +154,7 @@ class TestUnitTestsDump(TestCase):
         """
         Run struct size dump test case.
         """
-        self.dut.send_expect("./%s/app/test -n 1 -c ffff" % (self.target), "R.*T.*E.*>.*>", self.start_test_time)
+        self.dut.send_expect("./%s/app/test -n 1 -c f" % (self.target), "R.*T.*E.*>.*>", self.start_test_time)
         out = self.dut.send_expect("dump_struct_sizes", "RTE>>", self.run_cmd_time * 2)
         self.dut.send_expect("quit", "# ")
 
@@ -173,14 +173,14 @@ class TestUnitTestsDump(TestCase):
         """
         test_port = self.dut_ports[0]
         pci_address = self.dut.ports_info[test_port]['pci'];
-        self.dut.send_expect("./%s/app/test -n 1 -c ffff -b %s"  
+        self.dut.send_expect("./%s/app/test -n 1 -c f -b %s"
                              % (self.target, pci_address), "R.*T.*E.*>.*>", self.start_test_time)
         out = self.dut.send_expect("dump_devargs", "RTE>>", self.run_cmd_time * 2)
         self.dut.send_expect("quit", "# ")
         black_str = "PCI blacklist %s" % pci_address
         self.verify(black_str in out, "Dump black list failed")
 
-        self.dut.send_expect("./%s/app/test -n 1 -c ffff -w %s"
+        self.dut.send_expect("./%s/app/test -n 1 -c f -w %s"
                              % (self.target, pci_address), "R.*T.*E.*>.*>", self.start_test_time)
         out = self.dut.send_expect("dump_devargs", "RTE>>", self.run_cmd_time * 2)
         self.dut.send_expect("quit", "# ")

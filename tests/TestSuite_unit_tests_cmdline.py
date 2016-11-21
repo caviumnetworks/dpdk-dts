@@ -69,7 +69,7 @@ class TestUnitTestsCmdline(TestCase):
         Run cmdline autotests in RTE comand line.
         """
 
-        self.dut.send_expect("./%s/app/test -n 1 -c ffff" % self.target, "R.*T.*E.*>.*>", 60)
+        self.dut.send_expect("./%s/app/test -n 1 -c f" % self.target, "R.*T.*E.*>.*>", 60)
         out = self.dut.send_expect("cmdline_autotest", "RTE>>", 60)
         self.dut.send_expect("quit", "# ")
         self.verify("Test OK" in out, "Test failed")
