@@ -86,7 +86,7 @@ class TestUniPacket(TestCase):
             for pkt_layer_name in pkt_names:
                 if pkt_layer_name not in out:
                     print utils.RED("Fail to detect %s" % pkt_layer_name)
-                    raise VerifyFailure("Failed to detect %s" % pkt_layer_name)
+                    raise VerifyFailure("Failed to detect %s" % pkt_layer_name)            
             print utils.GREEN("Detected %s successfully" % pkt_type)
 
     def test_l2pkt_detect(self):
@@ -96,9 +96,9 @@ class TestUniPacket(TestCase):
         self.verify(("fortville" in self.nic or "fortpark_TLV" in self.nic),
                     "L2 packet detect only support by Fortville")
         self.L2_types = {
-            "TIMESYNC": "(outer) L2 type: ETHER_Timesync",
-            "ARP": "(outer) L2 type: ETHER_ARP",
-            "LLDP": "(outer) L2 type: ETHER_LLDP",
+            "TIMESYNC": "L2_ETHER_TIMESYNC",
+            "ARP": "L2_ETHER_ARP",
+            "LLDP": "L2_ETHER_LLDP",
         }
 
         for l2_type in self.L2_types.keys():
@@ -116,19 +116,20 @@ class TestUniPacket(TestCase):
         checked that whether L3 and L4 packet can be normally detected.
         """
         if "fortville" in self.nic.lower() or "fortpark_TLV" in self.nic.lower():
-            outerL4Type = "(outer) L4 type: L4_NONFRAG"
+            outerL4Type = "L4_NONFRAG"
+            ipv4_default_packet_type = ["L2_ETHER", "L3_IPV4_EXT_UNKNOWN"]
         elif "niantic" in self.nic.lower() or "i350" in self.nic.lower():
-            outerL4Type = "(outer) L4 type: Unknown"
-
+            outerL4Type = ""
+            ipv4_default_packet_type = ["L2_ETHER", "L3_IPV4"]
         pktType = {
-            "MAC_IP_PKT":                ["(outer) L2 type: ETHER", "(outer) L3 type: IPV4", outerL4Type],
-            "MAC_IP_UDP_PKT":            ["(outer) L4 type: UDP"],
-            "MAC_IP_TCP_PKT":            ["(outer) L4 type: TCP"],
-            "MAC_IP_SCTP_PKT":           ["(outer) L4 type: SCTP"],
-            "MAC_IP_ICMP_PKT":           ["(outer) L4 type: ICMP"],
-            "MAC_IPFRAG_TCP_PKT":        ["(outer) L2 type: ETHER", "(outer) L3 type: IPV4_EXT_UNKNOWN", "(outer) L4 type: L4_FRAG"],
-            "MAC_IPihl_PKT":             ["(outer) L3 type: IPV4_EXT", "(outer) L4 type: Unknown"],
-            "MAC_IPihl_SCTP_PKT":        ["(outer) L3 type: IPV4_EXT", "(outer) L4 type: SCTP"]
+            "MAC_IP_PKT":                ipv4_default_packet_type + [outerL4Type],
+            "MAC_IP_UDP_PKT":            ipv4_default_packet_type + ["L4_UDP"],
+            "MAC_IP_TCP_PKT":            ipv4_default_packet_type + ["L4_TCP"],
+            "MAC_IP_SCTP_PKT":           ipv4_default_packet_type + ["L4_SCT"],
+            "MAC_IP_ICMP_PKT":           ipv4_default_packet_type + ["L4_ICMP"],
+            "MAC_IPFRAG_TCP_PKT":        ipv4_default_packet_type + ["L4_FRAG"],
+            "MAC_IPihl_PKT":             ["L2_ETHER", "L3_IPV4_EXT"],
+            "MAC_IPihl_SCTP_PKT":        ["L2_ETHER", "L3_IPV4_EXT", "L4_SCTP"]
         }
 
         # delete the unsupported packet based on nic type
@@ -146,18 +147,18 @@ class TestUniPacket(TestCase):
         checked that whether IPv6 and L4 packet can be normally detected.
         """
         if "fortville" in self.nic.lower() or "fortpark_TLV" in self.nic.lower():
-            outerL4Type = "(outer) L4 type: L4_NONFRAG"
-            outerL3Type = "(outer) L3 type: IPV6_EXT_UNKNOWN"
+            outerL4Type = "L4_NONFRAG"
+            ipv6_default_packet_type = ["L2_ETHER", "L3_IPV6_EXT_UNKNOWN"]
         elif "niantic" in self.nic.lower() or "i350" in self.nic.lower():
-            outerL4Type = "(outer) L4 type: Unknown"
-            outerL3Type = "(outer) L3 type: IPV6"
+            outerL4Type = ""
+            ipv6_default_packet_type = ["L2_ETHER", "L3_IPV6"]
 
         pktType = {
-            "MAC_IPv6_PKT":          ["(outer) L2 type: ETHER", outerL3Type, outerL4Type],
-            "MAC_IPv6_UDP_PKT":      ["(outer) L4 type: UDP"],
-            "MAC_IPv6_TCP_PKT":      ["(outer) L4 type: TCP"],
-            "MAC_IPv6FRAG_PKT_F":    ["(outer) L3 type: IPV6_EXT_UNKNOWN", "(outer) L4 type: L4_FRAG"],
-            "MAC_IPv6FRAG_PKT_N":    ["(outer) L3 type: IPV6_EXT", "(outer) L4 type: Unknown"]
+            "MAC_IPv6_PKT":          ipv6_default_packet_type + [outerL4Type],
+            "MAC_IPv6_UDP_PKT":      ipv6_default_packet_type + ["L4_UDP"],
+            "MAC_IPv6_TCP_PKT":      ipv6_default_packet_type + ["L4_TCP"],
+            "MAC_IPv6FRAG_PKT_F":    ipv6_default_packet_type + ["L4_FRAG"],
+            "MAC_IPv6FRAG_PKT_N":    ["L3_IPV6_EXT"]
         }
 
         # delete the unsupported packet based on nic type
@@ -175,20 +176,22 @@ class TestUniPacket(TestCase):
         """
         self.verify(("fortville" in self.nic or "fortpark_TLV" in self.nic),
                     "IP in IPv4 tunnel packet type detect only support by Fortville")
+        ipv4_in_ipv4_packet_type = ["L2_ETHER", "L3_IPV4_EXT_UNKNOWN", "TUNNEL_IP", "INNER_L3_IPV4_EXT_UNKNOWN"]
+        ipv6_in_ipv4_packet_type = ["L2_ETHER", "L3_IPV4_EXT_UNKNOWN", "TUNNEL_IP", "INNER_L3_IPV6_EXT_UNKNOWN"]
 
         pktType = {
-            "MAC_IP_IPFRAG_UDP_PKT":      ["(outer) L2 type: ETHER", "(outer) L3 type: IPV4_EXT_UNKNOWN", "(outer) L4 type: Unknown", "Tunnel type: IP", "Inner L2 type: Unknown", "Inner L3 type: IPV4_EXT_UNKNOWN", "Inner L4 type: L4_FRAG"],
-            "MAC_IP_IP_PKT":              ["Inner L4 type: L4_NONFRAG"],
-            "MAC_IP_IP_UDP_PKT":          ["Inner L4 type: UDP"],
-            "MAC_IP_IP_TCP_PKT":          ["Inner L4 type: TCP"],
-            "MAC_IP_IP_SCTP_PKT":         ["Inner L4 type: SCTP"],
-            "MAC_IP_IP_ICMP_PKT":         ["Inner L4 type: ICMP"],
-            "MAC_IP_IPv6FRAG_PKT":        ["Inner L3 type: IPV6_EXT_UNKNOWN", "Inner L4 type: L4_FRAG"],
-            "MAC_IP_IPv6_PKT":            ["Inner L4 type: L4_NONFRAG"],
-            "MAC_IP_IPv6_UDP_PKT":        ["Inner L4 type: UDP"],
-            "MAC_IP_IPv6_TCP_PKT":        ["Inner L4 type: TCP"],
-            "MAC_IP_IPv6_SCTP_PKT":       ["Inner L4 type: SCTP"],
-            "MAC_IP_IPv6_ICMP_PKT":       ["Inner L4 type: ICMP"]
+            "MAC_IP_IPFRAG_UDP_PKT":      ipv4_in_ipv4_packet_type + ["INNER_L4_FRAG"],
+            "MAC_IP_IP_PKT":              ipv4_in_ipv4_packet_type + ["INNER_L4_NONFRAG"],
+            "MAC_IP_IP_UDP_PKT":          ipv4_in_ipv4_packet_type + ["INNER_L4_UDP"],
+            "MAC_IP_IP_TCP_PKT":          ipv4_in_ipv4_packet_type + ["INNER_L4_TCP"],
+            "MAC_IP_IP_SCTP_PKT":         ipv4_in_ipv4_packet_type + ["INNER_L4_SCTP"],
+            "MAC_IP_IP_ICMP_PKT":         ipv4_in_ipv4_packet_type + ["INNER_L4_ICMP"],
+            "MAC_IP_IPv6FRAG_PKT":        ipv6_in_ipv4_packet_type + ["INNER_L4_FRAG"],
+            "MAC_IP_IPv6_PKT":            ipv6_in_ipv4_packet_type + ["INNER_L4_NONFRAG"],
+            "MAC_IP_IPv6_UDP_PKT":        ipv6_in_ipv4_packet_type + ["INNER_L4_UDP"],
+            "MAC_IP_IPv6_TCP_PKT":        ipv6_in_ipv4_packet_type + ["INNER_L4_TCP"],
+            "MAC_IP_IPv6_SCTP_PKT":       ipv6_in_ipv4_packet_type + ["INNER_L4_SCTP"],
+            "MAC_IP_IPv6_ICMP_PKT":       ipv6_in_ipv4_packet_type + ["INNER_L4_ICMP"]
         }
 
         self.run_test(pktType)
@@ -202,12 +205,12 @@ class TestUniPacket(TestCase):
             return
 
         pktType = {
-            "MAC_IP_IPv6_PKT":            ["(outer) L2 type: ETHER", "(outer) L3 type: IPV4", "(outer) L4 type: Unknown", "Tunnel type: IP", "Inner L2 type: Unknown", "Inner L3 type: IPV6", "Inner L4 type: Unknown"],
-            "MAC_IP_IPv6EXT2_PKT":        ["Inner L3 type: IPV6_EXT"],
-            "MAC_IP_IPv6_UDP_PKT":        ["Inner L4 type: UDP"],
-            "MAC_IP_IPv6_TCP_PKT":        ["Inner L4 type: TCP"],
-            "MAC_IP_IPv6EXT2_UDP_PKT":    ["Inner L3 type: IPV6_EXT", "Inner L4 type: UDP"],
-            "MAC_IP_IPv6EXT2_TCP_PKT":    ["Inner L3 type: IPV6_EXT", "Inner L4 type: TCP"]
+            "MAC_IP_IPv6_PKT":            ["L2_ETHER", "L3_IPV4", "TUNNEL_IP",  "INNER"],
+            "MAC_IP_IPv6EXT2_PKT":        ["L2_ETHER", "L3_IPV4", "TUNNEL_IP",  "INNER"],
+            "MAC_IP_IPv6_UDP_PKT":        ["L2_ETHER", "L3_IPV4", "TUNNEL_IP",  "INNER"],
+            "MAC_IP_IPv6_TCP_PKT":        ["L2_ETHER", "L3_IPV4", "TUNNEL_IP",  "INNER"],
+            "MAC_IP_IPv6EXT2_UDP_PKT":    ["L2_ETHER", "L3_IPV4", "TUNNEL_IP",  "INNER"],
+            "MAC_IP_IPv6EXT2_TCP_PKT":    ["L2_ETHER", "L3_IPV4", "TUNNEL_IP",  "INNER"]
         }
         self.run_test(pktType)
 
@@ -218,20 +221,22 @@ class TestUniPacket(TestCase):
         """
         self.verify(("fortville" in self.nic or "fortpark_TLV" in self.nic),
                     "IP in IPv6 tunnel packet type detect only support by Fortville")
+        ipv4_in_ipv6_packet_type = ["L2_ETHER", "L3_IPV4_EXT_UNKNOWN", "TUNNEL_IP", "INNER_L3_IPV4_EXT_UNKNOWN"]
+        ipv6_in_ipv6_packet_type = ["L2_ETHER", "L3_IPV4_EXT_UNKNOWN", "TUNNEL_IP", "INNER_L3_IPV6_EXT_UNKNOWN"]
 
         pktType = {
-            "MAC_IP_IPFRAG_UDP_PKT":      ["(outer) L2 type: ETHER", "(outer) L3 type: IPV4_EXT_UNKNOWN", "(outer) L4 type: Unknown", "Tunnel type: IP", "Inner L2 type: Unknown", "Inner L3 type: IPV4_EXT_UNKNOWN", "Inner L4 type: L4_FRAG"],
-            "MAC_IP_IP_PKT":              ["Inner L4 type: L4_NONFRAG"],
-            "MAC_IP_IP_UDP_PKT":          ["Inner L4 type: UDP"],
-            "MAC_IP_IP_TCP_PKT":          ["Inner L4 type: TCP"],
-            "MAC_IP_IP_SCTP_PKT":         ["Inner L4 type: SCTP"],
-            "MAC_IP_IP_ICMP_PKT":         ["Inner L4 type: ICMP"],
-            "MAC_IP_IPv6FRAG_PKT":        ["Inner L3 type: IPV6_EXT_UNKNOWN", "Inner L4 type: L4_FRAG"],
-            "MAC_IP_IPv6_PKT":            ["Inner L4 type: L4_NONFRAG"],
-            "MAC_IP_IPv6_UDP_PKT":        ["Inner L4 type: UDP"],
-            "MAC_IP_IPv6_TCP_PKT":        ["Inner L4 type: TCP"],
-            "MAC_IP_IPv6_SCTP_PKT":       ["Inner L4 type: SCTP"],
-            "MAC_IP_IPv6_ICMP_PKT":       ["Inner L4 type: ICMP"]
+            "MAC_IP_IPFRAG_UDP_PKT":      ipv4_in_ipv6_packet_type + ["INNER_L4_FRAG"],
+            "MAC_IP_IP_PKT":              ipv4_in_ipv6_packet_type + ["INNER_L4_NONFRAG"],
+            "MAC_IP_IP_UDP_PKT":          ipv4_in_ipv6_packet_type + ["INNER_L4_UDP"],
+            "MAC_IP_IP_TCP_PKT":          ipv4_in_ipv6_packet_type + ["INNER_L4_TCP"],
+            "MAC_IP_IP_SCTP_PKT":         ipv4_in_ipv6_packet_type + ["INNER_L4_SCTP"],
+            "MAC_IP_IP_ICMP_PKT":         ipv4_in_ipv6_packet_type + ["INNER_L4_ICMP"],
+            "MAC_IP_IPv6FRAG_PKT":        ipv6_in_ipv6_packet_type + ["INNER_L4_FRAG"],
+            "MAC_IP_IPv6_PKT":            ipv6_in_ipv6_packet_type + ["INNER_L4_NONFRAG"],
+            "MAC_IP_IPv6_UDP_PKT":        ipv6_in_ipv6_packet_type + ["INNER_L4_UDP"],
+            "MAC_IP_IPv6_TCP_PKT":        ipv6_in_ipv6_packet_type + ["INNER_L4_TCP"],
+            "MAC_IP_IPv6_SCTP_PKT":       ipv6_in_ipv6_packet_type + ["INNER_L4_SCTP"],
+            "MAC_IP_IPv6_ICMP_PKT":       ipv6_in_ipv6_packet_type + ["INNER_L4_ICMP"]
         }
         self.run_test(pktType)
 
@@ -242,23 +247,33 @@ class TestUniPacket(TestCase):
         """
         self.verify(("fortville" in self.nic or "fortpark_TLV" in self.nic),
                     "NVGRE tunnel packet type detect only support by Fortville")
+        nvgre_base_packet_type = ["L2_ETHER", "L3_IPV4_EXT_UNKNOWN", "TUNNEL_GRENAT"]
+        # INNER IPV4 not with vlan
+        nvgre_ipv4_default_packet_type = nvgre_base_packet_type + ["INNER_L2_ETHER", "INNER_L3_IPV4_EXT_UNKNOWN"]
+        # INNER IPV6 not with vlan
+        nvgre_ipv6_default_packet_type = nvgre_base_packet_type + ["INNER_L2_ETHER", "INNER_L3_IPV6_EXT_UNKNOWN"]
+        # INNER IPV4 with vlan
+        nvgre_ipv4_vlan_packet_type = nvgre_base_packet_type + ["INNER_L2_ETHER_VLAN", "INNER_L3_IPV4_EXT_UNKNOWN"]
+        # INNER IPV6 with vlan
+        nvgre_ipv6_vlan_packet_type = nvgre_base_packet_type + ["INNER_L2_ETHER_VLAN", "INNER_L3_IPV6_EXT_UNKNOWN"]
+
 
         pktType = {
-            "MAC_IP_NVGRE_MAC_IPFRAG_PKT":              ["(outer) L2 type: ETHER", "(outer) L3 type: IPV4_EXT_UNKNOWN", "(outer) L4 type: Unknown", "Tunnel type: GRENAT", "Inner L2 type: ETHER", "Inner L3 type: IPV4_EXT_UNKNOWN", "Inner L4 type: L4_FRAG"],
-            "MAC_IP_NVGRE_MAC_IP_PKT":                  ["Inner L4 type: L4_NONFRAG"],
-            "MAC_IP_NVGRE_MAC_VLAN_PKT":                ["Inner L2 type: ETHER_VLAN", "Inner L4 type: Unknown"],
-            "MAC_IP_NVGRE_MAC_VLAN_IPFRAG_PKT":         ["Inner L3 type: IPV4_EXT_UNKNOWN", "Inner L4 type: L4_FRAG"],
-            "MAC_IP_NVGRE_MAC_VLAN_IP_PKT":             ["Inner L4 type: L4_NONFRAG"],
-            "MAC_IP_NVGRE_MAC_VLAN_IP_UDP_PKT":         ["Inner L4 type: UDP"],
-            "MAC_IP_NVGRE_MAC_VLAN_IP_TCP_PKT":         ["Inner L4 type: TCP"],
-            "MAC_IP_NVGRE_MAC_VLAN_IP_SCTP_PKT":        ["Inner L4 type: SCTP"],
-            "MAC_IP_NVGRE_MAC_VLAN_IP_ICMP_PKT":        ["Inner L4 type: ICMP"],
-            "MAC_IP_NVGRE_MAC_VLAN_IPv6FRAG_PKT":       ["Inner L3 type: IPV6_EXT_UNKNOWN", "Inner L4 type: L4_FRAG"],
-            "MAC_IP_NVGRE_MAC_VLAN_IPv6_PKT":           ["Inner L4 type: L4_NONFRAG"],
-            "MAC_IP_NVGRE_MAC_VLAN_IPv6_UDP_PKT":       ["Inner L4 type: UDP"],
-            "MAC_IP_NVGRE_MAC_VLAN_IPv6_TCP_PKT":       ["Inner L4 type: TCP"],
-            "MAC_IP_NVGRE_MAC_VLAN_IPv6_SCTP_PKT":      ["Inner L4 type: SCTP"],
-            "MAC_IP_NVGRE_MAC_VLAN_IPv6_ICMP_PKT":      ["Inner L4 type: ICMP"]
+            "MAC_IP_NVGRE_MAC_IPFRAG_PKT":              nvgre_ipv4_default_packet_type + ["INNER_L4_FRAG"],
+            "MAC_IP_NVGRE_MAC_IP_PKT":                  nvgre_ipv4_default_packet_type + ["INNER_L4_NONFRAG"],
+            "MAC_IP_NVGRE_MAC_VLAN_PKT":                nvgre_base_packet_type + ["INNER_L2_ETHER"],
+            "MAC_IP_NVGRE_MAC_VLAN_IPFRAG_PKT":         nvgre_ipv4_vlan_packet_type + ["INNER_L4_FRAG"],
+            "MAC_IP_NVGRE_MAC_VLAN_IP_PKT":             nvgre_ipv4_vlan_packet_type + ["INNER_L4_NONFRAG"],
+            "MAC_IP_NVGRE_MAC_VLAN_IP_UDP_PKT":         nvgre_ipv4_vlan_packet_type + ["INNER_L4_UDP"],
+            "MAC_IP_NVGRE_MAC_VLAN_IP_TCP_PKT":         nvgre_ipv4_vlan_packet_type + ["INNER_L4_TCP"],
+            "MAC_IP_NVGRE_MAC_VLAN_IP_SCTP_PKT":        nvgre_ipv4_vlan_packet_type + ["INNER_L4_SCTP"],
+            "MAC_IP_NVGRE_MAC_VLAN_IP_ICMP_PKT":        nvgre_ipv4_vlan_packet_type + ["INNER_L4_ICMP"],
+            "MAC_IP_NVGRE_MAC_VLAN_IPv6FRAG_PKT":       nvgre_ipv6_vlan_packet_type + ["INNER_L4_FRAG"],
+            "MAC_IP_NVGRE_MAC_VLAN_IPv6_PKT":           nvgre_ipv6_vlan_packet_type + ["INNER_L4_NONFRAG"],
+            "MAC_IP_NVGRE_MAC_VLAN_IPv6_UDP_PKT":       nvgre_ipv6_vlan_packet_type + ["INNER_L4_UDP"],
+            "MAC_IP_NVGRE_MAC_VLAN_IPv6_TCP_PKT":       nvgre_ipv6_vlan_packet_type + ["INNER_L4_TCP"],
+            "MAC_IP_NVGRE_MAC_VLAN_IPv6_SCTP_PKT":      nvgre_ipv6_vlan_packet_type + ["INNER_L4_SCTP"],
+            "MAC_IP_NVGRE_MAC_VLAN_IPv6_ICMP_PKT":      nvgre_ipv6_vlan_packet_type + ["INNER_L4_ICMP"]
         }
         self.run_test(pktType)
 
@@ -269,33 +284,42 @@ class TestUniPacket(TestCase):
         """
         self.verify(("fortville" in self.nic or "fortpark_TLV" in self.nic),
                     "NVGRE in IPv6 detect only support by Fortville")
+        nvgre_base_packet_type = ["L2_ETHER", "L3_IPV6_EXT_UNKNOWN", "TUNNEL_GRENAT"]
+        # INNER IPV4 not with vlan
+	nvgre_ipv4_default_packet_type = nvgre_base_packet_type + ["INNER_L2_ETHER", "INNER_L3_IPV4_EXT_UNKNOWN"]
+        # INNER IPV6 not with vlan
+        nvgre_ipv6_default_packet_type = nvgre_base_packet_type + ["INNER_L2_ETHER", "INNER_L3_IPV6_EXT_UNKNOWN"]
+        # INNER IPV4 with vlan
+	nvgre_ipv4_vlan_packet_type = nvgre_base_packet_type + ["INNER_L2_ETHER_VLAN", "INNER_L3_IPV4_EXT_UNKNOWN"]
+        # INNER IPV6 with vlan
+        nvgre_ipv6_vlan_packet_type = nvgre_base_packet_type + ["INNER_L2_ETHER_VLAN", "INNER_L3_IPV6_EXT_UNKNOWN"]
 
         pkt_types = {
-            "MAC_IPv6_NVGRE_MAC_PKT":             ["(outer) L2 type: ETHER", "(outer) L3 type: IPV6_EXT_UNKNOWN", "(outer) L4 type: Unknown", "Tunnel type: GRENAT", "Inner L2 type: ETHER", "Inner L3 type: Unknown", "Inner L4 type: Unknown"],
-            "MAC_IPv6_NVGRE_MAC_IPFRAG_PKT":      ["Inner L3 type: IPV4_EXT_UNKNOWN", "Inner L4 type: L4_FRAG"],
-            "MAC_IPv6_NVGRE_MAC_IP_PKT":          ["Inner L4 type: L4_NONFRAG"],
-            "MAC_IPv6_NVGRE_MAC_IP_UDP_PKT":      ["Inner L4 type: UDP"],
-            "MAC_IPv6_NVGRE_MAC_IP_TCP_PKT":      ["Inner L4 type: TCP"],
-            "MAC_IPv6_NVGRE_MAC_IP_SCTP_PKT":     ["Inner L4 type: SCTP"],
-            "MAC_IPv6_NVGRE_MAC_IP_ICMP_PKT":     ["Inner L4 type: ICMP"],
-            "MAC_IPv6_NVGRE_MAC_IPv6FRAG_PKT":    ["Inner L3 type: IPV6_EXT_UNKNOWN", "Inner L4 type: L4_FRAG"],
-            "MAC_IPv6_NVGRE_MAC_IPv6_PKT":        ["Inner L4 type: L4_NONFRAG"],
-            "MAC_IPv6_NVGRE_MAC_IPv6_UDP_PKT":    ["Inner L4 type: UDP"],
-            "MAC_IPv6_NVGRE_MAC_IPv6_TCP_PKT":    ["Inner L4 type: TCP"],
-            "MAC_IPv6_NVGRE_MAC_IPv6_SCTP_PKT":   ["Inner L4 type: SCTP"],
-            "MAC_IPv6_NVGRE_MAC_IPv6_ICMP_PKT":   ["Inner L4 type: ICMP"],
-            "MAC_IPv6_NVGRE_MAC_VLAN_IPFRAG_PKT": ["Inner L2 type: ETHER_VLAN", "Inner L3 type: IPV4_EXT_UNKNOWN", "Inner L4 type: L4_FRAG"],
-            "MAC_IPv6_NVGRE_MAC_VLAN_IP_PKT":     ["Inner L4 type: L4_NONFRAG"],
-            "MAC_IPv6_NVGRE_MAC_VLAN_IP_UDP_PKT": ["Inner L4 type: UDP"],
-            "MAC_IPv6_NVGRE_MAC_VLAN_IP_TCP_PKT": ["Inner L4 type: TCP"],
-            "MAC_IPv6_NVGRE_MAC_VLAN_IP_SCTP_PKT": ["Inner L4 type: SCTP"],
-            "MAC_IPv6_NVGRE_MAC_VLAN_IP_ICMP_PKT": ["Inner L4 type: ICMP"],
-            "MAC_IPv6_NVGRE_MAC_VLAN_IPv6FRAG_PKT": ["Inner L3 type: IPV6_EXT_UNKNOWN", "Inner L4 type: L4_FRAG"],
-            "MAC_IPv6_NVGRE_MAC_VLAN_IPv6_PKT":     ["Inner L4 type: L4_NONFRAG"],
-            "MAC_IPv6_NVGRE_MAC_VLAN_IPv6_UDP_PKT": ["Inner L4 type: UDP"],
-            "MAC_IPv6_NVGRE_MAC_VLAN_IPv6_TCP_PKT": ["Inner L4 type: TCP"],
-            "MAC_IPv6_NVGRE_MAC_VLAN_IPv6_SCTP_PKT": ["Inner L4 type: SCTP"],
-            "MAC_IPv6_NVGRE_MAC_VLAN_IPv6_ICMP_PKT": ["Inner L4 type: ICMP"],
+            "MAC_IPv6_NVGRE_MAC_PKT":               nvgre_base_packet_type + ["INNER_L2_ETHER"],
+            "MAC_IPv6_NVGRE_MAC_IPFRAG_PKT":        nvgre_ipv4_default_packet_type + ["INNER_L4_FRAG"],
+            "MAC_IPv6_NVGRE_MAC_IP_PKT":            nvgre_ipv4_default_packet_type + ["INNER_L4_NONFRAG"],
+            "MAC_IPv6_NVGRE_MAC_IP_UDP_PKT":        nvgre_ipv4_default_packet_type + ["INNER_L4_UDP"],
+            "MAC_IPv6_NVGRE_MAC_IP_TCP_PKT":        nvgre_ipv4_default_packet_type + ["INNER_L4_TCP"],
+            "MAC_IPv6_NVGRE_MAC_IP_SCTP_PKT":       nvgre_ipv4_default_packet_type + ["INNER_L4_SCTP"],
+            "MAC_IPv6_NVGRE_MAC_IP_ICMP_PKT":       nvgre_ipv4_default_packet_type + ["INNER_L4_ICMP"],
+            "MAC_IPv6_NVGRE_MAC_IPv6FRAG_PKT":      nvgre_ipv6_default_packet_type + ["INNER_L4_FRAG"],
+            "MAC_IPv6_NVGRE_MAC_IPv6_PKT":          nvgre_ipv6_default_packet_type + ["INNER_L4_NONFRAG"],
+            "MAC_IPv6_NVGRE_MAC_IPv6_UDP_PKT":      nvgre_ipv6_default_packet_type + ["INNER_L4_UDP"],
+            "MAC_IPv6_NVGRE_MAC_IPv6_TCP_PKT":      nvgre_ipv6_default_packet_type + ["INNER_L4_TCP"], 
+            "MAC_IPv6_NVGRE_MAC_IPv6_SCTP_PKT":     nvgre_ipv6_default_packet_type + ["INNER_L4_NONFRAG"],
+            "MAC_IPv6_NVGRE_MAC_IPv6_ICMP_PKT":     nvgre_ipv6_default_packet_type + ["INNER_L4_NONFRAG"],
+            "MAC_IPv6_NVGRE_MAC_VLAN_IPFRAG_PKT":   nvgre_ipv4_vlan_packet_type + ["INNER_L4_FRAG"],
+            "MAC_IPv6_NVGRE_MAC_VLAN_IP_PKT":       nvgre_ipv4_vlan_packet_type + ["INNER_L4_NONFRAG"],
+            "MAC_IPv6_NVGRE_MAC_VLAN_IP_UDP_PKT":   nvgre_ipv4_vlan_packet_type + ["INNER_L4_UDP"],
+            "MAC_IPv6_NVGRE_MAC_VLAN_IP_TCP_PKT":   nvgre_ipv4_vlan_packet_type + ["INNER_L4_TCP"],
+            "MAC_IPv6_NVGRE_MAC_VLAN_IP_SCTP_PKT":  nvgre_ipv4_vlan_packet_type + ["INNER_L4_SCTP"],
+            "MAC_IPv6_NVGRE_MAC_VLAN_IP_ICMP_PKT":  nvgre_ipv4_vlan_packet_type + ["INNER_L4_ICMP"],
+            "MAC_IPv6_NVGRE_MAC_VLAN_IPv6FRAG_PKT": nvgre_ipv6_vlan_packet_type + ["INNER_L4_FRAG"], 
+            "MAC_IPv6_NVGRE_MAC_VLAN_IPv6_PKT":     nvgre_ipv6_vlan_packet_type + ["INNER_L4_NONFRAG"],
+            "MAC_IPv6_NVGRE_MAC_VLAN_IPv6_UDP_PKT": nvgre_ipv6_vlan_packet_type + ["INNER_L4_UDP"],
+            "MAC_IPv6_NVGRE_MAC_VLAN_IPv6_TCP_PKT": nvgre_ipv6_vlan_packet_type + ["INNER_L4_TCP"],
+            "MAC_IPv6_NVGRE_MAC_VLAN_IPv6_SCTP_PKT":nvgre_ipv6_vlan_packet_type + ["INNER_L4_NONFRAG"],
+            "MAC_IPv6_NVGRE_MAC_VLAN_IPv6_ICMP_PKT":nvgre_ipv6_vlan_packet_type + ["INNER_L4_NONFRAG"]
         }
 
         self.run_test(pkt_types)
@@ -306,15 +330,16 @@ class TestUniPacket(TestCase):
         """
         self.verify(("fortville" in self.nic or "fortpark_TLV" in self.nic),
                     "GRE tunnel packet type detect only support by Fortville")
+        IPv4_packet_type = [" L2_ETHER", " L3_IPV4_EXT_UNKNOWN", "L4_NONFRAG"]
 
         pktType = {
-            "MAC_IP_GRE_IPFRAG_PKT":          ["(outer) L2 type: ETHER", "(outer) L3 type: IPV4_EXT_UNKNOWN", "(outer) L4 type: Unknown", "Tunnel type: GRENAT", "Inner L2 type: Unknown", "Inner L3 type: IPV4_EXT_UNKNOWN", "Inner L4 type: L4_FRAG"],
-            "MAC_IP_GRE_IP_PKT":              ["Inner L4 type: L4_NONFRAG"],
-            "MAC_IP_GRE_IP_UDP_PKT":          ["Inner L4 type: UDP"],
-            "MAC_IP_GRE_IP_TCP_PKT":          ["Inner L4 type: TCP"],
-            "MAC_IP_GRE_IP_SCTP_PKT":         ["Inner L4 type: SCTP"],
-            "MAC_IP_GRE_IP_ICMP_PKT":         ["Inner L4 type: ICMP"],
-            "MAC_IP_GRE_PKT":                 ["Inner L3 type: Unknown", "Inner L4 type: Unknown"]
+            "MAC_IP_GRE_IPFRAG_PKT":          IPv4_packet_type,
+            "MAC_IP_GRE_IP_PKT":              IPv4_packet_type,
+            "MAC_IP_GRE_IP_UDP_PKT":          IPv4_packet_type,
+            "MAC_IP_GRE_IP_TCP_PKT":          IPv4_packet_type,
+            "MAC_IP_GRE_IP_SCTP_PKT":         IPv4_packet_type,
+            "MAC_IP_GRE_IP_ICMP_PKT":         IPv4_packet_type,
+            "MAC_IP_GRE_PKT":                 IPv4_packet_type
         }
         self.run_test(pktType)
 
@@ -330,21 +355,25 @@ class TestUniPacket(TestCase):
         self.dut.send_expect("set fwd rxonly", "testpmd>")
         self.dut.send_expect("set verbose 1", "testpmd>")
         self.dut.send_expect("start", "testpmd>")
+        vxlan_ipv4_default_packet_type = ["L2_ETHER", "L3_IPV4_EXT_UNKNOWN", "TUNNEL_GRENAT",
+                                     "INNER_L2_ETHER", "INNER_L3_IPV4_EXT_UNKNOWN"]
+        vxlan_ipv6_default_packet_type = ["L2_ETHER", "L3_IPV4_EXT_UNKNOWN", "TUNNEL_GRENAT",
+                                     "INNER_L2_ETHER", "INNER_L3_IPV6_EXT_UNKNOWN"]
 
         pktType = {
-            "MAC_IP_UDP_VXLAN_MAC_IPFRAG_PKT":        ["(outer) L2 type: ETHER", "(outer) L3 type: IPV4_EXT_UNKNOWN", "(outer) L4 type: Unknown", "Tunnel type: GRENAT", "Inner L2 type: ETHER", "Inner L3 type: IPV4_EXT_UNKNOWN", "Inner L4 type: L4_FRAG"],
-            "MAC_IP_UDP_VXLAN_MAC_IP_PKT":            ["Inner L4 type: L4_NONFRAG"],
-            "MAC_IP_UDP_VXLAN_MAC_IP_UDP_PKT":        ["Inner L4 type: UDP"],
-            "MAC_IP_UDP_VXLAN_MAC_IP_TCP_PKT":        ["Inner L4 type: TCP"],
-            "MAC_IP_UDP_VXLAN_MAC_IP_SCTP_PKT":       ["Inner L4 type: SCTP"],
-            "MAC_IP_UDP_VXLAN_MAC_IP_ICMP_PKT":       ["Inner L4 type: ICMP"],
-            "MAC_IP_UDP_VXLAN_MAC_IPv6FRAG_PKT":      ["Inner L3 type: IPV6_EXT_UNKNOWN", "Inner L4 type: L4_FRAG"],
-            "MAC_IP_UDP_VXLAN_MAC_IPv6_PKT":          ["Inner L4 type: L4_NONFRAG"],
-            "MAC_IP_UDP_VXLAN_MAC_IPv6_UDP_PKT":      ["Inner L4 type: UDP"],
-            "MAC_IP_UDP_VXLAN_MAC_IPv6_TCP_PKT":      ["Inner L4 type: TCP"],
-            "MAC_IP_UDP_VXLAN_MAC_IPv6_SCTP_PKT":     ["Inner L4 type: SCTP"],
-            "MAC_IP_UDP_VXLAN_MAC_IPv6_ICMP_PKT":     ["Inner L4 type: ICMP"],
-            "MAC_IP_UDP_VXLAN_MAC_PKT":               ["Inner L3 type: Unknown", "Inner L4 type: Unknown"]
+            "MAC_IP_UDP_VXLAN_MAC_IPFRAG_PKT":        vxlan_ipv4_default_packet_type + ["INNER_L4_FRAG"],
+            "MAC_IP_UDP_VXLAN_MAC_IP_PKT":            vxlan_ipv4_default_packet_type + ["INNER_L4_NONFRAG"],
+            "MAC_IP_UDP_VXLAN_MAC_IP_UDP_PKT":        vxlan_ipv4_default_packet_type + ["INNER_L4_UDP"],
+            "MAC_IP_UDP_VXLAN_MAC_IP_TCP_PKT":        vxlan_ipv4_default_packet_type + ["INNER_L4_TCP"],
+            "MAC_IP_UDP_VXLAN_MAC_IP_SCTP_PKT":       vxlan_ipv4_default_packet_type + ["INNER_L4_SCTP"],
+            "MAC_IP_UDP_VXLAN_MAC_IP_ICMP_PKT":       vxlan_ipv4_default_packet_type + ["INNER_L4_ICMP"],
+            "MAC_IP_UDP_VXLAN_MAC_IPv6FRAG_PKT":      vxlan_ipv6_default_packet_type + ["INNER_L4_FRAG"],
+            "MAC_IP_UDP_VXLAN_MAC_IPv6_PKT":          vxlan_ipv6_default_packet_type + ["INNER_L4_NONFRAG"],
+            "MAC_IP_UDP_VXLAN_MAC_IPv6_UDP_PKT":      vxlan_ipv6_default_packet_type + ["INNER_L4_UDP"],
+            "MAC_IP_UDP_VXLAN_MAC_IPv6_TCP_PKT":      vxlan_ipv6_default_packet_type + ["INNER_L4_TCP"],
+            "MAC_IP_UDP_VXLAN_MAC_IPv6_SCTP_PKT":     vxlan_ipv6_default_packet_type + ["INNER_L4_SCTP"],
+            "MAC_IP_UDP_VXLAN_MAC_IPv6_ICMP_PKT":     vxlan_ipv6_default_packet_type + ["INNER_L4_ICMP"],
+            "MAC_IP_UDP_VXLAN_MAC_PKT":               ["L2_ETHER", "L3_IPV4_EXT_UNKNOWN", "TUNNEL_GRENAT","INNER_L2_ETHER"]
         }
         self.run_test(pktType)
 

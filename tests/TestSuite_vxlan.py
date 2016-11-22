@@ -90,14 +90,14 @@ class VxlanTestConfig(object):
         """
         if self.outer_udp_dst != VXLAN_PORT:
             if self.outer_ip6_src != 'N/A':
-                return '(outer) L3 type: IPV6_EXT_UNKNOWN'
+                return 'L3_IPV6_EXT_UNKNOWN'
             else:
-                return '(outer) L3 type: IPV4_EXT_UNKNOWN'
+                return 'L3_IPV4_EXT_UNKNOWN'
         else:
             if self.inner_ip6_src != 'N/A':
-                return 'Inner L3 type: IPV6_EXT_UNKNOWN'
+                return 'L3_IPV6_EXT_UNKNOWN'
             else:
-                return 'Inner L3 type: IPV4_EXT_UNKNOWN'
+                return 'L3_IPV4_EXT_UNKNOWN'
 
     def create_pcap(self):
         """
