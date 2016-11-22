@@ -46,12 +46,13 @@ class TestVfPacketRxtx(TestCase):
             vf0_prop = {'opt_host': self.sriov_vfs_port_0[0].pci}
             vf1_prop = {'opt_host': self.sriov_vfs_port_1[0].pci}
 
+
             if driver == 'igb_uio':
                 # start testpmd without the two VFs on the host
                 self.host_testpmd = PmdOutput(self.dut)
                 eal_param = '-b %(vf0)s -b %(vf1)s' % {'vf0': self.sriov_vfs_port_0[0].pci,
                                                        'vf1': self.sriov_vfs_port_1[0].pci}
-                self.host_testpmd.start_testpmd("1S/2C/2T", eal_param=eal_param)
+                self.host_testpmd.start_testpmd("1S/2C/2T", "--crc-strip", eal_param=eal_param)
 
             # set up VM0 ENV
             self.vm0 = QEMUKvm(self.dut, 'vm0', 'vf_packet_rxtx')
@@ -69,9 +70,10 @@ class TestVfPacketRxtx(TestCase):
     def destroy_2pf_2vf_1vm_env(self):
         if getattr(self, 'vm0', None):
             #destroy testpmd in vm0
-            self.vm0_testpmd.execute_cmd('stop')
-            self.vm0_testpmd.execute_cmd('quit', '# ')
-            self.vm0_testpmd = None
+            if getattr(self, 'vm0_testpmd', None):
+                self.vm0_testpmd.execute_cmd('stop')
+                self.vm0_testpmd.execute_cmd('quit', '# ')
+                self.vm0_testpmd = None
             self.vm0_dut_ports = None
             #destroy vm0
             self.vm0.stop()
@@ -81,13 +83,13 @@ class TestVfPacketRxtx(TestCase):
             self.host_testpmd.execute_cmd('quit', '# ')
             self.host_testpmd = None
 
-        if getattr(self, 'used_dut_port_0', None):
+        if getattr(self, 'used_dut_port_0', None) != None:
             self.dut.destroy_sriov_vfs_by_port(self.used_dut_port_0)
             port = self.dut.ports_info[self.used_dut_port_0]['port']
             port.bind_driver()
             self.used_dut_port_0 = None
 
-        if getattr(self, 'used_dut_port_1', None):
+        if getattr(self, 'used_dut_port_1', None) != None:
             self.dut.destroy_sriov_vfs_by_port(self.used_dut_port_1)
             port = self.dut.ports_info[self.used_dut_port_1]['port']
             port.bind_driver()
@@ -110,14 +112,7 @@ class TestVfPacketRxtx(TestCase):
         self.vm0_dut_ports = self.vm_dut_0.get_ports('any')
         port_id_0 = 0
         self.vm0_testpmd = PmdOutput(self.vm_dut_0)
-        if self.kdriver == "i40e":
-            self.vm0_testpmd.start_testpmd(VM_CORES_MASK, '--crc-strip')
-        else:
-            self.vm0_testpmd.start_testpmd(VM_CORES_MASK)
-        self.vm0_testpmd.execute_cmd('port stop all')
-        self.vm0_testpmd.execute_cmd('port config all crc-strip on')
-        self.vm0_testpmd.execute_cmd('port start all')
-        self.vm0_testpmd.execute_cmd('show port info all')
+        self.vm0_testpmd.start_testpmd(VM_CORES_MASK, '--crc-strip')
         pmd_vf0_mac = self.vm0_testpmd.get_port_mac(port_id_0)
         self.vm0_testpmd.execute_cmd('set fwd mac')
         self.vm0_testpmd.execute_cmd('start')
@@ -199,8 +194,9 @@ class TestVfPacketRxtx(TestCase):
 
     def destroy_3vf_2vm_env(self):
         if getattr(self, 'vm0', None):
-            self.vm0_testpmd.execute_cmd('stop')
-            self.vm0_testpmd.execute_cmd('quit', '# ')
+            if getattr(self, 'vm0_testpmd', None):
+                self.vm0_testpmd.execute_cmd('stop')
+                self.vm0_testpmd.execute_cmd('quit', '# ')
             self.vm0_testpmd = None
             self.vm0_dut_ports = None
             self.vm_dut_0 = None
@@ -208,19 +204,20 @@ class TestVfPacketRxtx(TestCase):
             self.vm0 = None
 
         if getattr(self, 'vm1', None):
-            self.vm1_testpmd.execute_cmd('stop')
-            self.vm1_testpmd.execute_cmd('quit', '# ')
+            if getattr(self, 'vm1_testpmd', None):
+                self.vm1_testpmd.execute_cmd('stop')
+                self.vm1_testpmd.execute_cmd('quit', '# ')
             self.vm1_testpmd = None
             self.vm1_dut_ports = None
             self.vm_dut_1 = None
             self.vm1.stop()
             self.vm1 = None
 
-        if getattr(self, 'host_testpmd', None):
+        if getattr(self, 'host_testpmd', None) != None:
             self.host_testpmd.execute_cmd('quit', '# ')
             self.host_testpmd = None
 
-        if getattr(self, 'used_dut_port', None):
+        if getattr(self, 'used_dut_port', None) != None:
             self.dut.destroy_sriov_vfs_by_port(self.used_dut_port)
             port = self.dut.ports_info[self.used_dut_port]['port']
             port.bind_driver()
@@ -243,10 +240,7 @@ class TestVfPacketRxtx(TestCase):
         port_id_1 = 1
 
         self.vm0_testpmd = PmdOutput(self.vm_dut_0)
-        if self.kdriver == "i40e":
-            self.vm0_testpmd.start_testpmd(VM_CORES_MASK, '--crc-strip')
-        else:
-            self.vm0_testpmd.start_testpmd(VM_CORES_MASK)
+        self.vm0_testpmd.start_testpmd(VM_CORES_MASK, '--crc-strip')
         self.vm0_testpmd.execute_cmd('show port info all')
         pmd0_vf0_mac = self.vm0_testpmd.get_port_mac(port_id_0)
         self.vm0_testpmd.execute_cmd('set fwd mac')
@@ -255,10 +249,7 @@ class TestVfPacketRxtx(TestCase):
         time.sleep(2)
 
         self.vm1_testpmd = PmdOutput(self.vm_dut_1)
-        if self.kdriver == "i40e":
-            self.vm1_testpmd.start_testpmd(VM_CORES_MASK, '--crc-strip')
-        else:
-            self.vm1_testpmd.start_testpmd(VM_CORES_MASK)
+        self.vm1_testpmd.start_testpmd(VM_CORES_MASK, '--crc-strip')
         self.vm1_testpmd.execute_cmd('show port info all')
 
         tx_port = self.tester.get_local_port(self.dut_ports[0])
