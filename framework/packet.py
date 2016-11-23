@@ -327,12 +327,12 @@ class scapy(object):
         except:
             pass
 
-    def send_pcap_pkt(self, crb=None, file='', intf=''):
+    def send_pcap_pkt(self, crb=None, file='', intf='', count=1):
         if intf == '' or file == '' or crb is None:
             print "Invalid option for send packet by scapy"
             return
 
-        content = 'pkts=rdpcap(\"%s\");sendp(pkts, iface=\"%s\");exit()' % (file, intf)
+        content = 'pkts=rdpcap(\"%s\");sendp(pkts, iface=\"%s\", count=\"%s\" );exit()' % (file, intf, count)
         cmd_file = '/tmp/scapy_%s.cmd' % intf
 
         crb.create_file(content, cmd_file)
@@ -341,12 +341,12 @@ class scapy(object):
     def print_summary(self):
         print "Send out pkt %s" % self.pkt.summary()
 
-    def send_pkt(self, intf=''):
+    def send_pkt(self, intf='', count=1):
         self.print_summary()
         if intf != '':
             # fix fortville can't receive packets with 00:00:00:00:00:00
             self.pkt.getlayer(0).src = get_if_hwaddr(intf)
-            sendp(self.pkt, iface=intf)
+            sendp(self.pkt, iface=intf, count=count)
 
 
 class Packet(object):
@@ -443,7 +443,7 @@ class Packet(object):
             raw_confs['payload'] = payload
             self.config_layer('raw', raw_confs)
 
-    def send_pkt(self, crb=None, tx_port='', auto_cfg=True):
+    def send_pkt(self, crb=None, tx_port='', auto_cfg=True, count=1):
         if tx_port == '':
             print "Invalid Tx interface"
             return
@@ -459,9 +459,9 @@ class Packet(object):
             crb.session.copy_file_to(self.uni_name)
             pcap_file = self.uni_name.split('/')[2]
             self.pktgen.send_pcap_pkt(
-                crb=crb, file=pcap_file, intf=self.tx_port)
+                crb=crb, file=pcap_file, intf=self.tx_port, count=count)
         else:
-            self.pktgen.send_pkt(intf=self.tx_port)
+            self.pktgen.send_pkt(intf=self.tx_port, count=count)
 
     def check_layer_config(self, layer, config):
         """
