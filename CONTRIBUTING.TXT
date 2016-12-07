@@ -1,0 +1,50 @@
+Contributors Guide
+==================
+
+This document outlines how to contribute code to the DTS project.
+
+Getting the code
+----------------
+
+The DTS code can be cloned from the repository on dpdk.org as follows:
+
+    git clone git://dpdk.org/tools/dts
+    git clone http://dpdk.org/git/tools/dts
+
+The code can be browsed at http://dpdk.org/browse/tools/dts/
+
+Submitting Patches
+------------------
+
+Contributions to DTS should be submitted as git formatted patches to the
+DTS mailing list: dts@dpdk.org
+
+Note you must first register for the mailing list at:
+http://dpdk.org/ml/listinfo/dts
+
+The commit message must end with a "Signed-off-by:" line which is added using:
+
+    git commit --signoff # or -s
+
+The purpose of the signoff is explained in the Linux kernel guidelines
+Developer's Certificate of Origin:
+http://www.kernel.org/doc/Documentation/SubmittingPatches
+
+Note:
+    All developers must ensure that they have read, understood and complied
+    with the Developer's Certificate of Origin section of the documentation
+    prior to applying the signoff and submitting a patch.
+
+The DPDK Code Contributors guidelines contain information that is
+useful for submitting patches to DTS:
+http://dpdk.org/doc/guides/contributing/index.html
+
+Coding Guidelines
+-----------------
+
+* Python code should follow PEP8.
+
+Maintainer
+----------
+
+The DTS maintainer is: Marvin Liu <yong.liu@intel.com>
