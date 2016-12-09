@@ -41,7 +41,6 @@ from test_case import TestCase
 from plotting import Plotting
 from settings import HEADER_SIZE
 from etgen import IxiaPacketGenerator
-
 from packet import Packet, sniff_packets, load_sniff_packets
 
 
@@ -56,7 +55,7 @@ class TestRxtxCallbacks(TestCase):
         self.verify(len(self.dut_ports) >= 2, "Insufficient ports")
 
         cores = self.dut.get_core_list("1S/2C/1T")
-        utils.create_mask(cores)
+        self.coremask = utils.create_mask(cores)
         
         self.mac = self.dut.get_mac_address(self.dut_ports[0])
         self.path = "./examples/rxtx_callbacks/build/rxtx_callbacks"
