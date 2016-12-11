@@ -91,7 +91,7 @@ The /etc/qemu-ifup can be below script, need you to create first::
     exit 1
     fi
 
-Similar for VM1, please refer to below command for VM1::
+Similar for VM0, please refer to below command for VM1::
 
     qemu-system-x86_64 -name vm1 -enable-kvm -m 2048 -smp 4 -cpu host -drive file=/root/Downloads/vm1.img -net nic,macaddr=00:00:00:00:00:02 -net tap,script=/etc/qemu-ifup -device pci-assign,host=08:10.2 -vnc :4 -daemonize
 
