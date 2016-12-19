@@ -606,21 +606,31 @@ class QEMUKvm(VirtBase):
         if 'opt_path' in options.keys() and options['opt_path']:
             dev_boot_line = '-chardev socket'
             char_id = 'char%d' % self.char_idx
-            dev_boot_line += separator + 'id=%s' % char_id + separator + 'path=%s' % options['opt_path']
-            self.char_idx += 1
-            self.__add_boot_line(dev_boot_line)
+            if 'opt_server' in options.keys() and options['opt_server']:
+                dev_boot_line += separator + 'id=%s' % char_id + separator + 'path=%s' %options['opt_path'] + separator + '%s' % options['opt_server']
+		self.char_idx += 1
+                self.__add_boot_line(dev_boot_line)
+            else:
+                dev_boot_line += separator + 'id=%s' % char_id + separator + 'path=%s' %options['opt_path']
+                self.char_idx += 1
+                self.__add_boot_line(dev_boot_line)
             # netdev parameter
             netdev_id = 'netdev%d' % self.netdev_idx
             self.netdev_idx += 1
-            dev_boot_line = '-netdev type=vhost-user,id=%s,chardev=%s,vhostforce' % (netdev_id, char_id)
+            if 'opt_queue' in options.keys() and options['opt_queue']:
+                queue_num=options['opt_queue']
+                dev_boot_line = '-netdev type=vhost-user,id=%s,chardev=%s,vhostforce,queues=%s' % (netdev_id, char_id,queue_num)
+            else:
+                dev_boot_line = '-netdev type=vhost-user,id=%s,chardev=%s,vhostforce' % (netdev_id, char_id)
             self.__add_boot_line(dev_boot_line)
             # device parameter
             opts = {'opt_netdev': '%s' % netdev_id}
             if 'opt_mac' in options.keys() and \
                     options['opt_mac']:
                 opts['opt_mac'] = options['opt_mac']
-
-            self.__add_vm_virtio_net_pci(**opts)
+            if 'opt_settings' in options.keys() and options['opt_settings']:
+                opts['opt_settings'] = options['opt_settings']
+	self.__add_vm_virtio_net_pci(**opts)
 
     def __add_vm_virtio_cuse_pci(self, **options):
         """
@@ -939,7 +949,7 @@ class QEMUKvm(VirtBase):
         wait for 120 seconds for vm net ready
         10.0.2.* is the default ip address allocated by qemu
         """
-        count = 20
+        count = 40
         while count:
             out = self.__control_session('ifconfig')
             if "10.0.2" in out:
