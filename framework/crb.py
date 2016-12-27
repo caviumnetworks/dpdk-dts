@@ -605,7 +605,14 @@ class Crb(object):
         We can specify the physical CPU socket by paramter "socket".
         """
         if config == 'all':
-            return [n['thread'] for n in self.cores]
+            cores = []
+            if socket != -1:
+                for core in self.cores:
+                    if int(core['socket']) == socket:
+                        cores.append(core['thread'])
+            else:
+                cores = [core['thread'] for core in self.cores]
+            return cores
 
         m = re.match("([1234])S/([0-9]+)C/([12])T", config)
 
