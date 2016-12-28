@@ -282,7 +282,8 @@ class TestUnitTestsEal(TestCase):
         """
 
         self.dut.send_expect(self.test_app_cmdline + ' -m 64', "R.*T.*E.*>.*>", self.start_test_time)
-        out = self.dut.send_expect("eal_flags_autotest", "RTE>>", self.run_cmd_time)
+        # on FreeBSD need more time than other OS
+        out = self.dut.send_expect("eal_flags_autotest", "RTE>>", 600)
         self.dut.send_expect("quit", "# ")
         self.verify("Test OK" in out, "Test failed")
 
