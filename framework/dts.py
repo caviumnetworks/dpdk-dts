@@ -51,7 +51,6 @@ from test_case import TestCase
 from test_result import Result
 from stats_reporter import StatsReporter
 from excel_reporter import ExcelReporter
-import utils
 from exception import TimeoutException, ConfigParseException, VerifyFailure
 from logger import getLogger
 import logger
@@ -316,6 +315,14 @@ def dts_run_prerequisties(duts, tester, pkgName, patch, dts_commands, serializer
         dts_run_commands(tester, dts_commands)
         tester.prerequisites()
         dts_run_commands(tester, dts_commands)
+    except Exception as ex:
+        log_handler.error(" PREREQ EXCEPTION " + traceback.format_exc())
+        log_handler.info('CACHE: Discarding cache.')
+        serializer.discard_cache()
+        settings.report_error("TESTER_SETUP_ERR")
+        return False
+
+    try:
         for dutobj in duts:
             dutobj.set_package(pkgName, patch)
             dutobj.prerequisites()
@@ -327,6 +334,7 @@ def dts_run_prerequisties(duts, tester, pkgName, patch, dts_commands, serializer
         result.add_failed_dut(duts[0], str(ex))
         log_handler.info('CACHE: Discarding cache.')
         serializer.discard_cache()
+        settings.report_error("DUT_SETUP_ERR")
         return False
 
 
@@ -348,9 +356,11 @@ def dts_run_target(duts, tester, targets, test_suites):
                     dutobj.set_target(target)
         except AssertionError as ex:
             log_handler.error(" TARGET ERROR: " + str(ex))
+            settings.report_error("DPDK_BUILD_ERR")
             result.add_failed_target(result.dut, target, str(ex))
             continue
         except Exception as ex:
+            settings.report_error("GENERIC_ERR")
             log_handler.error(" !!! DEBUG IT: " + traceback.format_exc())
             result.add_failed_target(result.dut, target, str(ex))
             continue
@@ -395,6 +405,7 @@ def dts_run_suite(duts, tester, test_suites, target):
                 log_handler.info("\nTEST SUITE ENDED: " + test_classname)
                 dts_log_execution(duts, tester, log_handler)
         except VerifyFailure:
+            settings.report_error("SUITE_EXECUTE_ERR")
             log_handler.error(" !!! DEBUG IT: " + traceback.format_exc())
         except KeyboardInterrupt:
             # stop/save result/skip execution
@@ -403,6 +414,7 @@ def dts_run_suite(duts, tester, test_suites, target):
             save_all_results()
             break
         except Exception as e:
+            settings.report_error("GENERIC_ERR")
             log_handler.error(str(e))
         finally:
             suite_obj.execute_tear_downall()
@@ -510,7 +522,7 @@ def run_all(config_file, pkgName, git, patch, skip_setup,
         duts, tester = dts_crbs_init(crbInsts, skip_setup, read_cache, project, base_dir, serializer, virttype)
 
         # register exit action
-        atexit.register(close_all_sessions, duts, tester)
+        atexit.register(quit_execution, duts, tester)
 
         check_case_inst = check_case_skip(duts[0])
         support_case_inst = check_case_support(duts[0])
@@ -547,9 +559,10 @@ def save_all_results():
     stats_report.save(result)
 
 
-def close_all_sessions(duts, tester):
+def quit_execution(duts, tester):
     """
-    Close session to DUT and tester.
+    Close session to DUT and tester before quit.
+    Return exit status when failure occurred.
     """
     # close all nics
     for dutobj in duts:
@@ -562,3 +575,6 @@ def close_all_sessions(duts, tester):
     if tester is not None:
         tester.close()
     log_handler.info("DTS ended")
+
+    # return value
+    settings.exit_error()
