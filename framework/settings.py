@@ -32,6 +32,7 @@
 Folders for framework running enviornment.
 """
 import os
+import sys
 import re
 import socket
 
@@ -194,7 +195,19 @@ HOST_NIC_SETTING = "DTS_HOST_NIC"
 DEBUG_SETTING = "DTS_DEBUG_ENABLE"
 DEBUG_CASE_SETTING = "DTS_DEBUGCASE_ENABLE"
 DPDK_RXMODE_SETTING = "DTS_DPDK_RXMODE"
+DTS_ERROR_ENV = "DTS_RUNNING_ERROR"
 
+"""
+DTS global error table
+"""
+DTS_ERR_TBL = {
+    "GENERIC_ERR": 1,
+    "DPDK_BUILD_ERR" : 2,
+    "DUT_SETUP_ERR" : 3,
+    "TESTER_SETUP_ERR" : 4,
+    "SUITE_SETUP_ERR": 5,
+    "SUITE_EXECUTE_ERR": 6,
+}
 
 def get_nic_name(type):
     """
@@ -269,6 +282,27 @@ def load_global_setting(key):
         return os.environ[env_key]
     else:
         return ''
+
+
+def report_error(error):
+    """
+    Report error when error occurred
+    """
+    if error in DTS_ERR_TBL.keys():
+        os.environ[DTS_ERROR_ENV] = error
+    else:
+        os.environ[DTS_ERROR_ENV] = "GENERIC_ERR"
+
+
+def exit_error():
+    """
+    Set system exit value when error occurred
+    """
+    if DTS_ERROR_ENV in os.environ.keys():
+        ret_val = DTS_ERR_TBL[os.environ[DTS_ERROR_ENV]]
+        sys.exit(ret_val)
+    else:
+        sys.exit(0)
 
 
 def accepted_nic(pci_id):
