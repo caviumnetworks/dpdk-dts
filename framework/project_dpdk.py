@@ -132,26 +132,30 @@ class DPDKdut(Dut):
 
     def set_rxtx_mode(self):
         """
-        Set default RX/TX PMD function, now only take effect on ixgbe.
+        Set default RX/TX PMD function,
+        only i40e support scalar/full RX/TX model.
+        ixgbe and fm10k only support vector and no vector model
+        all NIC default rx/tx model is vector PMD
         """
-        [arch, machine, env, toolchain] = self.target.split('-')
 
         mode = load_global_setting(DPDK_RXMODE_SETTING)
         if mode == 'scalar':
-            self.send_expect("sed -i -e 's/CONFIG_RTE_IXGBE_INC_VECTOR=.*$/"
-                             + "CONFIG_RTE_IXGBE_INC_VECTOR=n/' config/common_%s" % env, "# ", 30)
-            self.send_expect("sed -i -e 's/CONFIG_RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC=.*$/"
-                             + "CONFIG_RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC=y/' config/common_%s" % env, "# ", 30)
+            self.send_expect("sed -i -e 's/CONFIG_RTE_I40E_INC_VECTOR=.*$/"
+                             + "CONFIG_RTE_I40E_INC_VECTOR=n/' config/common_base", "# ", 30)
+            self.send_expect("sed -i -e 's/CONFIG_RTE_LIBRTE_I40E_RX_ALLOW_BULK_ALLOC=.*$/"
+                             + "CONFIG_RTE_LIBRTE_I40E_RX_ALLOW_BULK_ALLOC=y/' config/common_base", "# ", 30)
         if mode == 'full':
+            self.send_expect("sed -i -e 's/CONFIG_RTE_I40E_INC_VECTOR=.*$/"
+                             + "CONFIG_RTE_I40E_INC_VECTOR=n/' config/common_base", "# ", 30)
+            self.send_expect("sed -i -e 's/CONFIG_RTE_LIBRTE_I40E_RX_ALLOW_BULK_ALLOC=.*$/"
+                             + "CONFIG_RTE_LIBRTE_I40E_RX_ALLOW_BULK_ALLOC=n/' config/common_base", "# ", 30)
+        if mode == 'novector':
             self.send_expect("sed -i -e 's/CONFIG_RTE_IXGBE_INC_VECTOR=.*$/"
-                             + "CONFIG_RTE_IXGBE_INC_VECTOR=n/' config/common_%s" % env, "# ", 30)
-            self.send_expect("sed -i -e 's/CONFIG_RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC=.*$/"
-                             + "CONFIG_RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC=n/' config/common_%s" % env, "# ", 30)
-        if mode == 'vector':
-            self.send_expect("sed -i -e 's/CONFIG_RTE_IXGBE_INC_VECTOR=.*$/"
-                             + "CONFIG_RTE_IXGBE_INC_VECTOR=y/' config/common_%s" % env, "# ", 30)
-            self.send_expect("sed -i -e 's/CONFIG_RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC=.*$/"
-                             + "CONFIG_RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC=y/' config/common_%s" % env, "# ", 30)
+                             + "CONFIG_RTE_IXGBE_INC_VECTOR=n/' config/common_base", "# ", 30)
+            self.send_expect("sed -i -e 's/CONFIG_RTE_I40E_INC_VECTOR=.*$/"
+                             + "CONFIG_RTE_I40E_INC_VECTOR=n/' config/common_base", "# ", 30)
+            self.send_expect("sed -i -e 's/CONFIG_RTE_FM10K_INC_VECTOR=.*$/"
+                             + "CONFIG_RTE_FM10K_INC_VECTOR=n/' config/common_base", "# ", 30)
 
     def set_package(self, pkg_name="", patch_list=[]):
         self.package = pkg_name
