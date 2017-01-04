@@ -47,7 +47,6 @@ import os
 from packet import Packet, sniff_packets, load_sniff_packets, NVGRE, IPPROTO_NVGRE
 
 from scapy.utils import wrpcap, rdpcap
-from packet import IncreaseIP
 from scapy.packet import split_layers,bind_layers
 from scapy.layers.inet import Ether, IP, TCP, UDP
 from scapy.layers.sctp import SCTP
@@ -177,12 +176,12 @@ class TestIpgre(TestCase):
         Send packet as table listed and packet type match each layer
         """
         pkt_types = {
-            "MAC_IP_GRE_IPv4-TUNNEL_UDP_PKT":        ["Tunnel type: GRENAT", "Inner L4 type: UDP"],
-            "MAC_IP_GRE_IPv4-TUNNEL_TCP_PKT":        ["Tunnel type: GRENAT", "Inner L4 type: TCP"],
-            "MAC_IP_GRE_IPv4-TUNNEL_SCTP_PKT":       ["Tunnel type: GRENAT", "Inner L4 type: SCTP"],
-            "MAC_VLAN_IP_GRE_IPv4-TUNNEL_UDP_PKT":   ["Tunnel type: GRENAT", "Inner L4 type: UDP"],
-            "MAC_VLAN_IP_GRE_IPv4-TUNNEL_TCP_PKT":   ["Tunnel type: GRENAT", "Inner L4 type: TCP"],
-            "MAC_VLAN_IP_GRE_IPv4-TUNNEL_SCTP_PKT":  ["Tunnel type: GRENAT", "Inner L4 type: SCTP"]
+            "MAC_IP_GRE_IPv4-TUNNEL_UDP_PKT":        ["TUNNEL_GRENAT", "INNER_L4_UDP"],
+            "MAC_IP_GRE_IPv4-TUNNEL_TCP_PKT":        ["TUNNEL_GRENAT", "INNER_L4_TCP"],
+            "MAC_IP_GRE_IPv4-TUNNEL_SCTP_PKT":       ["TUNNEL_GRENAT", "INNER_L4_SCTP"],
+            "MAC_VLAN_IP_GRE_IPv4-TUNNEL_UDP_PKT":   ["TUNNEL_GRENAT", "INNER_L4_UDP"],
+            "MAC_VLAN_IP_GRE_IPv4-TUNNEL_TCP_PKT":   ["TUNNEL_GRENAT", "INNER_L4_TCP"],
+            "MAC_VLAN_IP_GRE_IPv4-TUNNEL_SCTP_PKT":  ["TUNNEL_GRENAT", "INNER_L4_SCTP"]
         }
         config_layers =  {'ether': {'src': self.outer_mac_src},
                           'ipv4': {'proto': 'gre'}}
@@ -205,24 +204,24 @@ class TestIpgre(TestCase):
         Send packet as table listed and packet type match each layer
         """
         pkt_types_ipv6_ip = {
-            "MAC_IPv6_GRE_IPv4-TUNNEL_UDP_PKT":           ["Tunnel type: GRENAT", "Inner L4 type: UDP"],
-            "MAC_IPv6_GRE_IPv4-TUNNEL_TCP_PKT":           ["Tunnel type: GRENAT", "Inner L4 type: TCP"],
-            "MAC_IPv6_GRE_IPv4-TUNNEL_SCTP_PKT":          ["Tunnel type: GRENAT", "Inner L4 type: SCTP"],
-            "MAC_VLAN_IPv6_GRE_IPv4-TUNNEL_UDP_PKT":      ["Tunnel type: GRENAT", "Inner L4 type: UDP", "PKT_RX_VLAN_PKT"],
-            "MAC_VLAN_IPv6_GRE_IPv4-TUNNEL_TCP_PKT":      ["Tunnel type: GRENAT", "Inner L4 type: TCP", "PKT_RX_VLAN_PKT"],
-            "MAC_VLAN_IPv6_GRE_IPv4-TUNNEL_SCTP_PKT":     ["Tunnel type: GRENAT", "Inner L4 type: SCTP", "PKT_RX_VLAN_PKT"]
+            "MAC_IPv6_GRE_IPv4-TUNNEL_UDP_PKT":           ["TUNNEL_GRENAT", "INNER_L4_UDP"],
+            "MAC_IPv6_GRE_IPv4-TUNNEL_TCP_PKT":           ["TUNNEL_GRENAT", "INNER_L4_TCP"],
+            "MAC_IPv6_GRE_IPv4-TUNNEL_SCTP_PKT":          ["TUNNEL_GRENAT", "INNER_L4_SCTP"],
+            "MAC_VLAN_IPv6_GRE_IPv4-TUNNEL_UDP_PKT":      ["TUNNEL_GRENAT", "INNER_L4_UDP", "PKT_RX_VLAN_PKT"],
+            "MAC_VLAN_IPv6_GRE_IPv4-TUNNEL_TCP_PKT":      ["TUNNEL_GRENAT", "INNER_L4_TCP", "PKT_RX_VLAN_PKT"],
+            "MAC_VLAN_IPv6_GRE_IPv4-TUNNEL_SCTP_PKT":     ["TUNNEL_GRENAT", "INNER_L4_SCTP", "PKT_RX_VLAN_PKT"]
         }
 
         pkt_types_ipv6_ipv6 = {
-            "MAC_IPv6_GRE_IPv6-TUNNEL_UDP_PKT":         ["Tunnel type: GRENAT", "Inner L4 type: UDP"],
-            "MAC_IPv6_GRE_IPv6-TUNNEL_TCP_PKT":         ["Tunnel type: GRENAT", "Inner L4 type: TCP"],
-            "MAC_VLAN_IPv6_GRE_IPv6-TUNNEL_UDP_PKT":    ["Tunnel type: GRENAT", "Inner L4 type: UDP", "PKT_RX_VLAN_PKT"],
-            "MAC_VLAN_IPv6_GRE_IPv6-TUNNEL_TCP_PKT":    ["Tunnel type: GRENAT", "Inner L4 type: TCP", "PKT_RX_VLAN_PKT"]
+            "MAC_IPv6_GRE_IPv6-TUNNEL_UDP_PKT":         ["TUNNEL_GRENAT", "INNER_L4_UDP"],
+            "MAC_IPv6_GRE_IPv6-TUNNEL_TCP_PKT":         ["TUNNEL_GRENAT", "INNER_L4_TCP"],
+            "MAC_VLAN_IPv6_GRE_IPv6-TUNNEL_UDP_PKT":    ["TUNNEL_GRENAT", "INNER_L4_UDP", "PKT_RX_VLAN_PKT"],
+            "MAC_VLAN_IPv6_GRE_IPv6-TUNNEL_TCP_PKT":    ["TUNNEL_GRENAT", "INNER_L4_TCP", "PKT_RX_VLAN_PKT"]
         }
 
         pkt_types_ipv6_ipv6_SCTP = {
-            "MAC_IPv6_GRE_IPv6-TUNNEL_SCTP_PKT":        ["Tunnel type: GRENAT", "Inner L4 type: SCTP"],
-            "MAC_VLAN_IPv6_GRE_IPv6-TUNNEL_SCTP_PKT":   ["Tunnel type: GRENAT", "Inner L4 type: SCTP", "PKT_RX_VLAN_PKT"]
+            "MAC_IPv6_GRE_IPv6-TUNNEL_SCTP_PKT":        ["TUNNEL_GRENAT", "INNER_L4_SCTP"],
+            "MAC_VLAN_IPv6_GRE_IPv6-TUNNEL_SCTP_PKT":   ["TUNNEL_GRENAT", "INNER_L4_SCTP", "PKT_RX_VLAN_PKT"]
         }
         
         # Start testpmd and enable rxonly forwarding mode
@@ -277,7 +276,7 @@ class TestIpgre(TestCase):
         self.dut.send_expect( cmd, "testpmd>")
         
         # Send packet inner ip address matched and check packet recevied by queue 3
-        pkt_types = {"MAC_IP_GRE_IPv4-TUNNEL_UDP_PKT":  ["Tunnel type: GRENAT",  "Inner L4 type: UDP"]}
+        pkt_types = {"MAC_IP_GRE_IPv4-TUNNEL_UDP_PKT":  ["TUNNEL_GRENAT",  "INNER_L4_UDP"]}
         config_layers = {'ether': {'src': self.outer_mac_src},
                          'ipv4': {'dst': "0.0.0.0", 'proto': 'gre'}}
         self.check_packet_transmission(pkt_types, config_layers)
@@ -291,7 +290,7 @@ class TestIpgre(TestCase):
         self.dut.send_expect( cmd, "testpmd>")
 
         # Send packet outer ip address matched and check packet recevied by queue 3.
-        pkt_types = {"MAC_IP_GRE_IPv4-TUNNEL_UDP_PKT": ["Tunnel type: GRENAT", "Inner L4 type: UDP"]}
+        pkt_types = {"MAC_IP_GRE_IPv4-TUNNEL_UDP_PKT": ["TUNNEL_GRENAT", "INNER_L4_UDP"]}
         config_layers = {'ether': {'src': self.outer_mac_src},
                          'ipv4': {'dst': "0.0.0.0", 'proto': 'gre'}}
         self.check_packet_transmission(pkt_types, config_layers)
@@ -325,9 +324,9 @@ class TestIpgre(TestCase):
         config_layers = {'ether': {'src': self.outer_mac_src, 
                                    'dst': self.outer_mac_dst},
                          'ipv4': {'proto': 'gre',
-                                  'src': IncreaseIP(self.outer_ip_src),
+                                  'src': self.outer_ip_src,
                                   'dst': self.outer_ip_dst},
-                         'inner_ipv4':{'src':IncreaseIP(self.inner_ip_src),
+                         'inner_ipv4':{'src':self.inner_ip_src,
                                        'dst':self.inner_ip_dst}}
         self.save_ref_packet(pkt_types, config_layers)
         config_layers = {'ether': {'src': self.outer_mac_src, 
@@ -346,9 +345,9 @@ class TestIpgre(TestCase):
         config_layers = {'ether': {'src': self.outer_mac_src, 
                                    'dst': self.outer_mac_dst},
                          'ipv4': {'proto': 'gre',
-                                  'src': IncreaseIP(self.outer_ip_src),
+                                  'src': self.outer_ip_src,
                                   'dst': self.outer_ip_dst},
-                         'inner_ipv4':{'src':IncreaseIP(self.inner_ip_src),
+                         'inner_ipv4':{'src':self.inner_ip_src,
                                        'dst':self.inner_ip_dst}}
         self.save_ref_packet(pkt_types, config_layers)
         config_layers = {'ether': {'src': self.outer_mac_src, 
@@ -367,9 +366,9 @@ class TestIpgre(TestCase):
         config_layers = {'ether': {'src': self.outer_mac_src, 
                                    'dst': self.outer_mac_dst},
                          'ipv4': {'proto': 'gre',
-                                  'src': IncreaseIP(self.outer_ip_src),
+                                  'src': self.outer_ip_src,
                                   'dst': self.outer_ip_dst},
-                         'inner_ipv4':{'src':IncreaseIP(self.inner_ip_src),
+                         'inner_ipv4':{'src':self.inner_ip_src,
                                        'dst':self.inner_ip_dst},
                          'tcp': {'src': 53, 
                                   'dst': 53}}
@@ -390,9 +389,9 @@ class TestIpgre(TestCase):
         config_layers = {'ether': {'src': self.outer_mac_src, 
                                    'dst': self.outer_mac_dst},
                          'ipv4': {'proto': 'gre',
-                                  'src': IncreaseIP(self.outer_ip_src),
+                                  'src': self.outer_ip_src,
                                   'dst': self.outer_ip_dst},
-                         'inner_ipv4':{'src':IncreaseIP(self.inner_ip_src),
+                         'inner_ipv4':{'src':self.inner_ip_src,
                                        'dst':self.inner_ip_dst}}
         self.save_ref_packet(pkt_types, config_layers)
         config_layers = {'ether': {'src': self.outer_mac_src, 
@@ -411,9 +410,9 @@ class TestIpgre(TestCase):
         config_layers = {'ether': {'src': self.outer_mac_src, 
                                    'dst': self.outer_mac_dst},
                          'ipv4': {'proto': 'gre',
-                                  'src': IncreaseIP(self.outer_ip_src),
+                                  'src': self.outer_ip_src,
                                   'dst': self.outer_ip_dst},
-                         'inner_ipv4':{'src':IncreaseIP(self.inner_ip_src),
+                         'inner_ipv4':{'src':self.inner_ip_src,
                                        'dst':self.inner_ip_dst},
                          'sctp': {'src': 53,
                                   'dst': 53}}
