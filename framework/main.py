@@ -43,7 +43,7 @@ os.chdir("../")
 cwd = os.getcwd()
 sys.path.append(cwd + '/nics')
 sys.path.append(cwd + '/framework')
-sys.path.append(cwd + '/tests')
+#sys.path.append(cwd + '/tests') # suites module path should be loaded in dts/run_all, not here
 sys.path.append(cwd + '/dep')
 
 import dts
