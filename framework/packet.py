@@ -345,7 +345,8 @@ class scapy(object):
         self.print_summary()
         if intf != '':
             # fix fortville can't receive packets with 00:00:00:00:00:00
-            self.pkt.getlayer(0).src = get_if_hwaddr(intf)
+            if self.pkt.getlayer(0).src == "00:00:00:00:00:00":
+                self.pkt.getlayer(0).src = get_if_hwaddr(intf)
             sendp(self.pkt, iface=intf, count=count)
 
 
