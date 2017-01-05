@@ -465,7 +465,7 @@ them to VM0, VM1, VM2 and VM3.Start PF driver on the Host and skip the VF
 driver will has been already attached to VMs::
     
     On PF ./tools/pci_unbind.py --bind=igb_uio 0000:08:00.0
-    echo 2 > /sys/bus/pci/devices/0000\:08\:00.0/max_vfs
+    echo 4 > /sys/bus/pci/devices/0000\:08\:00.0/max_vfs
     ./x86_64-default-linuxapp-gcc/app/testpmd -c f -n 4 -b 0000:08:10.0 -b 0000:08:10.2 -b 0000:08:10.4 -b 0000:08:10.6 --  -i
  
 If you want to run all common 4VM cases, please run testpmd on VM0, VM1, VM2
