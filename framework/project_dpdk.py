@@ -140,22 +140,22 @@ class DPDKdut(Dut):
 
         mode = load_global_setting(DPDK_RXMODE_SETTING)
         if mode == 'scalar':
-            self.send_expect("sed -i -e 's/CONFIG_RTE_I40E_INC_VECTOR=.*$/"
-                             + "CONFIG_RTE_I40E_INC_VECTOR=n/' config/common_base", "# ", 30)
+            self.send_expect("sed -i -e 's/CONFIG_RTE_LIBRTE_I40E_INC_VECTOR=.*$/"
+                             + "CONFIG_RTE_LIBRTE_I40E_INC_VECTOR=n/' config/common_base", "# ", 30)
             self.send_expect("sed -i -e 's/CONFIG_RTE_LIBRTE_I40E_RX_ALLOW_BULK_ALLOC=.*$/"
                              + "CONFIG_RTE_LIBRTE_I40E_RX_ALLOW_BULK_ALLOC=y/' config/common_base", "# ", 30)
         if mode == 'full':
-            self.send_expect("sed -i -e 's/CONFIG_RTE_I40E_INC_VECTOR=.*$/"
-                             + "CONFIG_RTE_I40E_INC_VECTOR=n/' config/common_base", "# ", 30)
+            self.send_expect("sed -i -e 's/CONFIG_RTE_LIBRTE_I40E_INC_VECTOR=.*$/"
+                             + "CONFIG_RTE_LIBRTE_I40E_INC_VECTOR=n/' config/common_base", "# ", 30)
             self.send_expect("sed -i -e 's/CONFIG_RTE_LIBRTE_I40E_RX_ALLOW_BULK_ALLOC=.*$/"
                              + "CONFIG_RTE_LIBRTE_I40E_RX_ALLOW_BULK_ALLOC=n/' config/common_base", "# ", 30)
         if mode == 'novector':
             self.send_expect("sed -i -e 's/CONFIG_RTE_IXGBE_INC_VECTOR=.*$/"
                              + "CONFIG_RTE_IXGBE_INC_VECTOR=n/' config/common_base", "# ", 30)
-            self.send_expect("sed -i -e 's/CONFIG_RTE_I40E_INC_VECTOR=.*$/"
-                             + "CONFIG_RTE_I40E_INC_VECTOR=n/' config/common_base", "# ", 30)
-            self.send_expect("sed -i -e 's/CONFIG_RTE_FM10K_INC_VECTOR=.*$/"
-                             + "CONFIG_RTE_FM10K_INC_VECTOR=n/' config/common_base", "# ", 30)
+            self.send_expect("sed -i -e 's/CONFIG_RTE_LIBRTE_I40E_INC_VECTOR=.*$/"
+                             + "CONFIG_RTE_LIBRTE_I40E_INC_VECTOR=n/' config/common_base", "# ", 30)
+            self.send_expect("sed -i -e 's/CONFIG_RTE_LIBRTE_FM10K_INC_VECTOR=.*$/"
+                             + "CONFIG_RTE_LIBRTE_FM10K_INC_VECTOR=n/' config/common_base", "# ", 30)
 
     def set_package(self, pkg_name="", patch_list=[]):
         self.package = pkg_name
