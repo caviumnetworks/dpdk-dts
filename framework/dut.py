@@ -376,7 +376,7 @@ class Dut(Crb):
             self.logger.info("Not nic need bind driver: %s" % driver)
             return
 
-        self.send_expect('tools/dpdk-devbind.py %s' % binding_list, '# ')
+        self.send_expect('usertools/dpdk-devbind.py %s' % binding_list, '# ')
 
     def unbind_interfaces_linux(self, nics_to_bind=None):
         """
@@ -400,7 +400,7 @@ class Dut(Crb):
             self.logger.info("Not nic need unbind driver")
             return
 
-        self.send_expect('tools/dpdk-devbind.py %s' % binding_list, '# ', 30)
+        self.send_expect('usertools/dpdk-devbind.py %s' % binding_list, '# ', 30)
 
     def get_ports(self, nic_type='any', perf=None, socket=None):
         """

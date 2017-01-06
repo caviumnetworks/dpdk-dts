@@ -63,7 +63,7 @@ class TestPortHotPlug(TestCase):
         """
         Run before each test case.
         """
-        self.dut.send_expect("./tools/dpdk-devbind.py -u %s" % self.dut.ports_info[self.port]['pci'],"#",60)
+        self.dut.send_expect("./usertools/dpdk-devbind.py -u %s" % self.dut.ports_info[self.port]['pci'],"#",60)
 
     def attach(self, port):
         """
@@ -122,7 +122,7 @@ class TestPortHotPlug(TestCase):
         first attach port after run testpmd
         """
         session_secondary = self.dut.new_session()
-        session_secondary.send_expect("./tools/dpdk-devbind.py --bind=igb_uio %s" % self.dut.ports_info[self.port]['pci'], "#", 60)
+        session_secondary.send_expect("./usertools/dpdk-devbind.py --bind=igb_uio %s" % self.dut.ports_info[self.port]['pci'], "#", 60)
         self.dut.close_session(session_secondary)
         cmd = "./x86_64-native-linuxapp-gcc/app/testpmd -c %s -n %s -- -i" % (self.coremask,self.dut.get_memory_channels())
         self.dut.send_expect(cmd,"testpmd>",60)
@@ -142,7 +142,7 @@ class TestPortHotPlug(TestCase):
         """
         Run after each test case.
         """
-        self.dut.send_expect("./tools/dpdk-devbind.py --bind=igb_uio %s" % self.dut.ports_info[self.port]['pci'],"#",60)
+        self.dut.send_expect("./usertools/dpdk-devbind.py --bind=igb_uio %s" % self.dut.ports_info[self.port]['pci'],"#",60)
         self.dut.kill_all()
         time.sleep(2)
         
