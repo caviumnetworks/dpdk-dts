@@ -441,7 +441,7 @@ class TestSriovKvm(TestCase):
 
             self.vm2 = QEMUKvm(self.dut, 'vm2', 'sriov_kvm')
             self.vm2.set_vm_device(driver='pci-assign', **vf2_prop)
-            self.vm_dut_2 = self.vm1.start()
+            self.vm_dut_2 = self.vm2.start()
             if self.vm_dut_2 is None:
                 raise Exception("Set up VM2 ENV failed!")
 
