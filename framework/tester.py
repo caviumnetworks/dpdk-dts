@@ -370,7 +370,7 @@ class Tester(Crb):
         if self.ports_info[localPort]['type'] == 'ixia':
             return self.ixia_packet_gen.send_ping6(self.ports_info[localPort]['pci'], mac, ipv6)
         else:
-            return self.send_expect("ping6 -w 5 -c 5 -A -I %s %s" % (self.ports_info[localPort]['intf'], ipv6), "# ", 10)
+            return self.send_expect("ping6 -w 5 -c 5 -A %s%%%s" % (ipv6, self.ports_info[localPort]['intf']), "# ", 10)
 
     def get_port_numa(self, port):
         """
