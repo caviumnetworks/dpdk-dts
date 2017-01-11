@@ -469,7 +469,7 @@ class TestSriovKvm(TestCase):
             self.vm2.stop()
             self.vm2 = None
 
-        if getattr(slef, 'vm3', None):
+        if getattr(self, 'vm3', None):
             self.vm3.stop()
             self.vm3 = None
 
@@ -482,7 +482,7 @@ class TestSriovKvm(TestCase):
             self.dut.destroy_sriov_vfs_by_port(self.used_dut_port)
             port = self.ports_info[self.used_dut_port]['port']
             port.bind_driver('igb_uio')
-            slef.used_dut_port = None
+            self.used_dut_port = None
 
         for port_id in self.dut_ports:
             port = self.dut.ports_info[port_id]['port']
@@ -1247,7 +1247,7 @@ class TestSriovKvm(TestCase):
             self.destroy_2vm_2vf_env()
 
         if self.setup_2vm_2pf_env_flag == 1:
-            slef.destroy_2vm_2pf_env()
+            self.destroy_2vm_2pf_env()
 
         if self.setup_4vm_prerequisite_flag == 1:
             self.destroy_four_vm_common_prerequisite()

@@ -469,17 +469,14 @@ class TestKni(TestCase):
         for port in self.config['ports']:
             virtual_interface = self.virtual_interface_name(port)
 
-            # Set up
+            # some time, the virtual interface stats is up when it create
+            # so should set down before set up.
+            self.dut.send_expect(
+                "ifconfig %s down" % virtual_interface, "# ")
             out = self.dut.send_expect(
                 "ifconfig %s up" % virtual_interface, "# ")
             self.verify("Configure network interface of %d up" %
                         port in out, "ifconfig up not supported")
-
-            out = self.dut.send_expect(
-                "ip -family inet6 address show dev %s" % virtual_interface, "# ")
-            self.verify(
-                "inet6 " in out, "ifconfig up the port_virtual_interaces not support")
-
             # Add an IPv6 address
             out = self.dut.send_expect(
                 "ifconfig %s add fe80::%d" % (virtual_interface, port + 1), "# ")
@@ -547,11 +544,6 @@ class TestKni(TestCase):
             tx_interface = self.tester.get_interface(tx_port)
 
             virtual_interface = self.virtual_interface_name(port)
-
-            out = self.dut.send_expect(
-                "ping -w 2 -I %s 192.168.%d.1" % (virtual_interface, port), "# ", 10)
-            self.verify("64 bytes from 192.168.%d.1:" %
-                        port in out, "ping not supported")
 
             out = self.dut.send_expect(
                 "ping -w 2 -I %s 192.168.%d.2" % (virtual_interface, port), "# ", 10)
