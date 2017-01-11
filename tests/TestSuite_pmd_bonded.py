@@ -454,7 +454,7 @@ UDP(sport=srcport, dport=destport)/Raw(load="\x50"*%s)], iface="%s", count=%d)' 
         out = self.dut.send_expect("create bonded device %d %d" % (mode, socket), "testpmd> ")
         self.verify("Created new bonded device" in out,
                     "Create bonded device on mode [%d] socket [%d] failed" % (mode, socket))
-        bond_port = self.get_value_from_str("Created new bonded device eth_bond_testpmd_[\d] on \(port ",
+        bond_port = self.get_value_from_str("Created new bonded device net_bond_testpmd_[\d] on \(port ",
                                             "\d+",
                                             out)
         bond_port = int(bond_port)
