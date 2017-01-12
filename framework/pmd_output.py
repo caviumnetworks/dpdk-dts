@@ -31,7 +31,7 @@
 
 import os
 import re
-from settings import TIMEOUT
+from settings import TIMEOUT,PROTOCOL_PACKET_SIZE
 from utils import create_mask
 
 
@@ -192,7 +192,13 @@ class PmdOutput():
         Get the allmulticast mode of port.
         """
         return self.get_detail_from_port_info("Allmulticast mode: ", "\S+", port_id)
-
+    def check_tx_bytes(self, tx_bytes, exp_bytes = 0):
+        """
+        fortville nic will send lldp packet when nic setup with testpmd.
+        so should used (tx_bytes - exp_bytes) % PROTOCOL_PACKET_SIZE['lldp']
+        for check tx_bytes count right
+        """
+        return not (tx_bytes - exp_bytes) % PROTOCOL_PACKET_SIZE['lldp']
     def get_port_vlan_offload(self, port_id):
         """
         Function: get the port vlan settting info.

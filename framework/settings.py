@@ -161,7 +161,12 @@ HEADER_SIZE = {
     'tcp': 20,
     'vxlan': 8,
 }
-
+"""
+dpdk send protocol packet size.
+"""
+PROTOCOL_PACKET_SIZE = {
+    'lldp': 110,
+}
 
 """
 Default session timeout.
