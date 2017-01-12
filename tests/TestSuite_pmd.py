@@ -364,13 +364,13 @@ class TestPmd(TestCase,IxiaPacketGenerator):
 
         time.sleep(5)
 
-        self.verify(p0tx_pkts == p1rx_pkts,
+        self.verify(self.pmdout.check_tx_bytes(p0tx_pkts, p1rx_pkts),
                     "packet pass assert error, %d RX packets, %d TX packets" % (p1rx_pkts, p0tx_pkts))
 
         self.verify(p1rx_bytes == frame_size - 4,
                     "packet pass assert error, expected %d RX bytes, actual %d" % (frame_size - 4, p1rx_bytes))
 
-        self.verify(p0tx_bytes == frame_size - 4,
+        self.verify(self.pmdout.check_tx_bytes(p0tx_bytes, frame_size - 4),
                     "packet pass assert error, expected %d TX bytes, actual %d" % (frame_size - 4, p0tx_bytes))
 
         return out

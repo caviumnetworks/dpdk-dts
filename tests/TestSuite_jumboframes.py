@@ -39,6 +39,7 @@ import re
 from time import sleep
 from test_case import TestCase
 from pmd_output import PmdOutput
+from settings import PROTOCOL_PACKET_SIZE
 
 ETHER_HEADER_LEN = 18
 IP_HEADER_LEN = 20
@@ -93,7 +94,9 @@ class TestJumboframes(TestCase):
         rx_err -= rx_err_ori
 
         if received:
-            self.verify((tx_pkts == rx_pkts) and ((tx_bytes + 4) == pktsize) and ((rx_bytes + 4) == pktsize),
+            self.verify(self.pmdout.check_tx_bytes(tx_pkts, rx_pkts) 
+                         and ( self.pmdout.check_tx_bytes(tx_bytes + 4, pktsize )) 
+                         and ((rx_bytes + 4) == pktsize),
                         "packet pass assert error")
         else:
             #self.verify(p0tx_pkts == p1rx_pkts and (p1rx_err == 1 or p1rx_pkts == 0),

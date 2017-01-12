@@ -42,7 +42,7 @@ import re
 import os
 from test_case import TestCase
 from pmd_output import PmdOutput
-from settings import HEADER_SIZE
+from settings import HEADER_SIZE, PROTOCOL_PACKET_SIZE
 from exception import VerifyFailure
 
 #
@@ -149,14 +149,17 @@ class TestShutdownApi(TestCase):
             if vlan is True:
                 # vlan strip default is on
                 tx_bytes_exp -= 4
-
+         
+        # fortville nic enable send lldp packet function when port setup
+        # now the tx-packets size is lldp_size(110) * n + forward packe size
+        # so use (tx-packets - forward packet size) % lldp_size, if it is 0, it means forward packet size right
+ 
         if received:
-            self.verify(p0tx_pkts == p1rx_pkts, "Wrong TX pkts p0_tx=%d, p1_rx=%d" % (p0tx_pkts, p1rx_pkts))
+            self.verify(self.pmdout.check_tx_bytes(p0tx_pkts, p1rx_pkts), "Wrong TX pkts p0_tx=%d, p1_rx=%d" % (p0tx_pkts, p1rx_pkts))
             self.verify(p1rx_bytes == rx_bytes_exp, "Wrong Rx bytes p1_rx=%d, expect=%d" % (p1rx_bytes, rx_bytes_exp))
-            self.verify(p0tx_bytes == tx_bytes_exp, "Wrong Tx bytes p0_tx=%d, expect=%d" % (p0tx_bytes, tx_bytes_exp))
+            self.verify(self.pmdout.check_tx_bytes(p0tx_bytes, tx_bytes_exp) , "Wrong Tx bytes p0_tx=%d, expect=%d" % (p0tx_bytes, tx_bytes_exp))
         else:
-            self.verify(p0tx_pkts == 0, "Packet not dropped p0tx_pkts=%d" % p0tx_pkts)
-            self.verify(p0tx_bytes == 0, "Packet not dropped p0tx_bytes=%d" % p0tx_bytes)
+            self.verify(self.pmdout.check_tx_bytes(p0tx_pkts), "Packet not dropped p0tx_pkts=%d" % p0tx_pkts)
 
     def check_ports(self, status=True):
         """
