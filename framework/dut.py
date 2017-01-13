@@ -73,6 +73,8 @@ class Dut(Crb):
         self.conf = PortConf()
         self.ports_map = []
         self.virt_pool = None
+        # hypervisor pid list, used for cleanup
+        self.virt_pids = []
 
     def init_host_session(self):
         if self.host_init_flag:
@@ -816,6 +818,13 @@ class Dut(Crb):
         pci = self.ports_info[port_id]['pci']
         self.virt_pool.del_vf_on_pf(pf_pci=pci, vflist=vflist)
 
+    def destroy_all_sriov_vfs(self):
+
+        if self.ports_info == None:
+            return
+        for port_id in range(len(self.ports_info)):
+            self.destroy_sriov_vfs_by_port(port_id)
+
     def get_vm_core_list(self):
         return VMCORELIST[self.crb['VM CoreList']]
 
@@ -965,6 +974,16 @@ class Dut(Crb):
             self.alt_session = None
         if self.host_init_flag:
             self.host_session.close()
+
+    def virt_exit(self):
+        """
+        Stop all unstopped hypervisors process
+        """
+        # try to kill all hypervisor process
+        for pid in self.virt_pids:
+            self.send_expect("kill -s SIGTERM %d" % pid, "# ", alt_session=True)
+            time.sleep(3)
+        self.virt_pids = []
 
     def crb_exit(self):
         """

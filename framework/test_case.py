@@ -335,6 +335,12 @@ class TestCase(object):
             dutobj.kill_all()
         self.tester.kill_all()
 
+        for dutobj in self.duts:
+            dutobj.virt_exit()
+            # destroy all vfs
+            dutobj.destroy_all_sriov_vfs()
+
+
     def wirespeed(self, nic, frame_size, num_ports):
         """
         Calculate bit rate. It is depended for NICs

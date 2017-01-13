@@ -105,6 +105,7 @@ class QEMUKvm(VirtBase):
     def set_vm_default(self):
         self.set_vm_name(self.vm_name)
         self.set_vm_enable_kvm()
+        self.set_vm_pid_file()
         self.set_vm_qga()
         self.set_vm_daemon()
         self.set_vm_monitor()
@@ -243,6 +244,25 @@ class QEMUKvm(VirtBase):
                 options['enable'] == 'yes':
             enable_kvm_boot_line = '-enable-kvm'
             self.__add_boot_line(enable_kvm_boot_line)
+
+    def set_vm_pid_file(self):
+        """
+        Set VM pidfile option for manage qemu process
+        """
+        self.__pid_file = '/tmp/.%s.pid' % self.vm_name
+        index = self.find_option_index('pid_file')
+        if index:
+            self.params[index] = {'pid_file': [{'name': '%s' % self.__pid_file}]}
+        else:
+            self.params.append({'pid_file': [{'name': '%s' % self.__pid_file}]})
+
+    def add_vm_pid_file(self, **options):
+        """
+        'name' : '/tmp/.qemu_vm0.pid'
+        """
+        if 'name' in options.keys():
+            self.__add_boot_line('-pidfile %s' % options['name'])
+
 
     def set_vm_name(self, vm_name):
         """
@@ -1154,6 +1174,16 @@ class QEMUKvm(VirtBase):
             self.vm_status = ST_RUNNING
         else:
             self.vm_status = ST_UNKNOWN
+
+        info = self.host_session.send_expect('cat %s' % self.__pid_file, "# ")
+        try:
+            pid = int(info)
+            # save pid into dut structure
+            self.host_dut.virt_pids.append(pid)
+        except:
+            self.host_logger.info("Failed to capture pid!!!")
+
+
 
     def __strip_guest_pci(self):
         """
