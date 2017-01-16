@@ -128,22 +128,6 @@ class TestUserspaceEthtool(TestCase, IxiaPacketGenerator):
         else:
             return 1518
 
-    def resize_linux_eeprom_file(self, dpdk_eeprom_file, linux_eeprom_file):
-        basePath = os.sep + "root" + self.dut.base_dir[1:] + os.sep
-        with open( basePath + os.sep + dpdk_eeprom_file, 'rb') as fpDpdk:
-            dpdk_bytes = fpDpdk.read()
-            dpdk_length = len(dpdk_bytes)
-
-        with open( basePath + linux_eeprom_file, 'rb') as fplinux:
-            linux_bytes = fplinux.read()
-            linux_length = len(linux_bytes)
-        
-        self.verify(dpdk_length <= linux_length, 
-                    "linux ethtool haven't dump out enough data as dpdk ethtool")
-
-        with open( basePath + linux_eeprom_file, 'wb') as fplinux:
-            fplinux.write(linux_bytes[:dpdk_length])
-
     def strip_md5(self, filename):
         md5_info = self.dut.send_expect("md5sum %s" % filename, "# ")
         md5_pattern = r"(\w+)  (\w+)"
@@ -153,25 +137,123 @@ class TestUserspaceEthtool(TestCase, IxiaPacketGenerator):
         else:
             return ""
 
+    def dpdk_get_nic_info(self, dpdk_driver_msg):
+        # get nic driver information using dpdk's ethtool
+        info_lines = dpdk_driver_msg.strip().splitlines()
+        driver_pattern = r"Port (\d+) driver: (.*) \(ver: (.*)\)"
+        pattern = "(.*): (.*)"
+        firmwarePat = "0x([0-9a-f]+)"
+        check_content = ['firmware-version', 'driver']
+        nic_infos = {}
+        port = None
+        cnt = 0
+        while cnt < len(info_lines):
+            if not info_lines[cnt]:
+                pass
+            else:
+                m = re.match(driver_pattern, info_lines[cnt])
+                if m:
+                    port = m.group(1)
+                    nic_infos[port] = {}
+                    nic_infos[port]['driver'] = m.group(2).split('_').pop()
+                    dpdk_version = m.group(3)
+                else:
+                    if port:
+                        out = re.findall(pattern, info_lines[cnt], re.M)[0]
+                        if len(out) == 2:
+                            if out[0] == 'firmware-version':
+                                nic_infos[port][out[0]] = "0x" + re.findall(firmwarePat, out[1], re.M)[0]
+                            else:
+                                nic_infos[port][out[0]] = out[1]
+            cnt += 1
+        # check driver content
+        status = []
+        for port_no in nic_infos:
+            nic_info = nic_infos[port_no]
+            for item in check_content:
+                if item not in nic_info.keys():
+                    status.append("port {0} get {1} failed".format(port_no, item))
+                    break
+        # if there is error in status, clear nic_infos 
+        if status:
+            msg = os.linesep.join(status)
+            nic_infos = None
+        else:
+            msg = ''
+        
+        return nic_infos, msg
+
+    def linux_get_nic_info(self, port_name):
+        # get nic driver information using linux's ethtool
+        pattern = "(.*): (.*)"
+        firmwarePat = "0x([0-9a-f]+)"
+        infos = self.dut.send_expect("ethtool -i %s"%port_name, "# ").splitlines()
+        sys_nic_info = {}
+        for info in infos:
+            if not info:
+                continue
+            result = re.findall(pattern, info, re.M)
+            if not result:
+                continue
+            out = result[0]
+            if len(out) == 2:
+                if out[0] == 'firmware-version':
+                    sys_nic_info[out[0]] = "0x" + re.findall(firmwarePat, out[1], re.M)[0]
+                else:
+                    sys_nic_info[out[0]] = out[1]
+        return sys_nic_info
+
+    def check_driver_info(self, port_name, sys_nic_info, dpdk_drv_info):
+        # compare dpdk query nic information with linux query nic information 
+        for item, value in dpdk_drv_info.items():
+            if item not in sys_nic_info.keys():
+                msg = "linux ethtool failed to dump driver info"
+                status = False
+                break
+            if value != sys_nic_info[item]:
+                msg = "Userspace ethtool failed to dump driver info"
+                status = False
+                break
+        else:
+            msg = "{0}: dpdk ethtool dump nic information done".format(port_name)
+            status = True
+
+        return status, msg
+
     def test_dump_driver_info(self):
         """
         Test ethtool can dump basic information
         """
         self.dut.send_expect(self.cmd, "EthApp>", 60)
-        out = self.dut.send_expect("drvinfo", "EthApp>")
-        driver_pattern = r"Port (\d+) driver: rte_(.*)_pmd \(ver: RTE (.*)\)"
-        driver_infos = out.split("\r\n")
-        self.verify(len(driver_infos) > 1, "Userspace tool failed to dump driver infor")
+        dpdk_driver_msg = self.dut.send_expect("drvinfo", "EthApp>")
+        self.dut.send_expect("quit", "# ")
+        dpdk_nic_infos, msg = self.dpdk_get_nic_info(dpdk_driver_msg)
+        self.verify(dpdk_nic_infos, msg)
+        
+        portsinfo = {}
+        for index in range(len(self.ports)):
+            portsinfo[index] = {}
+            portinfo = portsinfo[index]
+            port = self.ports[index]
+            netdev = self.dut.ports_info[port]['port']
+            # strip orignal driver
+            portinfo['ori_driver'] = netdev.get_nic_driver()
+            portinfo['net_dev'] = netdev
+            # bind to default driver
+            netdev.bind_driver()
+            # get linux interface
+            intf_name = netdev.get_interface_name()
+            sys_nic_info = self.linux_get_nic_info(intf_name)
+            status, msg = self.check_driver_info(intf_name, sys_nic_info, dpdk_nic_infos[str(index)])
+            self.logger.info(msg)
+            self.verify(status, msg)
 
-        # check dump driver info function
-        for driver_info in driver_infos:
-            m = re.match(driver_pattern, driver_info)
-            if m:
-                port = m.group(1)
-                driver = m.group(2)
-                version = m.group(3)
-                print utils.GREEN("Detect port %s with %s driver\n" % (port, driver))
+        for index in range(len(self.ports)):
+            # bind to original driver
+            portinfo = portsinfo[index]
+            portinfo['net_dev'].bind_driver(portinfo['ori_driver'])
 
+        self.dut.send_expect(self.cmd, "EthApp>", 60)
         # ethtool doesn't support port disconnect by tools of linux 
         # only detect physical link disconnect status
         if self.nic.startswith("fortville") == False:  
@@ -294,7 +376,6 @@ class TestUserspaceEthtool(TestCase, IxiaPacketGenerator):
 
         for index in range(len(self.ports)):
             md5 = self.strip_md5(portsinfo[index]['eeprom_file'])
-            self.resize_linux_eeprom_file( portsinfo[index]['eeprom_file'], portsinfo[index]['ethtool_eeprom'])
             md5_ref = self.strip_md5(portsinfo[index]['ethtool_eeprom'])
             print utils.GREEN("Reference eeprom md5 %s" % md5)
             print utils.GREEN("Reference eeprom md5_ref %s" % md5_ref)
