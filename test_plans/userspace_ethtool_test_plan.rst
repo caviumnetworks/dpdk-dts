@@ -65,8 +65,12 @@ dumped information, which are dumped separately by dpdk's ethtool and
 linux's ethtool, were exactly the same.
 
 	EthApp> drvinfo
-	Port 0 driver: rte_ixgbe_pmd (ver: RTE 2.1.0)
-	Port 1 driver: rte_ixgbe_pmd (ver: RTE 2.1.0)
+    Port 0 driver: net_ixgbe (ver: DPDK 17.02.0-rc0)
+    bus-info: 0000:84:00.0
+    firmware-version: 0x61bf0001
+    Port 1 driver: net_ixgbe (ver: DPDK 17.02.0-rc0)
+    bus-info: 0000:84:00.1
+    firmware-version: 0x61bf0001
 
 Use "link" command to dump all ports link status.
 Notice:: On FVL, link detect need a physical link disconnect.
