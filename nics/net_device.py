@@ -548,7 +548,7 @@ class NetDevice(object):
             self, 'get_sriov_vfs_pci_%s' % self.__get_os_type())
         return get_sriov_vfs_pci(self.domain_id, self.bus_id, self.devfun_id, self.current_driver)
 
-    def get_sriov_vfs_pci_freebsd(self, bus_id, devfun_id, driver):
+    def get_sriov_vfs_pci_freebsd(self, domain_id, bus_id, devfun_id, driver):
         """
         FreeBSD not support virtualization cases now.
         We can implement it later.
