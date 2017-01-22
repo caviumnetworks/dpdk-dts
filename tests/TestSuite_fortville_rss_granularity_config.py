@@ -32,7 +32,7 @@
 """
 DPDK Test suite.
 
-Test DPDK2.3 feature: 
+Test DPDK2.3 feature:
 1.Fortville support granularity configuration of RSS.
 By default Fortville uses hash input set preloaded from NVM image which includes all fields
 - IPv4/v6+TCP/UDP port. Potential problem for this is global configuration per device and can
@@ -65,11 +65,14 @@ from test_case import TestCase
 #
 # Test class.
 #
+
+
 class TestFortvilleRssGranularityConfig(TestCase):
     #
     #
     # Utility methods and other non-test code.
     #
+
     def set_up_all(self):
         """
         Run at the start of each test suite.
@@ -91,18 +94,19 @@ class TestFortvilleRssGranularityConfig(TestCase):
         Run before each test case.
         """
         pass
+
     def send_packet(self, itf, tran_type):
         """
         Sends packets.
         """
         global reta_lines
         global reta_num
-	self.tester.scapy_foreground()
+        self.tester.scapy_foreground()
         self.dut.send_expect("start", "testpmd>")
         mac = self.dut.get_mac_address(0)
 
         # send packet with different source and dest ip
-	i = 0
+        i = 0
         if tran_type == "ipv4-other":
             packet = r'sendp([Ether(dst="%s", src=get_if_hwaddr("%s"))/IP(src="192.168.0.%d", dst="192.168.0.%d", proto=47)/GRE(key_present=1,proto=2048,key=67108863)/IP()], iface="%s")' % (
                 mac, itf, i + 1, i + 2, itf)
@@ -124,7 +128,7 @@ class TestFortvilleRssGranularityConfig(TestCase):
         elif tran_type == "l2_payload":
             packet = r'sendp([Ether(dst="%s", src=get_if_hwaddr("%s"))/Dot1Q(id=0x8100,vlan=%s)/Dot1Q(id=0x8100,vlan=%s)], iface="%s")' % (
                 mac, itf, i + 1, i + 2, itf)
-	    self.tester.scapy_append(packet)
+            self.tester.scapy_append(packet)
             self.tester.scapy_execute()
             time.sleep(.5)
         elif tran_type == "ipv6-tcp":
@@ -165,9 +169,9 @@ class TestFortvilleRssGranularityConfig(TestCase):
 
                 reta_line[name.strip()] = value.strip()
                 reta_lines.append(reta_line)
-        
-	self.append_result_table()
- 
+
+        self.append_result_table()
+
     def append_result_table(self):
         """
         Append the hash value and queue id into table.
@@ -176,27 +180,25 @@ class TestFortvilleRssGranularityConfig(TestCase):
         global reta_lines
         global reta_num
 
-        #append the the hash value and queue id into table
+        # append the the hash value and queue id into table
         self.result_table_create(
             ['packet index', 'hash value', 'hash index', 'queue id'])
-
         i = 0
 
         for tmp_reta_line in reta_lines:
-            
+
             # compute the hash result of five tuple into the 7 LSBs value.
             hash_index = int(tmp_reta_line["RSS hash"], 16) % reta_num
-	    self.result_table_add(
+            self.result_table_add(
                 [i, tmp_reta_line["RSS hash"], hash_index, tmp_reta_line["queue"]])
             i = i + 1
-
 
     def test_ipv4_tcp(self):
         dutPorts = self.dut.get_ports(self.nic)
         localPort = self.tester.get_local_port(dutPorts[0])
         itf = self.tester.get_interface(localPort)
         global reta_num
-	global reta_lines
+        global reta_lines
         flag = 1
         self.dut.kill_all()
 
@@ -216,57 +218,57 @@ class TestFortvilleRssGranularityConfig(TestCase):
             self.dut.send_expect(
                 "port config all rss tcp", "testpmd> ")
             self.send_packet(itf, "ipv4-tcp")
-	    
-	    #set hash input set to "none" by testpmd on dut
-	    self.dut.send_expect("set_hash_input_set 0 ipv4-tcp none select", "testpmd> ")
-	    self.send_packet(itf, "ipv4-tcp")
 
-	    #set hash input set by testpmd on dut, enable src-ipv4 & dst-ipv4
-	    self.dut.send_expect("set_hash_input_set 0 ipv4-tcp src-ipv4 add", "testpmd> ")
-	    self.dut.send_expect("set_hash_input_set 0 ipv4-tcp dst-ipv4 add", "testpmd> ")
+            # set hash input set to "none" by testpmd on dut
+            self.dut.send_expect("set_hash_input_set 0 ipv4-tcp none select", "testpmd> ")
             self.send_packet(itf, "ipv4-tcp")
 
-	    #set hash input set by testpmd on dut, enable src-ipv4, dst-ipv4, tcp-src-port, tcp-dst-port
-	    self.dut.send_expect("set_hash_input_set 0 ipv4-tcp tcp-src-port add", "testpmd> ")
+            # set hash input set by testpmd on dut, enable src-ipv4 & dst-ipv4
+            self.dut.send_expect("set_hash_input_set 0 ipv4-tcp src-ipv4 add", "testpmd> ")
+            self.dut.send_expect("set_hash_input_set 0 ipv4-tcp dst-ipv4 add", "testpmd> ")
+            self.send_packet(itf, "ipv4-tcp")
+
+            # set hash input set by testpmd on dut, enable src-ipv4, dst-ipv4, tcp-src-port, tcp-dst-port
+            self.dut.send_expect("set_hash_input_set 0 ipv4-tcp tcp-src-port add", "testpmd> ")
             self.dut.send_expect("set_hash_input_set 0 ipv4-tcp tcp-dst-port add", "testpmd> ")
             self.send_packet(itf, "ipv4-tcp")
 
-	    #set hash input set by testpmd on dut, enable tcp-src-port, tcp-dst-port
-	    self.dut.send_expect("set_hash_input_set 0 ipv4-tcp none select", "testpmd> ")
-	    self.dut.send_expect("set_hash_input_set 0 ipv4-tcp tcp-src-port add", "testpmd> ")
+            # set hash input set by testpmd on dut, enable tcp-src-port, tcp-dst-port
+            self.dut.send_expect("set_hash_input_set 0 ipv4-tcp none select", "testpmd> ")
+            self.dut.send_expect("set_hash_input_set 0 ipv4-tcp tcp-src-port add", "testpmd> ")
             self.dut.send_expect("set_hash_input_set 0 ipv4-tcp tcp-dst-port add", "testpmd> ")
             self.send_packet(itf, "ipv4-tcp")
 
-        self.dut.send_expect("quit", "# ", 30)
-	self.result_table_print()
-    result_rows = self.result_table_getrows()
-	self.verify(len(result_rows) > 1, "There is no data in the table, testcase failed!")
+            self.dut.send_expect("quit", "# ", 30)
 
-	
-	if ((result_rows[1][1]==result_rows[2][1])or(result_rows[1][3]==result_rows[2][3])):
-	    flag = 0
-	    self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-	elif ((result_rows[1][1]==result_rows[3][1])or(result_rows[1][3]==result_rows[3][3])):
+        self.result_table_print()
+        result_rows = self.result_table_getrows()
+        self.verify(len(result_rows) > 1, "There is no data in the table, testcase failed!")
+
+        if ((result_rows[1][1] == result_rows[2][1]) or (result_rows[1][3] == result_rows[2][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-	elif ((result_rows[2][1]==result_rows[3][1])or(result_rows[2][3]==result_rows[3][3])):
+        elif ((result_rows[1][1] == result_rows[3][1]) or (result_rows[1][3] == result_rows[3][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-	elif ((result_rows[1][1]==result_rows[5][1])or(result_rows[1][3]==result_rows[5][3])):
+        elif ((result_rows[2][1] == result_rows[3][1]) or (result_rows[2][3] == result_rows[3][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-        elif ((result_rows[2][1]==result_rows[5][1])or(result_rows[2][3]==result_rows[5][3])):
+        elif ((result_rows[1][1] == result_rows[5][1]) or (result_rows[1][3] == result_rows[5][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-	elif ((result_rows[3][1]==result_rows[5][1])or(result_rows[3][3]==result_rows[5][3])):
+        elif ((result_rows[2][1] == result_rows[5][1]) or (result_rows[2][3] == result_rows[5][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-	elif ((result_rows[1][1]!=result_rows[4][1])or(result_rows[1][3]!=result_rows[4][3])):
+        elif ((result_rows[3][1] == result_rows[5][1]) or (result_rows[3][3] == result_rows[5][3])):
+            flag = 0
+            self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
+        elif ((result_rows[1][1] != result_rows[4][1]) or (result_rows[1][3] != result_rows[4][3])):
             flag = 0
             self.verify(flag, "The two hash values are different, rss_granularity_config failed!")
 
-	reta_lines = []
-    
+        reta_lines = []
+
     def test_ipv4_udp(self):
         dutPorts = self.dut.get_ports(self.nic)
         localPort = self.tester.get_local_port(dutPorts[0])
@@ -293,51 +295,52 @@ class TestFortvilleRssGranularityConfig(TestCase):
                 "port config all rss udp", "testpmd> ")
             self.send_packet(itf, "ipv4-udp")
 
-            #set hash input set to "none" by testpmd on dut
+            # set hash input set to "none" by testpmd on dut
             self.dut.send_expect("set_hash_input_set 0 ipv4-udp none select", "testpmd> ")
             self.send_packet(itf, "ipv4-udp")
 
-            #set hash input set by testpmd on dut, enable src-ipv4 & dst-ipv4
+            # set hash input set by testpmd on dut, enable src-ipv4 & dst-ipv4
             self.dut.send_expect("set_hash_input_set 0 ipv4-udp src-ipv4 add", "testpmd> ")
             self.dut.send_expect("set_hash_input_set 0 ipv4-udp dst-ipv4 add", "testpmd> ")
             self.send_packet(itf, "ipv4-udp")
 
-            #set hash input set by testpmd on dut, enable src-ipv4, dst-ipv4, udp-src-port, udp-dst-port
+            # set hash input set by testpmd on dut, enable src-ipv4, dst-ipv4, udp-src-port, udp-dst-port
             self.dut.send_expect("set_hash_input_set 0 ipv4-udp udp-src-port add", "testpmd> ")
             self.dut.send_expect("set_hash_input_set 0 ipv4-udp udp-dst-port add", "testpmd> ")
             self.send_packet(itf, "ipv4-udp")
 
-            #set hash input set by testpmd on dut, enable udp-src-port, udp-dst-port
+            # set hash input set by testpmd on dut, enable udp-src-port, udp-dst-port
             self.dut.send_expect("set_hash_input_set 0 ipv4-udp none select", "testpmd> ")
             self.dut.send_expect("set_hash_input_set 0 ipv4-udp udp-src-port add", "testpmd> ")
             self.dut.send_expect("set_hash_input_set 0 ipv4-udp udp-dst-port add", "testpmd> ")
-	    self.send_packet(itf, "ipv4-udp")
+            self.send_packet(itf, "ipv4-udp")
 
-        self.dut.send_expect("quit", "# ", 30)
+            self.dut.send_expect("quit", "# ", 30)
+
         self.result_table_print()
         result_rows = self.result_table_getrows()
         self.verify(len(result_rows) > 1, "There is no data in the table, testcase failed!")
 
-        #check the results   
-        if ((result_rows[1][1]==result_rows[2][1])or(result_rows[1][3]==result_rows[2][3])):
+        # check the results
+        if ((result_rows[1][1] == result_rows[2][1])or(result_rows[1][3] == result_rows[2][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-        elif ((result_rows[1][1]==result_rows[3][1])or(result_rows[1][3]==result_rows[3][3])):
+        elif ((result_rows[1][1] == result_rows[3][1])or(result_rows[1][3] == result_rows[3][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-        elif ((result_rows[2][1]==result_rows[3][1])or(result_rows[2][3]==result_rows[3][3])):
+        elif ((result_rows[2][1] == result_rows[3][1])or(result_rows[2][3] == result_rows[3][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-        elif ((result_rows[1][1]==result_rows[5][1])or(result_rows[1][3]==result_rows[5][3])):
+        elif ((result_rows[1][1] == result_rows[5][1])or(result_rows[1][3] == result_rows[5][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-        elif ((result_rows[2][1]==result_rows[5][1])or(result_rows[2][3]==result_rows[5][3])):
+        elif ((result_rows[2][1] == result_rows[5][1])or(result_rows[2][3] == result_rows[5][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-        elif ((result_rows[3][1]==result_rows[5][1])or(result_rows[3][3]==result_rows[5][3])):
+        elif ((result_rows[3][1] == result_rows[5][1])or(result_rows[3][3] == result_rows[5][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-        elif ((result_rows[1][1]!=result_rows[4][1])or(result_rows[1][3]!=result_rows[4][3])):
+        elif ((result_rows[1][1] != result_rows[4][1])or(result_rows[1][3] != result_rows[4][3])):
             flag = 0
             self.verify(flag, "The two hash values are different, rss_granularity_config failed!")
 
@@ -369,51 +372,52 @@ class TestFortvilleRssGranularityConfig(TestCase):
                 "port config all rss tcp", "testpmd> ")
             self.send_packet(itf, "ipv6-tcp")
 
-            #set hash input set to "none" by testpmd on dut
+            # set hash input set to "none" by testpmd on dut
             self.dut.send_expect("set_hash_input_set 0 ipv6-tcp none select", "testpmd> ")
             self.send_packet(itf, "ipv6-tcp")
 
-            #set hash input set by testpmd on dut, enable src-ipv6 & dst-ipv6
+            # set hash input set by testpmd on dut, enable src-ipv6 & dst-ipv6
             self.dut.send_expect("set_hash_input_set 0 ipv6-tcp src-ipv6 add", "testpmd> ")
             self.dut.send_expect("set_hash_input_set 0 ipv6-tcp dst-ipv6 add", "testpmd> ")
             self.send_packet(itf, "ipv6-tcp")
 
-            #set hash input set by testpmd on dut, enable src-ipv6, dst-ipv6, tcp-src-port, tcp-dst-port
+            # set hash input set by testpmd on dut, enable src-ipv6, dst-ipv6, tcp-src-port, tcp-dst-port
             self.dut.send_expect("set_hash_input_set 0 ipv6-tcp tcp-src-port add", "testpmd> ")
             self.dut.send_expect("set_hash_input_set 0 ipv6-tcp tcp-dst-port add", "testpmd> ")
             self.send_packet(itf, "ipv6-tcp")
 
-            #set hash input set by testpmd on dut, enable tcp-src-port, tcp-dst-port
+            # set hash input set by testpmd on dut, enable tcp-src-port, tcp-dst-port
             self.dut.send_expect("set_hash_input_set 0 ipv6-tcp none select", "testpmd> ")
             self.dut.send_expect("set_hash_input_set 0 ipv6-tcp tcp-src-port add", "testpmd> ")
             self.dut.send_expect("set_hash_input_set 0 ipv6-tcp tcp-dst-port add", "testpmd> ")
             self.send_packet(itf, "ipv6-tcp")
 
-	self.dut.send_expect("quit", "# ", 30)
+            self.dut.send_expect("quit", "# ", 30)
+
         self.result_table_print()
         result_rows = self.result_table_getrows()
         self.verify(len(result_rows) > 1, "There is no data in the table, testcase failed!")
 
-        #check the results
-        if ((result_rows[1][1]==result_rows[2][1])or(result_rows[1][3]==result_rows[2][3])):
+        # check the results
+        if ((result_rows[1][1] == result_rows[2][1])or(result_rows[1][3] == result_rows[2][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-        elif ((result_rows[1][1]==result_rows[3][1])or(result_rows[1][3]==result_rows[3][3])):
+        elif ((result_rows[1][1] == result_rows[3][1])or(result_rows[1][3] == result_rows[3][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-        elif ((result_rows[2][1]==result_rows[3][1])or(result_rows[2][3]==result_rows[3][3])):
+        elif ((result_rows[2][1] == result_rows[3][1])or(result_rows[2][3] == result_rows[3][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-        elif ((result_rows[1][1]==result_rows[5][1])or(result_rows[1][3]==result_rows[5][3])):
+        elif ((result_rows[1][1] == result_rows[5][1])or(result_rows[1][3] == result_rows[5][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-        elif ((result_rows[2][1]==result_rows[5][1])or(result_rows[2][3]==result_rows[5][3])):
+        elif ((result_rows[2][1] == result_rows[5][1])or(result_rows[2][3] == result_rows[5][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-        elif ((result_rows[3][1]==result_rows[5][1])or(result_rows[3][3]==result_rows[5][3])):
+        elif ((result_rows[3][1] == result_rows[5][1])or(result_rows[3][3] == result_rows[5][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-        elif ((result_rows[1][1]!=result_rows[4][1])or(result_rows[1][3]!=result_rows[4][3])):
+        elif ((result_rows[1][1] != result_rows[4][1])or(result_rows[1][3] != result_rows[4][3])):
             flag = 0
             self.verify(flag, "The two hash values are different, rss_granularity_config failed!")
 
@@ -445,51 +449,52 @@ class TestFortvilleRssGranularityConfig(TestCase):
                 "port config all rss udp", "testpmd> ")
             self.send_packet(itf, "ipv6-udp")
 
-            #set hash input set to "none" by testpmd on dut
+            # set hash input set to "none" by testpmd on dut
             self.dut.send_expect("set_hash_input_set 0 ipv6-udp none select", "testpmd> ")
             self.send_packet(itf, "ipv6-udp")
 
-            #set hash input set by testpmd on dut, enable src-ipv6 & dst-ipv6
+            # set hash input set by testpmd on dut, enable src-ipv6 & dst-ipv6
             self.dut.send_expect("set_hash_input_set 0 ipv6-udp src-ipv6 add", "testpmd> ")
             self.dut.send_expect("set_hash_input_set 0 ipv6-udp dst-ipv6 add", "testpmd> ")
             self.send_packet(itf, "ipv6-udp")
 
-            #set hash input set by testpmd on dut, enable src-ipv6, dst-ipv6, udp-src-port, udp-dst-port
+            # set hash input set by testpmd on dut, enable src-ipv6, dst-ipv6, udp-src-port, udp-dst-port
             self.dut.send_expect("set_hash_input_set 0 ipv6-udp udp-src-port add", "testpmd> ")
             self.dut.send_expect("set_hash_input_set 0 ipv6-udp udp-dst-port add", "testpmd> ")
             self.send_packet(itf, "ipv6-udp")
 
-            #set hash input set by testpmd on dut, enable udp-src-port, udp-dst-port
+            # set hash input set by testpmd on dut, enable udp-src-port, udp-dst-port
             self.dut.send_expect("set_hash_input_set 0 ipv6-udp none select", "testpmd> ")
             self.dut.send_expect("set_hash_input_set 0 ipv6-udp udp-src-port add", "testpmd> ")
             self.dut.send_expect("set_hash_input_set 0 ipv6-udp udp-dst-port add", "testpmd> ")
             self.send_packet(itf, "ipv6-udp")
 
-        self.dut.send_expect("quit", "# ", 30)
+            self.dut.send_expect("quit", "# ", 30)
+
         self.result_table_print()
         result_rows = self.result_table_getrows()
         self.verify(len(result_rows) > 1, "There is no data in the table, testcase failed!")
 
-        #check the results
-        if ((result_rows[1][1]==result_rows[2][1])or(result_rows[1][3]==result_rows[2][3])):
+        # check the results
+        if ((result_rows[1][1] == result_rows[2][1])or(result_rows[1][3] == result_rows[2][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-        elif ((result_rows[1][1]==result_rows[3][1])or(result_rows[1][3]==result_rows[3][3])):
+        elif ((result_rows[1][1] == result_rows[3][1])or(result_rows[1][3] == result_rows[3][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-        elif ((result_rows[2][1]==result_rows[3][1])or(result_rows[2][3]==result_rows[3][3])):
+        elif ((result_rows[2][1] == result_rows[3][1])or(result_rows[2][3] == result_rows[3][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-        elif ((result_rows[1][1]==result_rows[5][1])or(result_rows[1][3]==result_rows[5][3])):
+        elif ((result_rows[1][1] == result_rows[5][1])or(result_rows[1][3] == result_rows[5][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-        elif ((result_rows[2][1]==result_rows[5][1])or(result_rows[2][3]==result_rows[5][3])):
+        elif ((result_rows[2][1] == result_rows[5][1])or(result_rows[2][3] == result_rows[5][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-        elif ((result_rows[3][1]==result_rows[5][1])or(result_rows[3][3]==result_rows[5][3])):
+        elif ((result_rows[3][1] == result_rows[5][1])or(result_rows[3][3] == result_rows[5][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-        elif ((result_rows[1][1]!=result_rows[4][1])or(result_rows[1][3]!=result_rows[4][3])):
+        elif ((result_rows[1][1] != result_rows[4][1])or(result_rows[1][3] != result_rows[4][3])):
             flag = 0
             self.verify(flag, "The two hash values are different, rss_granularity_config failed!")
 
@@ -515,42 +520,42 @@ class TestFortvilleRssGranularityConfig(TestCase):
 
             self.dut.send_expect("port stop all", "testpmd> ")
             self.dut.send_expect("vlan set qinq on 0", "testpmd> ")
-	    self.dut.send_expect(
+            self.dut.send_expect(
                 "set_hash_global_config  0 toeplitz l2_payload enable", "testpmd> ")
             self.dut.send_expect("port start all", "testpmd> ")
             self.dut.send_expect(
                 "port config all rss ether", "testpmd> ")
             self.send_packet(itf, "l2_payload")
 
-            #set hash input set to "none" by testpmd on dut
+            # set hash input set to "none" by testpmd on dut
             self.dut.send_expect("set_hash_input_set 0 l2_payload none select", "testpmd> ")
             self.send_packet(itf, "l2_payload")
 
-            #set hash input set by testpmd on dut, enable ovlan
+            # set hash input set by testpmd on dut, enable ovlan
             self.dut.send_expect("set_hash_input_set 0 l2_payload ovlan add", "testpmd> ")
             self.send_packet(itf, "l2_payload")
 
-            #set hash input set by testpmd on dut, enable ovlan & ivlan
+            # set hash input set by testpmd on dut, enable ovlan & ivlan
             self.dut.send_expect("set_hash_input_set 0 l2_payload ivlan add", "testpmd> ")
             self.send_packet(itf, "l2_payload")
 
+            self.dut.send_expect("quit", "# ", 30)
 
-	self.dut.send_expect("quit", "# ", 30)
         self.result_table_print()
         result_rows = self.result_table_getrows()
         self.verify(len(result_rows) > 1, "There is no data in the table, testcase failed!")
 
-        #check the results
-        if ((result_rows[1][1]!=result_rows[2][1])or(result_rows[1][3]!=result_rows[2][3])):
+        # check the results
+        if ((result_rows[1][1] != result_rows[2][1])or(result_rows[1][3] != result_rows[2][3])):
             flag = 0
             self.verify(flag, "The two hash values are different, rss_granularity_config failed!")
-        elif ((result_rows[1][1]==result_rows[3][1])or(result_rows[1][3]==result_rows[3][3])):
+        elif ((result_rows[1][1] == result_rows[3][1])or(result_rows[1][3] == result_rows[3][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-        elif ((result_rows[1][1]==result_rows[4][1])or(result_rows[1][3]==result_rows[4][3])):
+        elif ((result_rows[1][1] == result_rows[4][1])or(result_rows[1][3] == result_rows[4][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-        elif ((result_rows[3][1]==result_rows[4][1])or(result_rows[3][3]==result_rows[4][3])):
+        elif ((result_rows[3][1] == result_rows[4][1])or(result_rows[3][3] == result_rows[4][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
 
@@ -582,46 +587,46 @@ class TestFortvilleRssGranularityConfig(TestCase):
                 "port config all rss all", "testpmd> ")
             self.send_packet(itf, "ipv4-other")
 
-            #set hash input set to "none" by testpmd on dut
+            # set hash input set to "none" by testpmd on dut
             self.dut.send_expect("set_hash_input_set 0 ipv4-other none select", "testpmd> ")
             self.send_packet(itf, "ipv4-other")
 
-            #set hash input set by testpmd on dut, enable src-ipv4 & dst-ipv4
+            # set hash input set by testpmd on dut, enable src-ipv4 & dst-ipv4
             self.dut.send_expect("set_hash_input_set 0 ipv4-other src-ipv4 add", "testpmd> ")
             self.dut.send_expect("set_hash_input_set 0 ipv4-other dst-ipv4 add", "testpmd> ")
-	        self.send_packet(itf, "ipv4-other")
-
-            #set hash input set by testpmd on dut, enable src-ipv4, dst-ipv4, gre-key-len 3
-            self.dut.send_expect("global_config 0 gre-key-len 3", "testpmd> ")
-	        self.dut.send_expect("set_hash_input_set 0 ipv4-other gre-key add", "testpmd> ")
             self.send_packet(itf, "ipv4-other")
 
-	        #set hash input set by testpmd on dut, enable src-ipv4, dst-ipv4, gre-key-len 4
-            self.dut.send_expect("global_config 0 gre-key-len 4", "testpmd> ")
-	        self.send_packet(itf, "ipv4-other")
+            # set hash input set by testpmd on dut, enable src-ipv4, dst-ipv4, gre-key-len 3
+            self.dut.send_expect("global_config 0 gre-key-len 3", "testpmd> ")
+            self.dut.send_expect("set_hash_input_set 0 ipv4-other gre-key add", "testpmd> ")
+            self.send_packet(itf, "ipv4-other")
 
-        self.dut.send_expect("quit", "# ", 30)
+            # set hash input set by testpmd on dut, enable src-ipv4, dst-ipv4, gre-key-len 4
+            self.dut.send_expect("global_config 0 gre-key-len 4", "testpmd> ")
+            self.send_packet(itf, "ipv4-other")
+
+            self.dut.send_expect("quit", "# ", 30)
+
         self.result_table_print()
         result_rows = self.result_table_getrows()
         self.verify(len(result_rows) > 1, "There is no data in the table, testcase failed!")
 
-        #check the results
-        if ((result_rows[1][1]==result_rows[2][1])or(result_rows[1][3]==result_rows[2][3])):
+        # check the results
+        if ((result_rows[1][1] == result_rows[2][1])or(result_rows[1][3] == result_rows[2][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-        elif ((result_rows[1][1]!=result_rows[3][1])or(result_rows[1][3]!=result_rows[3][3])):
+        elif ((result_rows[1][1] != result_rows[3][1])or(result_rows[1][3] != result_rows[3][3])):
             flag = 0
             self.verify(flag, "The two hash values are different, rss_granularity_config failed!")
-        elif ((result_rows[1][1]==result_rows[4][1])or(result_rows[1][3]==result_rows[4][3])):
+        elif ((result_rows[1][1] == result_rows[4][1])or(result_rows[1][3] == result_rows[4][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
-        elif ((result_rows[4][1]==result_rows[5][1])or(result_rows[4][3]==result_rows[5][3])):
+        elif ((result_rows[4][1] == result_rows[5][1])or(result_rows[4][3] == result_rows[5][3])):
             flag = 0
             self.verify(flag, "The two hash values are the same, rss_granularity_config failed!")
 
         reta_lines = []
 
-	
     def tear_down(self):
         """
         Run after each test case.
