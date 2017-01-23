@@ -143,9 +143,9 @@ class SSHPexpect(object):
         """
         Copies a file from a remote place into local.
         """
-        command = 'scp {0}@{1}:{2} {3}'.format(self.username, self.host, src, dst)
+        command = 'scp -v {0}@{1}:{2} {3}'.format(self.username, self.host, src, dst)
         if ':' in self.host:
-            command = 'scp -P {0} -o NoHostAuthenticationForLocalhost=yes {1}@{2}:{3} {4}'.format(
+            command = 'scp -v -P {0} -o NoHostAuthenticationForLocalhost=yes {1}@{2}:{3} {4}'.format(
                 str(self.port), self.username, self.ip, src, dst)
         if password == '':
             self._spawn_scp(command, self.password)
@@ -158,10 +158,10 @@ class SSHPexpect(object):
         """
         command = 'scp {0} {1}@{2}:{3}'.format(src, self.username, self.host, dst)
         if ':' in self.host:
-            command = 'scp -P {0} -o NoHostAuthenticationForLocalhost=yes {1} {2}@{3}:{4}'.format(
+            command = 'scp -v -P {0} -o NoHostAuthenticationForLocalhost=yes {1} {2}@{3}:{4}'.format(
                 str(self.port), src, self.username, self.ip, dst)
         else:
-            command = 'scp {0} {1}@{2}:{3}'.format(
+            command = 'scp -v {0} {1}@{2}:{3}'.format(
                 src, self.username, self.host, dst)
         if password == '':
             self._spawn_scp(command, self.password)
@@ -185,7 +185,7 @@ class SSHPexpect(object):
         if i == 1:
             time.sleep(0.5)
             p.sendline(password)
-            p.expect("100%", 60)
+            p.expect("Exit status 0", 60)
         if i == 4:
             self.logger.error("SCP TIMEOUT error %d" % i)
 
