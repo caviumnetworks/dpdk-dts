@@ -41,6 +41,7 @@ import re
 import signal
 import random
 import subprocess
+import shlex        # separate command line for pipe
 from uuid import uuid4
 from settings import FOLDERS
 
@@ -94,6 +95,9 @@ SNIFF_PIDS = {}
 # Saved packet generator process id
 # used in pktgen or tgen
 PKTGEN_PIDS = {}
+
+# default filter for LLDP packet
+LLDP_FILTER = {'layer': 'ether', 'config': {'type': 'not lldp'}}
 
 
 class scapy(object):
@@ -165,7 +169,7 @@ class scapy(object):
 
     def vlan(self, pkt_layer, vlan, prio=0, type=None):
         if pkt_layer.name != "802.1Q":
-           return
+            return
         pkt_layer.vlan = int(vlan)
         pkt_layer.prio = prio
         if type is not None:
@@ -183,7 +187,7 @@ class scapy(object):
 
     def etag(self, pkt_layer, ECIDbase=0, prio=0, type=None):
         if pkt_layer.name != "802.1BR":
-           return
+            return
         pkt_layer.ECIDbase = int(ECIDbase)
         pkt_layer.prio = prio
         if type is not None:
@@ -224,6 +228,8 @@ class scapy(object):
             value = layer.src
         elif element == 'dst':
             value = layer.dst
+        else:
+            value = layer.getfieldval(element)
 
         return value
 
@@ -237,6 +243,8 @@ class scapy(object):
             value = layer.sport
         elif element == 'dst':
             value = layer.dport
+        else:
+            value = layer.getfieldval(element)
 
         return value
 
@@ -303,7 +311,7 @@ class scapy(object):
         if payload is not None:
             pkt_layer.load = ''
             for hex1, hex2 in payload:
-                pkt_layer.load += struct.pack("=B", int('%s%s' %(hex1, hex2), 16))
+                pkt_layer.load += struct.pack("=B", int('%s%s' % (hex1, hex2), 16))
 
     def gre(self, pkt_layer, proto=None):
         if proto is not None:
@@ -500,11 +508,11 @@ class Packet(object):
             'VLAN': 'vlan',
             'ETAG': 'etag',
             'IP': 'ipv4',
-            'IPv4-TUNNEL':'inner_ipv4',
+            'IPv4-TUNNEL': 'inner_ipv4',
             'IPihl': 'ipv4ihl',
             'IPFRAG': 'ipv4_ext',
             'IPv6': 'ipv6',
-            'IPv6-TUNNEL':'inner_ipv6',
+            'IPv6-TUNNEL': 'inner_ipv6',
             'IPv6FRAG': 'ipv6_frag',
             'IPv6EXT': 'ipv6_ext',
             'IPv6EXT2': 'ipv6_ext2',
@@ -707,14 +715,68 @@ def save_packets(pkts=None, filename=None):
         pass
 
 
-def sniff_packets(intf, count=0, timeout=5):
+def get_ether_type(eth_type=""):
+    # need add more types later
+    if eth_type.lower() == "lldp":
+        return '0x88cc'
+    elif eth_type.lower() == "ip":
+        return '0x0800'
+    elif eth_type.lower() == "ipv6":
+        return '0x86dd'
+
+    return 'not support'
+
+
+def get_filter_cmd(filters=[]):
+    """
+    Return bpd formated filter string, only support ether layer now
+    """
+    filter_sep = " and "
+    filter_cmds = ""
+    for pktfilter in filters:
+        filter_cmd = ""
+        if pktfilter['layer'] == 'ether':
+            if pktfilter['config'].keys()[0] == 'dst':
+                dmac = pktfilter['config']['dst']
+                filter_cmd = "ether dst %s" % dmac
+            elif pktfilter['config'].keys()[0] == 'src':
+                smac = pktfilter['config']['src']
+                filter_cmd = "ether src %s" % smac
+            elif pktfilter['config'].keys()[0] == 'type':
+                eth_type = pktfilter['config']['type']
+                eth_format = r"(\w+) (\w+)"
+                m = re.match(eth_format, eth_type)
+                if m:
+                    type_hex = get_ether_type(m.group(2))
+                    if type_hex == 'not support':
+                        continue
+                    if m.group(1) == 'is':
+                        filter_cmd = 'ether[12:2] = %s' % type_hex
+                    elif m.group(1) == 'not':
+                        filter_cmd = 'ether[12:2] != %s' % type_hex
+
+        if len(filter_cmds):
+            if len(filter_cmd):
+                filter_cmds += filter_sep
+                filter_cmds += filter_cmd
+        else:
+            filter_cmds = filter_cmd
+
+    if len(filter_cmds):
+        return ' \'' + filter_cmds + '\' '
+    else:
+        return ""
+
+
+def sniff_packets(intf, count=0, timeout=5, filters=[]):
     """
     sniff all packets for certain port in certain seconds
     """
     param = ""
     direct_param = r"(\s+)\[ -(\w) in\|out\|inout \]"
     tcpdump_help = subprocess.check_output("tcpdump -h; echo 0",
-                        stderr=subprocess.STDOUT, shell=True)
+                                           stderr=subprocess.STDOUT,
+                                           shell=True)
     for line in tcpdump_help.split('\n'):
         m = re.match(direct_param, line)
         if m:
@@ -723,16 +785,23 @@ def sniff_packets(intf, count=0, timeout=5):
     if len(param) == 0:
         print "tcpdump not support direction chioce!!!"
 
-    sniff_cmd = 'tcpdump -i %(INTF)s %(IN_PARAM)s -w %(FILE)s'
+    if LLDP_FILTER not in filters:
+        filters.append(LLDP_FILTER)
+
+    filter_cmd = get_filter_cmd(filters)
+
+    sniff_cmd = 'tcpdump -i %(INTF)s %(FILTER)s %(IN_PARAM)s -w %(FILE)s'
     options = {'INTF': intf, 'COUNT': count, 'IN_PARAM': param,
-               'FILE': '/tmp/sniff_%s.pcap' % intf}
+               'FILE': '/tmp/sniff_%s.pcap' % intf,
+               'FILTER': filter_cmd}
     if count:
         sniff_cmd += ' -c %(COUNT)d'
         cmd = sniff_cmd % options
     else:
         cmd = sniff_cmd % options
 
-    args = cmd.split()
+    args = shlex.split(cmd)
+
     pipe = subprocess.Popen(args)
     index = str(time.time())
     SNIFF_PIDS[index] = (pipe, intf, timeout)
@@ -808,6 +877,7 @@ def compare_pktload(pkt1=None, pkt2=None, layer="L2"):
     else:
         return False
 
+
 def strip_pktload(pkt=None, layer="L2"):
     if layer == "L2":
         l_idx = 0
@@ -828,6 +898,8 @@ def strip_pktload(pkt=None, layer="L2"):
 ###############################################################################
 ###############################################################################
 if __name__ == "__main__":
+    inst = sniff_packets("lo", timeout=5, filters=[{'layer': 'ether',
+                         'config': {'dst': 'FF:FF:FF:FF:FF:FF'}}])
     inst = sniff_packets("lo", timeout=5)
     pkt = Packet(pkt_type='UDP')
     pkt.send_pkt(tx_port='lo')
@@ -859,6 +931,6 @@ if __name__ == "__main__":
                        'vxlan', 'inner_mac', 'inner_ipv4', 'inner_udp', 'raw'])
     # config packet
     pkt.config_layers([('ether', {'dst': '00:11:22:33:44:55'}), ('ipv4', {'dst': '1.1.1.1'}),
-                        ('vxlan', {'vni': 2}), ('raw', {'payload': ['01'] * 18})])
+                       ('vxlan', {'vni': 2}), ('raw', {'payload': ['01'] * 18})])
 
     pkt.send_pkt(tx_port='lo')
