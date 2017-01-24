@@ -38,6 +38,8 @@ import utils
 import string
 import re
 import time
+from settings import HEADER_SIZE
+from packet import Packet, sniff_packets, load_sniff_packets
 
 lpm_table_ipv4 = [
     "{IPv4(100,10,0,0), 16, P1}",
@@ -122,11 +124,7 @@ l3fwd_ipv4_route_array[] = {\\\n"
         self.verify("Error" not in out, "compilation error 1")
         self.verify("No such file" not in out, "compilation error 2")
 
-    def functional_check_ipv4(self, cores, pkt_sizes, burst=1, flag=None, funtion=None):
-        """
-        Perform functional fragmentation checks.
-        """
-
+        cores = self.dut.get_core_list("1S/1C/2T")
         coremask = utils.create_mask(cores)
         portmask = utils.create_mask([P0, P1])
         numPortThread = len([P0, P1]) / len(cores)
@@ -137,112 +135,120 @@ l3fwd_ipv4_route_array[] = {\\\n"
         self.dut.send_expect("examples/ip_fragmentation/build/ip_fragmentation -c %s -n %d -- -p %s -q %s" % (
             coremask, self.dut.get_memory_channels(), portmask, numPortThread), "IP_FRAG:", 120)
 
-        txItf = self.tester.get_interface(self.tester.get_local_port(P0))
-        rxItf = self.tester.get_interface(self.tester.get_local_port(P1))
-        dmac = self.dut.get_mac_address(P0)
-        for size in pkt_sizes[::burst]:
-            # simulate to set TG properties
-            if flag == 'frag':
-                # do fragment
-                expPkts = (1517 + size) / 1518
-                val = 0
-            else:
-                expPkts = 1
-                val = 2
+        time.sleep(2)
+        self.txItf = self.tester.get_interface(self.tester.get_local_port(P0))
+        self.rxItf = self.tester.get_interface(self.tester.get_local_port(P1))
+        self.dmac = self.dut.get_mac_address(P0)
 
-            # set wait packet
-            self.tester.scapy_background()
-            self.tester.scapy_append('import string')
-            self.tester.scapy_append('p = sniff(iface="%s", count=%d, timeout=60)' % (rxItf, expPkts))
-            self.tester.scapy_append('nr_packets=len(p)')
-            self.tester.scapy_append('reslist = [p[i].sprintf("%IP.len%;%IP.id%;%IP.flags%;%IP.frag%") for i in range(nr_packets)]')
-            self.tester.scapy_append('RESULT = string.join(reslist, ",")')
-
-            # send packet
-            self.tester.scapy_foreground()
-            for times in range(burst):
-                self.tester.scapy_append('sendp([Ether(dst="%s")/IP(dst="100.10.0.1",src="1.2.3.4",flags=%d)/Raw(load="X"*%d)], iface="%s")' % (dmac, val, pkt_sizes[pkt_sizes.index(size) + times] - 38, txItf))
-
-            self.tester.scapy_execute()
-            time.sleep(5)
-            out = self.tester.scapy_get_result()
-            nr_packets = len(out.split(','))
-            if funtion is not None:
-                if not funtion(size, out.split(',')):
-                    result = False
-                    errString = "failed on fragment check size " + str(size)
-                    break
-            elif nr_packets != expPkts:
-                result = False
-                errString = "Failed on forward packet size " + str(size)
-                break
-
-        self.dut.send_expect("^C", "#")
-        # verify on the bottom so as to keep safety quit application
-        self.verify(result, errString)
-
-    def functional_check_ipv6(self, cores, pkt_sizes, burst=1, flag=None, funtion=None):
+    def functional_check_ipv4(self, pkt_sizes, burst=1, flag=None):
         """
         Perform functional fragmentation checks.
         """
-        coremask = utils.create_mask(cores)
-        portmask = utils.create_mask([P0, P1])
-        numPortThread = len([P0, P1]) / len(cores)
-        result = True
-        errString = ''
-
-        # run ipv4_frag
-        self.dut.send_expect("examples/ip_fragmentation/build/ip_fragmentation -c %s -n %d -- -p %s -q %s" % (
-            coremask, self.dut.get_memory_channels(), portmask, numPortThread), "IP_FRAG:", 120)
-
-        txItf = self.tester.get_interface(self.tester.get_local_port(P0))
-        rxItf = self.tester.get_interface(self.tester.get_local_port(P1))
-        dmac = self.dut.get_mac_address(P0)
         for size in pkt_sizes[::burst]:
             # simulate to set TG properties
             if flag == 'frag':
-                # do fragment
-                expPkts = (1517 + size) / 1518
+                # do fragment, each packet max length 1518 - 18 - 20 = 1480
+                expPkts = (size - HEADER_SIZE['eth'] - HEADER_SIZE['ip']) / 1480
+                if (size - HEADER_SIZE['eth'] - HEADER_SIZE['ip']) % 1480:
+                    expPkts += 1
+                val = 0
+            elif flag == 'nofrag':
+                expPkts = 0
+                val = 2
+            else:
+                expPkts = 1
+                val = 2
+
+            inst = sniff_packets(intf=self.rxItf, timeout=5)
+            # send packet
+            for times in range(burst):
+                pkt_size = pkt_sizes[pkt_sizes.index(size) + times]
+                pkt = Packet(pkt_type='UDP', pkt_len=pkt_size)
+                pkt.config_layer('ether', {'dst': self.dmac})
+                pkt.config_layer('ipv4', {'dst': '100.10.0.1', 'src': '1.2.3.4', 'flags': val})
+                pkt.send_pkt(tx_port=self.txItf)
+
+            # verify normal packet just by number, verify fragment packet by all elements
+            pkts = load_sniff_packets(inst)
+            self.verify(len(pkts) == expPkts, "Failed on forward packet size " + str(size))
+            if flag == 'frag':
+                idx = 1
+                for pkt in pkts:
+                    # packet index should be same
+                    pkt_id = pkt.strip_element_layer3("id")
+                    if idx == 1:
+                        prev_idx = pkt_id
+                    self.verify(prev_idx == pkt_id, "Fragmented packets index not match")
+                    prev_idx = pkt_id
+
+                    # last flags should be 0
+                    flags = pkt.strip_element_layer3("flags")
+                    if idx == expPkts:
+                        self.verify(flags == 0, "Fragmented last packet flags not match")
+                    else:
+                        self.verify(flags == 1, "Fragmented packets flags not match")
+
+                    # fragment offset should be correct
+                    frag = pkt.strip_element_layer3("frag")
+                    self.verify((frag == ((idx - 1) * 185)), "Fragment packet frag not match")
+                    idx += 1
+
+    def functional_check_ipv6(self, pkt_sizes, burst=1, flag=None, funtion=None):
+        """
+        Perform functional fragmentation checks.
+        """
+        for size in pkt_sizes[::burst]:
+            # simulate to set TG properties
+            if flag == 'frag':
+                # each packet max len: 1518 - 18 (eth) - 40 (ipv6) - 8 (ipv6 ext hdr) = 1452
+                expPkts = (size - HEADER_SIZE['eth'] - HEADER_SIZE['ipv6']) / 1452
+                if (size - HEADER_SIZE['eth'] - HEADER_SIZE['ipv6']) % 1452:
+                    expPkts += 1
                 val = 0
             else:
                 expPkts = 1
                 val = 2
 
-            # set wait packet
-            self.tester.scapy_background()
-            self.tester.scapy_append('import string')
-            self.tester.scapy_append('p = sniff(iface="%s", count=%d, timeout=60)' % (rxItf, expPkts))
-            self.tester.scapy_append('nr_packets=len(p)')
-            self.tester.scapy_append('reslist = [p[i].sprintf("%IPv6.plen%;%IPv6.id%;%IPv6ExtHdrFragment.m%;%IPv6ExtHdrFragment.offset%") for i in range(nr_packets)]')
-            self.tester.scapy_append('RESULT = string.join(reslist, ",")')
-
+            inst = sniff_packets(intf=self.rxItf, timeout=5)
             # send packet
-            self.tester.scapy_foreground()
             for times in range(burst):
-                self.tester.scapy_append('sendp([Ether(dst="%s")/IPv6(dst="101:101:101:101:101:101:101:101",src="ee80:ee80:ee80:ee80:ee80:ee80:ee80:ee80")/Raw(load="X"*%d)], iface="%s")' % (dmac, pkt_sizes[pkt_sizes.index(size) + times] - 58, txItf))
+                pkt_size = pkt_sizes[pkt_sizes.index(size) + times]
+                pkt = Packet(pkt_type='IPv6_UDP', pkt_len=pkt_size)
+                pkt.config_layer('ether', {'dst': self.dmac})
+                pkt.config_layer('ipv6', {'dst': '101:101:101:101:101:101:101:101', 'src': 'ee80:ee80:ee80:ee80:ee80:ee80:ee80:ee80'})
+                pkt.send_pkt(tx_port=self.txItf)
 
-            self.tester.scapy_execute()
-            out = self.tester.scapy_get_result()
-            nr_packets = len(out.split(','))
-            if funtion is not None:
-                if not funtion(size, out.split(',')):
-                    result = False
-                    errString = "failed on fragment check size " + str(size)
-                    break
-            elif nr_packets != expPkts:
-                result = False
-                errString = "Failed on forward packet size " + str(size)
-                break
+            # verify normal packet just by number, verify fragment packet by all elements
+            pkts = load_sniff_packets(inst)
+            self.verify(len(pkts) == expPkts, "Failed on forward packet size " + str(size))
+            if flag == 'frag':
+                idx = 1
+                for pkt in pkts:
+                    # packet index should be same
+                    pkt_id = pkt.strip_element_layer4("id")
+                    if idx == 1:
+                        prev_idx = pkt_id
+                    self.verify(prev_idx == pkt_id, "Fragmented packets index not match")
+                    prev_idx = pkt_id
 
-        self.dut.send_expect("^C", "#")
-        # verify on the bottom so as to keep safety quit application
-        self.verify(result, errString)
+                    # last flags should be 0
+                    flags = pkt.strip_element_layer4("m")
+                    if idx == expPkts:
+                        self.verify(flags == 0, "Fragmented last packet flags not match")
+                    else:
+                        self.verify(flags == 1, "Fragmented packets flags not match")
+
+                    # fragment offset should be correct
+                    frag = pkt.strip_element_layer4("offset")
+                    self.verify((frag == int((idx - 1) * 181.5)), "Fragment packet frag not match")
+                    idx += 1
 
     def set_up(self):
         """
         Run before each test case.
         """
-        pass
+        self.tester.send_expect("ifconfig %s mtu 9200" % self.tester.get_interface(self.tester.get_local_port(P0)), "#")
+        self.tester.send_expect("ifconfig %s mtu 9200" % self.tester.get_interface(self.tester.get_local_port(P1)), "#")
 
     def test_ipfrag_normalfwd(self):
         """
@@ -250,25 +256,18 @@ l3fwd_ipv4_route_array[] = {\\\n"
         """
 
         sizelist = [64, 128, 256, 512, 1024, 1518]
-        cores = self.dut.get_core_list("1S/1C/2T")
 
-        self.functional_check_ipv4(cores, sizelist)
-        self.functional_check_ipv6(cores, sizelist)
+        self.functional_check_ipv4(sizelist)
+        self.functional_check_ipv6(sizelist)
 
     def test_ipfrag_nofragment(self):
         """
         Don't fragment test with 1519
         """
 
-        sizelist = [1519, 1518]
-        cores = self.dut.get_core_list("1S/1C/2T")
-        self.tester.send_expect("ifconfig %s mtu 9200" % self.tester.get_interface(self.tester.get_local_port(P0)), "#")
-        self.tester.send_expect("ifconfig %s mtu 9200" % self.tester.get_interface(self.tester.get_local_port(P1)), "#")
+        sizelist = [1519]
 
-        self.functional_check_ipv4(cores, sizelist, 2, 'nofrag')
-        self.functional_check_ipv6(cores, sizelist, 2, 'nofrag')
-        self.tester.send_expect("ifconfig %s mtu 1500" % self.tester.get_interface(self.tester.get_local_port(P0)), "#")
-        self.tester.send_expect("ifconfig %s mtu 1500" % self.tester.get_interface(self.tester.get_local_port(P1)), "#")
+        self.functional_check_ipv4(sizelist, 1, 'nofrag')
 
     def test_ipfrag_fragment(self):
         """
@@ -278,25 +277,8 @@ l3fwd_ipv4_route_array[] = {\\\n"
         sizelist = [1519, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000]
         cores = self.dut.get_core_list("1S/1C/2T")
 
-        self.tester.send_expect("ifconfig %s mtu 9200" % self.tester.get_interface(self.tester.get_local_port(P0)), "#")
-        self.tester.send_expect("ifconfig %s mtu 9200" % self.tester.get_interface(self.tester.get_local_port(P1)), "#")
-
-        def chkfunc(size, output):
-            # check total size
-            if (1517 + size) / 1518 != len(output):
-                return False
-
-            # check every field in packet
-            for pkt in output:
-                _, _, _, _ = pkt.split(';')
-                # length, ID, fragoff, flags
-                pass
-            return True
-
-        self.functional_check_ipv4(cores, sizelist, 1, 'frag', chkfunc)
-        self.functional_check_ipv6(cores, sizelist, 1, 'frag', chkfunc)
-        self.tester.send_expect("ifconfig %s mtu 1500" % self.tester.get_interface(self.tester.get_local_port(P0)), "#")
-        self.tester.send_expect("ifconfig %s mtu 1500" % self.tester.get_interface(self.tester.get_local_port(P1)), "#")
+        self.functional_check_ipv4(sizelist, 1, 'frag')
+        self.functional_check_ipv6(sizelist, 1, 'frag')
 
     def benchmark(self, index, lcore, num_pthreads, size_list):
         """
@@ -358,9 +340,6 @@ l3fwd_ipv4_route_array[] = {\\\n"
         """
         Performance test for 64, 1518, 1519, 2k and 9k.
         """
-        self.tester.send_expect("ifconfig %s mtu 9600" % self.tester.get_interface(self.tester.get_local_port(P0)), "#")
-        self.tester.send_expect("ifconfig %s mtu 9600" % self.tester.get_interface(self.tester.get_local_port(P1)), "#")
-
         sizes = [64, 1518, 1519, 2000, 9000]
 
         tblheader = ["Ports", "S/C/T", "SW threads"]
@@ -378,14 +357,12 @@ l3fwd_ipv4_route_array[] = {\\\n"
 
         self.result_table_print()
 
-        self.tester.send_expect("ifconfig %s mtu 1500" % self.tester.get_interface(self.tester.get_local_port(P0)), "#")
-        self.tester.send_expect("ifconfig %s mtu 1500" % self.tester.get_interface(self.tester.get_local_port(P1)), "#")
-
     def tear_down(self):
         """
         Run after each test case.
         """
-        pass
+        self.tester.send_expect("ifconfig %s mtu 1500" % self.tester.get_interface(self.tester.get_local_port(P0)), "#")
+        self.tester.send_expect("ifconfig %s mtu 1500" % self.tester.get_interface(self.tester.get_local_port(P1)), "#")
 
     def tear_down_all(self):
         """
