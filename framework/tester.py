@@ -44,6 +44,7 @@ from settings import IXIA
 import random
 from utils import GREEN, convert_int2ip, convert_ip2int
 from exception import ParameterInvalidException
+from multiprocessing import Process
 
 
 class Tester(Crb):
@@ -523,6 +524,13 @@ class Tester(Crb):
         else:
             return None
 
+    def parallel_transmit_ptks(self, send_f=None, intf='', pkts=[], interval=0.01):
+        """
+        Callable function for parallel processes
+        """
+        print GREEN("Transmitting and sniffing packets, please wait few minutes...")
+        send_f(intf=intf, pkts=pkts, interval=interval)
+
     def check_random_pkts(self, portList, pktnum=2000, interval=0.01, allow_miss=True, params=None):
         """
         Send several random packets and check rx packets matched
@@ -536,13 +544,15 @@ class Tester(Crb):
         compare_f = getattr(module, "compare_pktload")
         strip_f = getattr(module, "strip_pktload")
         save_f = getattr(module, "save_packets")
-        pkts = []
+        tx_pkts = {}
+        rx_inst = {}
         # packet type random between tcp/udp/ipv6
         random_type = ['TCP', 'UDP', 'IPv6_TCP', 'IPv6_UDP']
         pkt_minlen = {'TCP': 64, 'UDP': 64, 'IPv6_TCP': 74, 'IPv6_UDP': 64}
         # at least wait 2 seconds
         timeout = int(pktnum * (interval + 0.01)) + 2
         for txport, rxport in portList:
+            pkts = []
             txIntf = self.get_interface(txport)
             rxIntf = self.get_interface(rxport)
             print GREEN("Preparing transmit packets, please wait few minutes...")
@@ -571,18 +581,34 @@ class Tester(Crb):
                     pkt.config_layer('ipv4', {'src': ip_str})
 
                 pkts.append(pkt)
+            tx_pkts[txport] = pkts
 
             # send and sniff packets
             save_f(pkts=pkts, filename="/tmp/%s_tx.pcap" % txIntf)
             inst = sniff_f(intf=rxIntf, count=pktnum, timeout=timeout)
-            print GREEN("Transmitting and sniffing packets, please wait few minutes...")
-            send_f(intf=txIntf, pkts=pkts, interval=interval)
-            recv_pkts = load_f(inst)
+            rx_inst[rxport] = inst
+
+        # Transmit packet simultaneously
+        processes = []
+        for txport, _ in portList:
+            txIntf = self.get_interface(txport)
+            processes.append(Process(target = self.parallel_transmit_ptks,
+                             args=(send_f, txIntf, tx_pkts[txport], interval)))
+
+        for transmit_proc in processes:
+            transmit_proc.start()
+
+        for transmit_proc in processes:
+            transmit_proc.join()
+
+        # Verify all packets
+        for txport, rxport in portList:
+            recv_pkts = load_f(rx_inst[rxport])
 
             # only report when recevied number not matched
-            if len(pkts) != len(recv_pkts):
+            if len(tx_pkts[txport]) != len(recv_pkts):
                 print "Pkt number not matched,%d sent and %d received\n" \
-                       % (len(pkts), len(recv_pkts))
+                       % (len(tx_pkts[txport]), len(recv_pkts))
                 if allow_miss is False:
                     return False
 
@@ -600,10 +626,10 @@ class Tester(Crb):
                 else:
                     continue
 
-                if compare_f(pkts[t_idx], recv_pkts[idx], "L4") is False:
+                if compare_f(tx_pkts[txport][t_idx], recv_pkts[idx], "L4") is False:
                     print "Pkt recevied index %d not match original " \
                           "index %d" % (idx, t_idx)
-                    print "Sent: %s" % strip_f(pkts[t_idx], "L4")
+                    print "Sent: %s" % strip_f(tx_pkts[txport][t_idx], "L4")
                     print "Recv: %s" % strip_f(recv_pkts[idx], "L4")
                     return False
 
