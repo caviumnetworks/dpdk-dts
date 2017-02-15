@@ -73,12 +73,14 @@ class TestVfMacFilter(TestCase):
     def destroy_2pf_2vf_1vm_env(self):
         if getattr(self, 'vm0', None):
             #destroy testpmd in vm0
-            self.vm0_testpmd.execute_cmd('stop')
-            self.vm0_testpmd.execute_cmd('quit', '# ')
-            self.vm0_testpmd = None
+            if getattr(self, 'vm0_testpmd', None):
+                self.vm0_testpmd.execute_cmd('stop')
+                self.vm0_testpmd.execute_cmd('quit', '# ')
+                self.vm0_testpmd = None
             self.vm0_dut_ports = None
             #destroy vm0
             self.vm0.stop()
+            self.dut.virt_exit()
             self.vm0 = None
 
         if getattr(self, 'host_testpmd', None):
@@ -217,6 +219,8 @@ class TestVfMacFilter(TestCase):
 
         if getattr(self, 'vm0', None):
             self.vm0.stop()
+
+        self.dut.virt_exit()
 
         for port_id in self.dut_ports:
             self.dut.destroy_sriov_vfs_by_port(port_id)

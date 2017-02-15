@@ -254,9 +254,10 @@ class TestVfRss(TestCase):
             self.vm0.set_vm_device(driver='pci-assign', **vf0_prot)
 
             self.vm_dut_0 = self.vm0.start()
-            self.vm0_testpmd = PmdOutput(self.vm_dut_0)
             if self.vm_dut_0 is None:
                 raise Exception("Set up VM0 ENV failed!")
+
+            self.vm0_testpmd = PmdOutput(self.vm_dut_0)
 
             self.setup_1pf_1vf_1vm_env_flag = 1
         except Exception as e:
@@ -265,18 +266,20 @@ class TestVfRss(TestCase):
 
     def destroy_1pf_1vf_1vm_env(self):
         if getattr(self, 'vm0', None):
-            self.vm0_testpmd.execute_cmd('quit', '# ')
-            self.vm0_testpmd = None
+            if getattr(self, 'vm0_testpmd', None):
+                self.vm0_testpmd.execute_cmd('quit', '# ')
+                self.vm0_testpmd = None
             self.vm0_dut_ports = None
             #destroy vm0
             self.vm0.stop()
+            self.dut.virt_exit()
             self.vm0 = None
 
         if getattr(self, 'host_testpmd', None):
             self.host_testpmd.execute_cmd('quit', '# ')
             self.host_testpmd = None
 
-        if getattr(self, 'used_dut_port_0', None):
+        if getattr(self, 'used_dut_port_0', None) != None:
             self.dut.destroy_sriov_vfs_by_port(self.used_dut_port_0)
             port = self.dut.ports_info[self.used_dut_port_0]['port']
             port.bind_driver()
@@ -292,6 +295,7 @@ class TestVfRss(TestCase):
         
         # niantic kernel host driver not support this case
         if self.nic is 'niantic' and not self.host_testpmd:
+            self.logger.warning("niantic kernel host driver not support this case")
             return
         vm0dutPorts = self.vm_dut_0.get_ports('any')
         localPort = self.tester.get_local_port(vm0dutPorts[0])

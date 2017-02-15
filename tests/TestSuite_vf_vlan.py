@@ -115,24 +115,26 @@ class TestVfVlan(TestCase):
 
     def destroy_vm_env(self):
         if getattr(self, 'vm0', None):
-            self.vm_dut_0.kill_all()
+            if getattr(self, 'vm_dut_0', None):
+                self.vm_dut_0.kill_all()
             self.vm0_testpmd = None
             self.vm0_dut_ports = None
             # destroy vm0
             self.vm0.stop()
+            self.dut.virt_exit()
             self.vm0 = None
 
-        if getattr(self, 'used_dut_port_0', None):
+        if getattr(self, 'used_dut_port_0', None) != None:
             self.dut.destroy_sriov_vfs_by_port(self.used_dut_port_0)
             port = self.dut.ports_info[self.used_dut_port_0]['port']
             self.used_dut_port_0 = None
 
-        if getattr(self, 'used_dut_port_1', None):
+        if getattr(self, 'used_dut_port_1', None) != None:
             self.dut.destroy_sriov_vfs_by_port(self.used_dut_port_1)
             port = self.dut.ports_info[self.used_dut_port_1]['port']
             self.used_dut_port_1 = None
 
-        self.bind_nic_driver(self.dut_ports[:2], driver="igb_uio")
+        self.bind_nic_driver(self.dut_ports[:2], driver='igb_uio')
 
         self.env_done = False
 
@@ -392,8 +394,7 @@ class TestVfVlan(TestCase):
         self.vm0_testpmd.quit()
 
     def tear_down(self):
-        self.vm_dut_0.kill_all()
-        pass
+        self.destroy_vm_env()
 
     def tear_down_all(self):
         self.destroy_vm_env()

@@ -182,9 +182,10 @@ class TestVfPortStartStop(TestCase):
     def destroy_1pf_2vf_1vm_env(self):
         if getattr(self, 'vm0', None):
             #destroy testpmd in vm0
-            self.vm0_testpmd.execute_cmd('stop')
-            self.vm0_testpmd.execute_cmd('quit', '# ')
-            self.vm0_testpmd = None
+            if getattr(self, 'vm0_testpmd', None):
+                self.vm0_testpmd.execute_cmd('stop')
+                self.vm0_testpmd.execute_cmd('quit', '# ')
+                self.vm0_testpmd = None
             self.vm0_dut_ports = None
             #destroy vm0
             self.vm0.stop()
@@ -194,7 +195,7 @@ class TestVfPortStartStop(TestCase):
             self.host_testpmd.execute_cmd('quit', '# ')
             self.host_testpmd = None
 
-        if getattr(self, 'used_dut_port', None):
+        if getattr(self, 'used_dut_port', None) != None:
             self.dut.destroy_sriov_vfs_by_port(self.used_dut_port)
             port = self.dut.ports_info[self.used_dut_port]['port']
             port.bind_driver()
@@ -213,10 +214,7 @@ class TestVfPortStartStop(TestCase):
         self.vm0_dut_ports = self.vm_dut_0.get_ports('any')
 
         self.vm0_testpmd = PmdOutput(self.vm_dut_0)
-        if self.kdriver == "i40e":
-            self.vm0_testpmd.start_testpmd(VM_CORES_MASK, '--crc-strip')
-        else:
-            self.vm0_testpmd.start_testpmd(VM_CORES_MASK)
+        self.vm0_testpmd.start_testpmd(VM_CORES_MASK, '--crc-strip')
         self.vm0_testpmd.execute_cmd('set fwd mac')
 
         time.sleep(2)
@@ -232,10 +230,15 @@ class TestVfPortStartStop(TestCase):
     def tear_down_all(self):
 
         self.pktgen_kill()
-        self.tester.send_expect("./dpdk-devbind.py --bind=%s %s" %(self.tester_port_driver, self.tester_tx_pci), "#")
+        if getattr(self, 'tester_port_driver', None) and \
+           getattr(self, 'tester_tx_pci', None):
+            self.tester.send_expect("./dpdk_nic_bind.py --bind=%s %s" \
+                %(self.tester_port_driver, self.tester_tx_pci), "#")
 
         if getattr(self, 'vm0', None):
             self.vm0.stop()
+
+        self.dut.virt_exit()
 
         for port_id in self.dut_ports:
             self.dut.destroy_sriov_vfs_by_port(port_id)

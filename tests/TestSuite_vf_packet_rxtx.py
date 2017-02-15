@@ -83,6 +83,8 @@ class TestVfPacketRxtx(TestCase):
             self.host_testpmd.execute_cmd('quit', '# ')
             self.host_testpmd = None
 
+        self.dut.virt_exit()
+
         if getattr(self, 'used_dut_port_0', None) != None:
             self.dut.destroy_sriov_vfs_by_port(self.used_dut_port_0)
             port = self.dut.ports_info[self.used_dut_port_0]['port']
@@ -213,6 +215,8 @@ class TestVfPacketRxtx(TestCase):
             self.vm1.stop()
             self.vm1 = None
 
+        self.dut.virt_exit()
+
         if getattr(self, 'host_testpmd', None) != None:
             self.host_testpmd.execute_cmd('quit', '# ')
             self.host_testpmd = None
@@ -296,6 +300,8 @@ class TestVfPacketRxtx(TestCase):
 
         if getattr(self, 'vm1', None):
             self.vm1.stop()
+
+        self.dut.virt_exit()
 
         for port_id in self.dut_ports:
             self.dut.destroy_sriov_vfs_by_port(port_id)

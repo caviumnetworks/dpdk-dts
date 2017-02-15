@@ -445,4 +445,5 @@ class TestVmPowerManager(TestCase, IxiaPacketGenerator):
         """
         self.dut.send_expect("quit", "# ")
         self.vm.stop()
+        self.dut.virt_exit()
         pass
