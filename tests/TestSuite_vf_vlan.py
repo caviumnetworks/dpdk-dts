@@ -134,7 +134,7 @@ class TestVfVlan(TestCase):
             port = self.dut.ports_info[self.used_dut_port_1]['port']
             self.used_dut_port_1 = None
 
-        self.bind_nic_driver(self.dut_ports[:2], driver='igb_uio')
+        self.bind_nic_driver(self.dut_ports[:2], driver='default')
 
         self.env_done = False
 
@@ -301,6 +301,7 @@ class TestVfVlan(TestCase):
         self.vm0_testpmd.execute_cmd('set verbose 1')
         self.vm0_testpmd.execute_cmd('vlan set strip on 0')
         self.vm0_testpmd.execute_cmd('vlan set filter on 0')
+        self.vm0_testpmd.execute_cmd("set promisc all off")
         self.vm0_testpmd.execute_cmd('start')
 
         # send packet without vlan
@@ -376,6 +377,7 @@ class TestVfVlan(TestCase):
             vlan_hex = hex(rx_vlan)
             self.verify("VLAN tci=%s" %
                         vlan_hex in out, "Failed to strip vlan packet!!!")
+            self.verify("PKT_RX_VLAN_STRIPPED" in out, "Failed to strip vlan packet!")
 
             self.vm0_testpmd.execute_cmd('vlan set strip off 0')
 
@@ -389,7 +391,7 @@ class TestVfVlan(TestCase):
                             vlan_hex in out, "Failed to disable strip vlan!!!")
             else:
                 self.verify(
-                    "VLAN tci=0x0" in out, "Failed to disable strip vlan!!!")
+                    "PKT_RX_VLAN_STRIPPED" not in out, "Failed to disable strip vlan!!!")
 
         self.vm0_testpmd.quit()
 
