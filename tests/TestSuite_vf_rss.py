@@ -216,7 +216,6 @@ class TestVfRss(TestCase):
             self.nic in ["niantic", "fortville_eagle", "fortville_spirit", "fortville_spirit_single"],
             "NIC Unsupported: " + str(self.nic))
         self.dut_ports = self.dut.get_ports(self.nic)
-        self.ports_socket = self.dut.get_numa_id(self.dut_ports[0])
         self.verify(len(self.dut_ports) >= 1, "Not enough ports available")
 
         self.vm0 = None
@@ -300,6 +299,7 @@ class TestVfRss(TestCase):
         vm0dutPorts = self.vm_dut_0.get_ports('any')
         localPort = self.tester.get_local_port(vm0dutPorts[0])
         itf = self.tester.get_interface(localPort)
+        self.vm0_ports_socket = self.vm_dut_0.get_numa_id(vm0dutPorts[0])
         iptypes = ['IPV4']
 
         self.vm_dut_0.kill_all()
@@ -312,7 +312,7 @@ class TestVfRss(TestCase):
         for queue in testQueues:
 
             self.vm0_testpmd.start_testpmd(
-                "all", "--rxq=%d --txq=%d %s" % (queue, queue, eal_param), socket=self.ports_socket)
+                "all", "--rxq=%d --txq=%d %s" % (queue, queue, eal_param), socket=self.vm0_ports_socket)
 
             for iptype in iptypes:
                 self.vm_dut_0.send_expect("set verbose 8", "testpmd> ")
@@ -339,6 +339,7 @@ class TestVfRss(TestCase):
         vm0dutPorts = self.vm_dut_0.get_ports('any')
         localPort = self.tester.get_local_port(vm0dutPorts[0])
         itf = self.tester.get_interface(localPort)
+        self.vm0_ports_socket = self.vm_dut_0.get_numa_id(vm0dutPorts[0])
         iptypes = {'ipv4-sctp':'ip',
                    'ipv4-other':'ip',
                    'ipv4-udp':'udp',
@@ -361,7 +362,7 @@ class TestVfRss(TestCase):
         for queue in testQueues:
 
             self.vm0_testpmd.start_testpmd(
-                "all", "--rxq=%d --txq=%d %s" % (queue, queue, eal_param), socket=self.ports_socket)
+                "all", "--rxq=%d --txq=%d %s" % (queue, queue, eal_param), socket=self.vm0_ports_socket)
 
             for iptype,rsstype in iptypes.items():
                 self.vm_dut_0.send_expect("set verbose 8", "testpmd> ")
