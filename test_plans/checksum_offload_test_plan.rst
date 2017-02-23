@@ -192,4 +192,24 @@ The first byte of source IPv4 address will be increment by testpmd. The checksum
 is indeed recalculated by software algorithms.
 
 
+Test Case: Validate RX checksum valid flags on the receive packet
+=================================================================
+etup the ``csum`` forwarding mode::
 
+  testpmd> set fwd csum
+  Set csum packet forwarding mode
+
+Start the packet forwarding::
+
+  testpmd> start
+    csum packet forwarding - CRC stripping disabled - packets/burst=32
+    nb forwarding cores=1 - nb forwarding ports=10
+    RX queues=1 - RX desc=128 - RX free threshold=64
+    RX threshold registers: pthresh=8 hthresh=8 wthresh=4
+    TX queues=1 - TX desc=512 - TX free threshold=0
+    TX threshold registers: pthresh=32 hthresh=8 wthresh=8
+
+Configure the traffic generator to send the multiple packets with the following
+combination: good/bad ip checksum + good/bad udp/tcp checksum.
+
+Check the Rx checksum flags consistent with expected flags.
