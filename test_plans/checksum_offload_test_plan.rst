@@ -194,7 +194,8 @@ is indeed recalculated by software algorithms.
 
 Test Case: Validate RX checksum valid flags on the receive packet
 =================================================================
-etup the ``csum`` forwarding mode::
+
+Setup the ``csum`` forwarding mode::
 
   testpmd> set fwd csum
   Set csum packet forwarding mode
