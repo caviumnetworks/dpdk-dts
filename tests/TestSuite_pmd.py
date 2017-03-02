@@ -68,11 +68,15 @@ class TestPmd(TestCase,IxiaPacketGenerator):
 
         self.blacklist = ""
 
+        # Update config file and rebuild to get best perf on FVL
+        self.dut.send_expect("sed -i -e 's/CONFIG_RTE_LIBRTE_I40E_16BYTE_RX_DESC=n/CONFIG_RTE_LIBRTE_I40E_16BYTE_RX_DESC=y/' ./config/common_base", "#", 20)
+        self.dut.build_install_dpdk(self.target)
+
         # Based on h/w type, choose how many ports to use
         self.dut_ports = self.dut.get_ports()
 
         self.headers_size = HEADER_SIZE['eth'] + HEADER_SIZE[
-            'ip'] + HEADER_SIZE['udp']
+            'ip'] + HEADER_SIZE['tcp']
 
         self.ports_socket = self.dut.get_numa_id(self.dut_ports[0])
 
@@ -84,15 +88,23 @@ class TestPmd(TestCase,IxiaPacketGenerator):
         """
         pass
 
-    def test_perf_pmd_performance_4ports(self):
+    def test_perf_single_core_performance(self):
+        """
+        Run single core performance
+        """
+        if len(self.dut_ports) >= 4:
+            self.pmd_performance_4ports()
+        else:
+            self.verify(len(self.dut_ports) >= 2, "Insufficient ports for 2 ports performance test")
+            self.pmd_performance_2ports()
+        
+    def pmd_performance_4ports(self):
         """
         PMD Performance Benchmarking with 4 ports.
         """
         all_cores_mask = utils.create_mask(self.dut.get_core_list("all"))
 
         # prepare traffic generator input
-        self.verify(len(self.dut_ports) >= 4,
-                    "Insufficient ports for 4 ports performance")
         tgen_input = []
 
         tgen_input.append((self.tester.get_local_port(self.dut_ports[0]),
@@ -126,27 +138,25 @@ class TestPmd(TestCase,IxiaPacketGenerator):
             self.pmdout.start_testpmd(core_config, " --rxq=%d --txq=%d --portmask=%s --rss-ip --txrst=32 --txfreet=32 --txd=128 --txqflags=0xf01" % (queues, queues, port_mask), socket=self.ports_socket)
 	    command_line = self.pmdout.get_pmd_cmd()
 
-            info = "Executing PMD (mac fwd) using %s\n" % test_cycle['cores']
+            info = "Executing PMD using %s\n" % test_cycle['cores']
             self.rst_report(info, annex=True)
             self.logger.info(info)
-
             self.rst_report(command_line + "\n\n", frame=True, annex=True)
 
             # self.dut.send_expect("set fwd mac", "testpmd> ", 100)
-            self.dut.send_expect("start", "testpmd> ")
-
+            self.dut.send_expect("start", "testpmd> ", 100)
             for frame_size in self.frame_sizes:
                 wirespeed = self.wirespeed(self.nic, frame_size, 4)
 
                 # create pcap file
                 self.logger.info("Running with frame size %d " % frame_size)
-                payload_size = frame_size - HEADER_SIZE['eth'] - HEADER_SIZE['ip']
+                payload_size = frame_size - self.headers_size
                 self.tester.scapy_append(
-                    'wrpcap("test.pcap", [Ether(src="52:00:00:00:00:00")/IP(src="1.2.3.4",dst="1.1.1.1")/("X"*%d)])' % payload_size)
+                    'wrpcap("test.pcap", [Ether(src="52:00:00:00:00:00")/IP(src="1.2.3.4",dst="1.1.1.1")/TCP()/("X"*%d)])' % payload_size)
                 self.tester.scapy_execute()
 
                 # run traffic generator
-                _, pps = self.tester.traffic_generator_throughput(tgen_input)
+                _, pps = self.tester.traffic_generator_throughput(tgen_input, rate_percent=100, delay=60)
 
                 pps /= 1000000.0
                 test_cycle['Mpps'][frame_size] = pps
@@ -176,7 +186,7 @@ class TestPmd(TestCase,IxiaPacketGenerator):
 
         self.result_table_print()
 
-    def test_perf_pmd_performance_2ports(self):
+    def pmd_performance_2ports(self):
         """
         PMD Performance Benchmarking with 2 ports.
         """
@@ -215,8 +225,9 @@ class TestPmd(TestCase,IxiaPacketGenerator):
             self.logger.info(info)
             self.rst_report(info, annex=True)
             self.rst_report(command_line + "\n\n", frame=True, annex=True)
+ 
+            self.dut.send_expect("start", "testpmd> ", 100)
 
-            self.dut.send_expect("start", "testpmd> ")
             for frame_size in self.frame_sizes:
                 wirespeed = self.wirespeed(self.nic, frame_size, 2)
 
@@ -224,11 +235,12 @@ class TestPmd(TestCase,IxiaPacketGenerator):
                 self.logger.info("Running with frame size %d " % frame_size)
                 payload_size = frame_size - self.headers_size
                 self.tester.scapy_append(
-                    'wrpcap("test.pcap", [Ether(src="52:00:00:00:00:00")/IP()/UDP()/("X"*%d)])' % payload_size)
+                    'wrpcap("test.pcap", [Ether(src="52:00:00:00:00:00")/IP(src="1.2.3.4",dst="1.1.1.1")/TCP()/("X"*%d)])' % payload_size)
                 self.tester.scapy_execute()
 
                 # run traffic generator
-                _, pps = self.tester.traffic_generator_throughput(tgen_input)
+                _, pps = self.tester.traffic_generator_throughput(tgen_input, rate_percent=100, delay=60)
+
 
                 pps /= 1000000.0
                 test_cycle['Mpps'][frame_size] = pps
