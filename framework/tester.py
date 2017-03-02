@@ -480,29 +480,19 @@ class Tester(Crb):
 
     def run_rfc2544(self, portlist, delay=120, permit_loss_rate=0):
         """
-        zero_rate: dpdk will not lost packet in this line rate.
-        loss_rate: dpdk will loss packet in this line rate.
         test_rate: the line rate we are going to test.
         """
-        zero_rate = 0.0
-        loss_rate = 100.0
-        test_rate = 100.0
+        test_rate = float(100)
 
-        while (loss_rate - zero_rate) > 0.002:
-                self.logger.info("test rate: %f " % test_rate)
-                if test_rate == 100:
-                        lost, tx_num, rx_num = self.traffic_generator_loss(portlist, test_rate, delay)
-                else:
-                        lost, _, _ = self.traffic_generator_loss(portlist, test_rate, delay)
-                if lost > permit_loss_rate:
-                        loss_rate = test_rate
-                        test_rate = (test_rate + zero_rate)/2
-                else:
-                        zero_rate = test_rate
-                        test_rate = (test_rate + loss_rate)/2
+        self.logger.info("test rate: %f " % test_rate)
+        loss_rate, tx_num, rx_num = self.traffic_generator_loss(portlist, test_rate, delay)
+        while loss_rate > permit_loss_rate:
+                test_rate = float(1 - loss_rate) * test_rate
+                loss_rate, tx_num, rx_num = self.traffic_generator_loss(portlist, test_rate, delay)
 
         self.logger.info("zero loss rate is %s" % test_rate)
         return test_rate, tx_num, rx_num
+
 
     def traffic_generator_loss(self, portList, ratePercent, delay=60):
         """

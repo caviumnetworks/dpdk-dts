@@ -93,7 +93,8 @@ class TestL3fwd(TestCase,IxiaPacketGenerator):
         "{IPv4(13,101,0,0), 24, P3}",
     ]
 
-    frame_sizes = [64, 72, 128, 256, 512, 1024, 2048]  # 65, 128
+    frame_sizes = [64, 72, 128, 256, 512, 1024, 1518, 2048]  # 65, 128
+
     methods = ['lpm']#, 'exact']
 
     #
@@ -113,8 +114,6 @@ class TestL3fwd(TestCase,IxiaPacketGenerator):
         else:
             return '%s' % valports[int(portid)]
 
-    #
-    #
     #
     # Test cases.
     #
@@ -151,13 +150,14 @@ class TestL3fwd(TestCase,IxiaPacketGenerator):
 
         pat = re.compile("P([0123])")
         # Update config file and rebuild to get best perf on FVL
-#        self.dut.send_expect("sed -i -e 's/CONFIG_RTE_PCI_CONFIG=n/CONFIG_RTE_PCI_CONFIG=y/' ./config/common_base", "#", 20)
-#        self.dut.send_expect("sed -i -e 's/CONFIG_RTE_PCI_EXTENDED_TAG=.*$/CONFIG_RTE_PCI_EXTENDED_TAG=\"on\"/' ./config/common_base", "#", 20)
-#        self.dut.build_install_dpdk(self.target)
-
+        self.dut.send_expect("sed -i -e 's/CONFIG_RTE_PCI_CONFIG=n/CONFIG_RTE_PCI_CONFIG=y/' ./config/common_base", "#", 20)
+        self.dut.send_expect("sed -i -e 's/CONFIG_RTE_PCI_EXTENDED_TAG=.*$/CONFIG_RTE_PCI_EXTENDED_TAG=\"on\"/' ./config/common_base", "#", 20)
+        self.dut.send_expect("sed -i -e 's/define RTE_TEST_RX_DESC_DEFAULT.*$/define RTE_TEST_RX_DESC_DEFAULT 2048/' ./examples/l3fwd/main.c", "#", 20)
+        self.dut.send_expect("sed -i -e 's/define RTE_TEST_TX_DESC_DEFAULT.*$/define RTE_TEST_TX_DESC_DEFAULT 2048/' ./examples/l3fwd/main.c", "#", 20)
+        self.dut.build_install_dpdk(self.target)
 
         # Prepare long prefix match table, replace P(x) port pattern
-        lpmStr = "static struct ipv4_l3fwd_route ipv4_l3fwd_route_array[] = {\\\n"
+        lpmStr = "static struct ipv4_l3fwd_lpm_route ipv4_l3fwd_lpm_route_array[] = {\\\n"
         for idx in range(len(TestL3fwd.lpm_table)):
             TestL3fwd.lpm_table[idx] = pat.sub(self.portRepl, TestL3fwd.lpm_table[idx])
             lpmStr = lpmStr + ' ' * 4 + TestL3fwd.lpm_table[idx] + ",\\\n"
@@ -165,7 +165,7 @@ class TestL3fwd(TestCase,IxiaPacketGenerator):
         self.logger.debug(lpmStr)
 
         # Prepare host route table, replace P(x) port pattern
-        exactStr = "static struct ipv4_l3fwd_route ipv4_l3fwd_route_array[] = {\\\n"
+        exactStr = "static struct ipv4_l3fwd_em_route ipv4_l3fwd_em_route_array[] = {\\\n"
         for idx in range(len(TestL3fwd.host_table)):
             TestL3fwd.host_table[idx] = pat.sub(self.portRepl, TestL3fwd.host_table[idx])
             exactStr = exactStr + ' ' * 4 + TestL3fwd.host_table[idx] + ",\\\n"
@@ -173,7 +173,7 @@ class TestL3fwd(TestCase,IxiaPacketGenerator):
         self.logger.debug(exactStr)
 
         # Compile l3fwd with LPM lookup.
-        self.dut.send_expect(r"sed -i '/ipv4_l3fwd_route_array\[\].*{/,/^\}\;/c\\%s' examples/l3fwd/main.c" % lpmStr, "# ")
+        self.dut.send_expect(r"sed -i '/ipv4_l3fwd_lpm_route_array\[\].*{/,/^\}\;/c\\%s' examples/l3fwd/l3fwd_lpm.c" % lpmStr, "# ")
         out = self.dut.build_dpdk_apps("./examples/l3fwd", "USER_FLAGS=-DAPP_LOOKUP_METHOD=1")
         self.verify("Error" not in out, "compilation error 1")
         self.verify("No such file" not in out, "compilation error 2")
@@ -183,7 +183,7 @@ class TestL3fwd(TestCase,IxiaPacketGenerator):
         out = self.dut.send_expect("make clean -C examples/l3fwd", "# ")
 
         # Compile l3fwd with hash/exact lookup.
-        self.dut.send_expect(r"sed -i -e '/ipv4_l3fwd_route_array\[\].*{/,/^\}\;/c\\%s' examples/l3fwd/main.c" % exactStr, "# ")
+	self.dut.send_expect(r"sed -i -e '/ipv4_l3fwd_em_route_array\[\].*{/,/^\}\;/c\\%s' examples/l3fwd/l3fwd_em.c" % exactStr, "# ")
         out = self.dut.build_dpdk_apps("./examples/l3fwd", "USER_FLAGS=-DAPP_LOOKUP_METHOD=0")
 
         self.verify("Error" not in out, "compilation error 1")
@@ -226,246 +226,11 @@ class TestL3fwd(TestCase,IxiaPacketGenerator):
 
         return '%s,%s,%s' % (str(valports[int(pid)]), qid, lcid)
 
-    def get_throughput(self, frame_size, rx_queues_per_port, cores_config, command_line):
-        """
-        Get the throughput for a test case from test_cases_4_ports.
-        """
-
-        output_pattern = re.compile("P([0123]),([0123]),(C\{\d.\d.\d\})")
-        pat2 = re.compile("C\{\d")
-        repl1 = "C{" + str(self.port_socket)
-
-        bps = dict()
-        pps = dict()
-        pct = dict()
-
-        global corelist
-        corelist = []
-        
-        
-        while output_pattern.search(command_line):
-        # If one socket case, we update the socket to ensure the core used by l3fwd is on the same socket of the NIC.
-            if cores_config.find('1S')>=0:
-                command_line = pat2.sub(repl1,command_line)
-            command_line = output_pattern.sub(self.repl, command_line)
-            
-
-        self.logger.debug("%s\n" % str(corelist))
-        core_mask = utils.create_mask(set(corelist))
-
-        # First, measure by two different methods
-        for method in TestL3fwd.methods:
-            # start l3fwd
-            method_command_line = command_line % (TestL3fwd.path + "l3fwd_" + method,
-                                                  core_mask,
-                                                  self.dut.get_memory_channels(),
-                                                  utils.create_mask(valports[:4]))
-
-            if frame_size > 1518:
-               method_command_line = method_command_line + " --enable-jumbo --max-pkt-len %d" % frame_size
-            self.rst_report(method_command_line + "\n", frame=True, annex=True)
-
-            out = self.dut.send_expect(method_command_line, "L3FWD:", 120)
-
-            # measure test
-            tgen_input = []
-            for rxPort in range(4):
-                if rxPort % 2 == 0:
-                    tx_interface = self.tester.get_local_port(valports[rxPort + 1])
-                else:
-                    tx_interface = self.tester.get_local_port(valports[rxPort - 1])
-
-                rx_interface = self.tester.get_local_port(valports[rxPort])
-                # Make sure the traffic send to the correct MAC address
-                if rxPort % 2 == 0: 
-                    tgen_input.append((tx_interface, rx_interface, "dst%d.pcap" % valports[rxPort+1]))
-                else:
-                    tgen_input.append((tx_interface, rx_interface, "dst%d.pcap" % valports[rxPort-1]))
-
-            # FIX ME
-            bps[method], pps[method] = self.tester.traffic_generator_throughput(tgen_input)
-            self.verify(pps[method] > 0, "No traffic detected")
-            pps[method] /= 1000000.0
-            pct[method] = pps[method] * 100 / float(self.wirespeed(self.nic,
-                                                                   frame_size,
-                                                                   4))
-
-            # stop l3fwd
-            self.dut.send_expect("^C", "#")
-
-        data_row = [frame_size, method, cores_config, rx_queues_per_port]
-        for method in TestL3fwd.methods:
-            data_row.append(pps[method])
-            data_row.append(pct[method])
-
-        # generate report table
-        self.result_table_add(data_row)
-        self.l3fwd_test_results['data'].append(data_row)
-
     def set_up(self):
         """
         Run before each test case.
         """
         pass
-
-    def no_test_perf_l3fwd_4ports(self):
-        """
-        L3fwd main 4 ports.
-        """
-
-        # Based on h/w type, choose how many ports to use
-        ports = self.dut.get_ports()
-        # Verify that enough ports are available
-        self.verify(len(ports) >= 4, "Insufficient ports for speed testing")
-
-        header_row = ["Frame size", "mode", "S/C/T", "RX Queues/NIC Port"]
-
-        for method in TestL3fwd.methods:
-            header_row.append('%s Mpps' % method)
-            header_row.append('% linerate')
-
-        self.result_table_create(header_row)
-        self.l3fwd_test_results['header'] = header_row
-        self.l3fwd_test_results['data'] = []
-
-        for frame_size in TestL3fwd.frame_sizes:
-
-            # Prepare traffic flow
-            payload_size = frame_size - \
-                HEADER_SIZE['ip'] - HEADER_SIZE['eth']
-
-            for _port in range(4):
-                dmac = self.dut.get_mac_address(valports[_port])
-                flows = ['Ether(dst="%s")/%s/("X"*%d)' % (dmac, flow, payload_size) for flow in self.flows()[_port * 2:(_port + 1) * 2]]
-                self.tester.scapy_append('wrpcap("dst%d.pcap", [%s])' % (valports[_port], string.join(flows, ',')))
-
-            self.tester.scapy_execute()
-
-            self.rst_report("Flows for 4 ports, %d frame size.\n" % (frame_size),
-                       annex=True)
-            self.rst_report("%s" % string.join(flows, '\n'),
-                       frame=True, annex=True)
-
-            # Get the number of sockets of the board
-            number_sockets = self.dut.send_expect("grep \"processor\|physical id\|core id\|^$\" /proc/cpuinfo | grep physical | sort -u | wc -l", "# ")
-            number_sockets = int(number_sockets.split('\r\n')[0])
-
-            # Run case by case
-            for test_case in TestL3fwd.test_cases_4_ports:
-
-                # Check if the board has sockets enough for the test case
-                if number_sockets >= int(test_case[1].split('/')[0][0]):
-                    self.get_throughput(frame_size, *test_case)
-
-        self.result_table_print()
-
-    def no_test_perf_l3fwd_2ports(self):
-        """
-        L3fwd main 2 ports.
-        """
-
-        header_row = ["Frame", "mode", "S/C/T", "Mpps", "% linerate", "latency_max(us)", "latency_min(us)", "latency_avg(us)"]
-        self.l3fwd_test_results['header'] = header_row
-        self.result_table_create(header_row)
-        self.l3fwd_test_results['data'] = []
-
-        for frame_size in TestL3fwd.frame_sizes:
-
-            # Prepare traffic flow
-            payload_size = frame_size -  \
-                HEADER_SIZE['ip'] - HEADER_SIZE['eth']
-            for _port in range(2):
-                dmac = self.dut.get_mac_address(valports[_port])
-                flows = ['Ether(dst="%s")/%s/("X"*%d)' % (dmac, flow, payload_size) for flow in self.flows()[_port *2:(_port +1)*2]]
-                self.tester.scapy_append('wrpcap("dst%d.pcap", [%s])' %(valports[_port],string.join(flows,',')))
-            self.tester.scapy_execute() 
-
-            self.rst_report("Flows for 2 ports, %d frame size.\n" % (frame_size),
-                       annex=True)
-            self.rst_report("%s" % string.join(flows, '\n'),
-                       frame=True, annex=True)
-
-
-            # Prepare the command line
-            global corelist
-            pat = re.compile("P([0123]),([0123]),(C\{\d.\d.\d\})")
-            
-            pat2 = re.compile("C\{\d")
-            repl1 = "C{" + str(self.port_socket)
-
-            coreMask = {}
-            cmdlist = []
-            rtCmdLines = {}
-            cmdlist = TestL3fwd.test_cases_2_ports
-            for cmdline_pat in cmdlist:
-                corelist = []
-                rtCmdLines[cmdline_pat[1]] = cmdline_pat[2]
-                while pat.search(rtCmdLines[cmdline_pat[1]]):
-                    # Change the socket to the NIC's socket
-                    if cmdline_pat[1].find('1S')>=0:
-                        rtCmdLines[cmdline_pat[1]] = pat2.sub(repl1, rtCmdLines[cmdline_pat[1]])
-                    rtCmdLines[cmdline_pat[1]] = pat.sub(self.repl, rtCmdLines[cmdline_pat[1]])
-
-                self.logger.info("%s\n" % str(corelist))
-                coreMask[cmdline_pat[1]] = utils.create_mask(set(corelist))
-
-            # measure by two different mode
-            for mode in TestL3fwd.methods:
-
-                # start l3fwd
-                index = 0
-                subtitle = []
-                for cores in rtCmdLines.keys():
-
-                    info = "Executing l3fwd using %s mode, 2 ports, %s and %d frame size.\n" % (
-                           mode, cores, frame_size)
-
-                    self.logger.info(info)
-                    self.rst_report(info, annex=True)
-
-                    subtitle.append(cores)
-                    cmdline = rtCmdLines[cores] % (TestL3fwd.path + "l3fwd_" + mode, coreMask[cores],
-                                                   self.dut.get_memory_channels(), utils.create_mask(valports[:2]))
-
-                    if frame_size > 1518:
-                        cmdline = cmdline + " --enable-jumbo --max-pkt-len %d" % frame_size
-                    self.rst_report(cmdline + "\n", frame=True, annex=True)
-
-                    out = self.dut.send_expect(cmdline, "L3FWD:", 120)
-
-                    # Measure test
-                    tgenInput = []
-                    for rxPort in range(2):
-                        # No use on rx/tx limitation
-                        if rxPort % 2 == 0:
-                            txIntf = self.tester.get_local_port(valports[rxPort + 1])
-                        else:
-                            txIntf = self.tester.get_local_port(valports[rxPort - 1])
-
-                        rxIntf = self.tester.get_local_port(valports[rxPort])
-                        if rxPort % 2 == 0: 
-                            tgenInput.append((txIntf, rxIntf, "dst%d.pcap" %valports[rxPort+1]))
-                        else: 
-                            tgenInput.append((txIntf, rxIntf, "dst%d.pcap" %valports[rxPort-1]))
-
-                    _, pps = self.tester.traffic_generator_throughput(tgenInput)
-                    self.verify(pps > 0, "No traffic detected")
-                    pps /= 1000000.0
-                    linerate = self.wirespeed(self.nic, frame_size, 2)
-                    pct = pps * 100 / linerate
-                    latencys = self.tester.traffic_generator_latency(tgenInput)
-
-                    index += 1
-
-                    # Stop l3fwd
-                    self.dut.send_expect("^C", "#")
-
-                    for latency in latencys:
-                        data_row = [frame_size, mode, cores, str(pps), str(pct), str(latency['max']), str(latency['min']), str(latency['average'])]
-                    self.result_table_add(data_row)
-                    self.l3fwd_test_results['data'].append(data_row)
-
-        self.result_table_print()
 
     def test_perf_rfc2544(self):
 
@@ -480,10 +245,11 @@ class TestL3fwd(TestCase,IxiaPacketGenerator):
 
             # Prepare traffic flow
             payload_size = frame_size -  \
-                HEADER_SIZE['ip'] - HEADER_SIZE['eth']
+                HEADER_SIZE['ip'] - HEADER_SIZE['eth'] - HEADER_SIZE['tcp']
+
             for _port in range(ports_num):
                 dmac = self.dut.get_mac_address(valports[_port])
-                flows = ['Ether(dst="%s")/%s/("X"*%d)' % (dmac, flow, payload_size) for flow in self.flows()[_port *2:(_port +1)*2]]
+                flows = ['Ether(dst="%s")/%s/TCP()/("X"*%d)' % (dmac, flow, payload_size) for flow in self.flows()[_port *2:(_port +1)*2]]
                 self.tester.scapy_append('wrpcap("dst%d.pcap", [%s])' %(valports[_port],string.join(flows,',')))
             self.tester.scapy_execute()
 
@@ -543,6 +309,8 @@ class TestL3fwd(TestCase,IxiaPacketGenerator):
                         subtitle.append(cores)
                         cmdline = rtCmdLines[cores] % (TestL3fwd.path + "l3fwd_" + mode, coreMask[cores],
                                                        self.dut.get_memory_channels(), utils.create_mask(valports[:ports_num]))
+                        if self.nic == "niantic":
+                            cmdline = cmdline + " --parse-ptype"
 
                         if frame_size > 1518:
                             cmdline = cmdline + " --enable-jumbo --max-pkt-len %d" % frame_size
@@ -571,9 +339,10 @@ class TestL3fwd(TestCase,IxiaPacketGenerator):
                         linerate = self.wirespeed(self.nic, frame_size, ports_num)
                         zero_loss_throughput = (linerate * zero_loss_rate) / 100
 
-                        tx_pkts = human_read_number(tx_pkts)
-                        rx_pkts = human_read_number(rx_pkts)
-                        loss_pkts = human_read_number(loss_pkts)
+                        tx_pkts = utils.human_read_number(tx_pkts)
+                        rx_pkts = utils.human_read_number(rx_pkts)
+                        loss_pkts = utils.human_read_number(loss_pkts)
+
 
                         #data_row = [frame_size, mode, cores, tx_pkts, rx_pkts, loss_pkts, zero_loss_rate, zero_loss_throughput]
                         data_row = [frame_size, mode, cores, zero_loss_throughput, zero_loss_rate]
