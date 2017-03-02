@@ -92,8 +92,9 @@ class TestUnitTestsDump(TestCase):
         m = re.compile(r"%s" % match_regex, re.S)
         result = m.findall(out)
         
-
-        self.verify(result[0][0] == 'MP_mbuf_pool_socket_0', "dump ring name failed")
+        # Nic driver will create multiple rings.
+        # Only check the last one to make sure ring_dump function work.
+        self.verify( 'MP_mbuf_pool_socket_0' in result[0][-1], "dump ring name failed")
 
     def test_mempool_dump(self):
         """
