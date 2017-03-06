@@ -207,11 +207,11 @@ class DPDKdut(Dut):
         self.send_expect("rm -rf %s" % r'./app/test/test_resource_c.res.o' , "#")
         self.send_expect("rm -rf %s" % r'./app/test/test_resource_tar.res.o' , "#")
         self.send_expect("rm -rf %s" % r'./app/test/test_pci_sysfs.res.o' , "#")
-
+        build_time = 120
         # compile
         out = self.send_expect("make -j %d install T=%s CC=gcc48" % (self.number_of_cores,
                                                                      target),
-                               "#", 120)
+                               "#", build_time)
         #should not check test app compile status, because if test compile fail,
         #all unit test can't exec, but others case will exec sucessfull 
         self.send_expect("make -j -C test/ CC=gcc48", "# ", build_time)
@@ -224,7 +224,7 @@ class DPDKdut(Dut):
             self.logger.error("ERROR - try without '-j'")
             # if Error try to execute make without -j option
             out = self.send_expect("make install T=%s CC=gcc48" % target,
-                                   "#", 120)
+                                   "#", build_time)
 
         assert ("Error" not in out), "Compilation error..."
         assert ("No rule to make" not in out), "No rule to make error..."
