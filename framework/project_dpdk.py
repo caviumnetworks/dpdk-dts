@@ -185,19 +185,17 @@ class DPDKdut(Dut):
         out = self.send_expect("make -j install T=%s %s" % (target, extra_options), "# ", build_time)
         #should not check test app compile status, because if test compile fail,
         #all unit test can't exec, but others case will exec sucessfull 
-        self.send_expect("make -j -C test/", "# ", build_time)
-        app_list = ['./test/test/test', './test/test-acl/testacl', './test/test-pipeline/testpipeline', './test/cmdline_test/cmdline_test']
-        for app in app_list:
-            self.send_expect('cp  %s ./%s/app' % (app, target), "# ", 30)
-          
+        self.build_install_dpdk_test_app(target, build_time)
 
         if("Error" in out or "No rule to make" in out):
             self.logger.error("ERROR - try without '-j'")
             # if Error try to execute make without -j option
             out = self.send_expect("make install T=%s %s" % (target, extra_options), "# ", 120)
+            self.build_install_dpdk_test_app(target, build_time)
 
         assert ("Error" not in out), "Compilation error..."
         assert ("No rule to make" not in out), "No rule to make error..."
+
     def build_install_dpdk_freebsd(self, target, extra_options):
         """
         Build DPDK source code on Freebsd with specified target.
@@ -214,21 +212,28 @@ class DPDKdut(Dut):
                                "#", build_time)
         #should not check test app compile status, because if test compile fail,
         #all unit test can't exec, but others case will exec sucessfull 
-        self.send_expect("make -j -C test/ CC=gcc48", "# ", build_time)
-        
-        app_list = ['./test/test/test', './test/test-acl/testacl', './test/test-pipeline/testpipeline', './test/cmdline_test/cmdline_test']
-        for app in app_list:
-            self.send_expect('cp -f %s ./%s/app' % (app, target), "# ", 30)
+        self.build_install_dpdk_test_app(target, build_time, os_type="freebsd")
 
         if("Error" in out or "No rule to make" in out):
             self.logger.error("ERROR - try without '-j'")
             # if Error try to execute make without -j option
             out = self.send_expect("make install T=%s CC=gcc48" % target,
                                    "#", build_time)
+            self.build_install_dpdk_test_app(target, build_time, os_type="freebsd")
 
         assert ("Error" not in out), "Compilation error..."
         assert ("No rule to make" not in out), "No rule to make error..."
 
+    def build_install_dpdk_test_app(self, target, build_time, os_type="linux"):
+        cmd_build_test = "make -j -C test/"
+        if os_type == "freebsd":
+            cmd_build_test = "make -j -C test/ CC=gcc48"
+
+        self.send_expect(cmd_build_test, "# ", build_time)
+        app_list = ['./test/test/test', './test/test-acl/testacl', './test/test-pipeline/testpipeline', './test/cmdline_test/cmdline_test']
+        for app in app_list:
+            self.send_expect('cp -f %s ./%s/app' % (app, target), "# ", 30)
+         
     def prepare_package(self):
         if not self.skip_setup:
             assert (os.path.isfile(self.package) is True), "Invalid package"
