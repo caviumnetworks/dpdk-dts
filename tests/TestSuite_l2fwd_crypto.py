@@ -1,6 +1,6 @@
 # BSD LICENSE
 #
-# Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+# Copyright(c) 2016-2017 Intel Corporation. All rights reserved.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -32,11 +32,21 @@
 import hmac
 import hashlib
 import binascii
-
-import utils
 import time
-
+import os
+import sys
+import utils
+import commands
 from test_case import TestCase
+from packet import Packet, sniff_packets, load_sniff_packets, save_packets
+
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.backends import default_backend
+
+# Manually Install the CryptoMobile Python Library,
+# Before running this test suite
+# Web link : https://github.com/mitshell/CryptoMobile
+import CryptoMobile.CM as cm
 
 
 class TestL2fwdCrypto(TestCase):
@@ -74,20 +84,24 @@ class TestL2fwdCrypto(TestCase):
         # Rebuild the dpdk with cryptodev pmds
         self.dut.send_expect("export AESNI_MULTI_BUFFER_LIB_PATH=/root/ipsec_043/code/", "#")
         self.dut.send_expect("export LIBSSO_SNOW3G_PATH=/root/libsso_snow3g/snow3g/", "#")
+        self.dut.send_expect("export LIBSSO_ZUC_PATH=/root/libsso_zuc.1.0.1.1-8/zuc", "#")
         self.dut.send_expect("export LIBSSO_KASUMI_PATH=/root/LibSSO_0_3_1/isg_cid-wireless_libs/ciphers/kasumi/", "#")
         self.dut.send_expect("sed -i 's/CONFIG_RTE_LIBRTE_PMD_QAT=n$/CONFIG_RTE_LIBRTE_PMD_QAT=y/' config/common_base", "# ")
         self.dut.send_expect("sed -i 's/CONFIG_RTE_LIBRTE_PMD_AESNI_GCM=n$/CONFIG_RTE_LIBRTE_PMD_AESNI_GCM=y/' config/common_base", "# ")
         self.dut.send_expect("sed -i 's/CONFIG_RTE_LIBRTE_PMD_NULL_CRYPTO=n$/CONFIG_RTE_LIBRTE_PMD_NULL_CRYPTO=y/' config/common_base", "# ")
         self.dut.send_expect("sed -i 's/CONFIG_RTE_LIBRTE_PMD_SNOW3G=n$/CONFIG_RTE_LIBRTE_PMD_SNOW3G=y/' config/common_base", "# ")
         self.dut.send_expect("sed -i 's/CONFIG_RTE_LIBRTE_PMD_KASUMI=n$/CONFIG_RTE_LIBRTE_PMD_KASUMI=y/' config/common_base", "# ")
+        self.dut.send_expect("sed -i 's/CONFIG_RTE_LIBRTE_PMD_OPENSSL=n$/CONFIG_RTE_LIBRTE_PMD_OPENSSL=y/' config/common_base", "# ")
+        self.dut.send_expect("sed -i 's/CONFIG_RTE_LIBRTE_PMD_AESNI_MB=n$/CONFIG_RTE_LIBRTE_PMD_AESNI_MB=y/' config/common_base", "# ") 
+        self.dut.send_expect("sed -i 's/CONFIG_RTE_LIBRTE_PMD_ZUC=n$/CONFIG_RTE_LIBRTE_PMD_ZUC=y/' config/common_base", "# ")
         self.dut.skip_setup = False
         self.dut.build_install_dpdk(self.dut.target)
-
+        
         # l2fwd-crypto compile
         out = self.dut.build_dpdk_apps("./examples/l2fwd-crypto")
         self.verify("Error" not in out, "Compilation error")
         self.verify("No such" not in out, "Compilation error")
-
+        
         # Bind QAT VF devices
         out = self.dut.send_expect("lspci -d:443|awk '{print $1}'", "# ", 10)
         self.dut.send_expect('echo "8086 0443" > /sys/bus/pci/drivers/igb_uio/new_id', "# ", 10)
@@ -100,92 +114,79 @@ class TestL2fwdCrypto(TestCase):
     def set_up(self):
         pass
 
-    def test_qat_AES(self):
-
+    def test_qat_AES_CBC_auto(self):
         result = True
-
-        self.logger.info("Test qat_c_AES_CBC_01")
+        self.logger.info("Test qat_c_AES_CBC_00")
         if not self.__execute_l2fwd_crypto_test(
-                test_vectors, "qat_c_AES_CBC_01"):
+                test_vectors, "qat_c_AES_CBC_00"):
             result = False
-
-        self.logger.info("Test qat_c_AES_CTR_01")
-        if not self.__execute_l2fwd_crypto_test(
-                test_vectors, "qat_c_AES_CTR_01"):
-            result = False
-
-        self.logger.info("Test qat_c_AES_GCM_01")
-        if not self.__execute_l2fwd_crypto_test(
-                test_vectors, "qat_c_AES_GCM_01"):
-            result = False
-
-        self.verify(result, True)
-
-    def test_qat_MD5(self):
-        """
-        Validate MD5 HMAC digest with Intel QuickAssist device
-        """
-
+        
+    def test_qat_AES_CTR_auto(self):
         result = True
-
-        self.logger.info("Test qat_h_MD5_HMAC_01")
-
-        # if output_hash not existed, calculate it automatically
-        vector = test_vectors['qat_h_MD5_HMAC_01']
-        if not vector['output_hash']:
-            key = binascii.a2b_hex(vector['auth_key'])
-            msg = binascii.a2b_hex(vector['input'])
-            digest = hmac.new(key, msg, hashlib.md5).digest()
-            vector['output_hash'] = binascii.b2a_hex(digest)
-
+        self.logger.info("Test qat_c_AES_CTR_00")
         if not self.__execute_l2fwd_crypto_test(
-                test_vectors, "qat_h_MD5_HMAC_01"):
+                test_vectors, "qat_c_AES_CTR_00"):
             result = False
-        self.verify(result, True)
-
-    def test_qat_SHA(self):
-
+        
+    def test_qat_AES_GCM_auto(self):
         result = True
-
-        self.logger.info("Test qat_h_SHA1_HMAC_01")
+        self.logger.info("Test qat_c_AES_GCM_00")
         if not self.__execute_l2fwd_crypto_test(
-                test_vectors, "qat_h_SHA1_HMAC_01"):
+                test_vectors, "qat_c_AES_GCM_00"):
             result = False
-
-        self.logger.info("Test qat_h_SHA224_HMAC_01")
-        if not self.__execute_l2fwd_crypto_test(
-                test_vectors, "qat_h_SHA224_HMAC_01"):
-            result = False
-
-        self.logger.info("Test qat_h_SHA256_HMAC_01")
-        if not self.__execute_l2fwd_crypto_test(
-                test_vectors, "qat_h_SHA256_HMAC_01"):
-            result = False
-
-        self.logger.info("Test qat_h_SHA384_HMAC_01")
-        if not self.__execute_l2fwd_crypto_test(
-                test_vectors, "qat_h_SHA384_HMAC_01"):
-            result = False
-
-        self.logger.info("Test qat_h_SHA512_HMAC_01")
-        if not self.__execute_l2fwd_crypto_test(
-                test_vectors, "qat_h_SHA512_HMAC_01"):
-            result = False
-
-        self.verify(result, True)
-
-    def test_qat_AES_XCBC_MAC(self):
-
+    
+    def test_qat_h_MD_SHA_auto(self):
         result = True
-
+        self.logger.info("Test qat_h_MD_SHA_00")
+        if not self.__execute_l2fwd_crypto_test(
+                test_vectors, "qat_h_MD_SHA_00"):
+            result = False
+    
+    def test_qat_h_AES_XCBC_MAC_auto(self):
+        result = True
         self.logger.info("Test qat_h_AES_XCBC_MAC_01")
         if not self.__execute_l2fwd_crypto_test(
                 test_vectors, "qat_h_AES_XCBC_MAC_01"):
             result = False
+    
+    def test_qat_3DES_CBC_auto(self):
+        result = True
+        self.logger.info("Test qat_c_3DES_CBC_00")
+        if not self.__execute_l2fwd_crypto_test(
+                test_vectors, "qat_c_3DES_CBC_00"):
+            result = False
+            
+    def test_qat_3DES_CTR_auto(self):
+        result = True
+        self.logger.info("Test qat_c_3DES_CTR_00")
+        if not self.__execute_l2fwd_crypto_test(
+                test_vectors, "qat_c_3DES_CTR_00"):
+            result = False
+      
+    def test_qat_AES_GCM_AES_GCM(self):
 
-        self.verify(result, True)
+        result = True
 
-    def test_qat_SNOW3G(self):
+        self.logger.info("Test qat_ch_AES_GCM_AES_GCM_01")
+        if not self.__execute_l2fwd_crypto_test(
+                test_vectors, "qat_ch_AES_GCM_AES_GCM_01"):
+            result = False
+    
+    def test_qat_AES_DOCSISBPI_auto(self):
+        result = True
+        self.logger.info("Test qat_ch_AES_DOCSISBPI")
+        if not self.__execute_l2fwd_crypto_test(
+                test_vectors, "qat_ch_AES_DOCSISBPI"):
+            result = False
+            
+    def test_qat_c_DES_DOCSISBPI_auto(self):
+        result = True
+        self.logger.info("Test qat_c_DES_DOCSISBPI")
+        if not self.__execute_l2fwd_crypto_test(
+                test_vectors, "qat_c_DES_DOCSISBPI"):
+            result = False
+            
+    def test_qat_SNOW3G_auto(self):
 
         result = True
 
@@ -198,35 +199,94 @@ class TestL2fwdCrypto(TestCase):
         if not self.__execute_l2fwd_crypto_test(
                 test_vectors, "qat_h_UIA2_01"):
             result = False
-
+        
         self.verify(result, True)
-
-    def test_qat_AES_GCM_AES_GCM(self):
+        
+    def test_qat_KASUMI_auto(self):
 
         result = True
-
-        self.logger.info("Test qat_ch_AES_GCM_AES_GCM_01")
+        self.logger.info("Test qat_kasumi_c_F8_01")
         if not self.__execute_l2fwd_crypto_test(
-                test_vectors, "qat_ch_AES_GCM_AES_GCM_01"):
+                test_vectors, "qat_kasumi_c_F8_01"):
+            result = False
+
+        self.logger.info("Test qat_kasumi_h_F9_01")
+        if not self.__execute_l2fwd_crypto_test(
+                test_vectors, "qat_kasumi_h_F9_01"):
             result = False
 
         self.verify(result, True)
+        
+    def test_qat_ZUC_auto(self):
 
+        result = True
+        self.logger.info("Test qat_c_EEA3_01")
+        if not self.__execute_l2fwd_crypto_test(
+                test_vectors, "qat_c_EEA3_01"):
+            result = False
+
+        self.logger.info("Test qat_h_EIA3_01")
+        if not self.__execute_l2fwd_crypto_test(
+                test_vectors, "qat_h_EIA3_01"):
+            result = False
+            
+    def test_qat_c_NULL_auto(self):
+
+        result = True
+
+        self.logger.info("Test qat_c_NULL_auto")
+        if not self.__execute_l2fwd_crypto_test(
+                test_vectors, "null_c_NULL_auto"):
+            result = False
+
+        self.verify(result, True)
+                 
+    def test_qat_h_NULL_auto(self):
+
+        result = True
+
+        self.logger.info("Test qat_h_NULL_auto")
+        if not self.__execute_l2fwd_crypto_test(
+                test_vectors, "qat_h_NULL_auto"):
+            result = False
+
+        self.verify(result, True)
+          
+    def test_aesni_mb_AES_CBC_auto(self):
+        result = True
+        self.logger.info("Test aesni_mb_c_AES_CBC_00")
+        if not self.__execute_l2fwd_crypto_test(
+                test_vectors, "aesni_mb_c_AES_CBC_00"):
+            result = False
+        
+    def test_aesni_mb_AES_CTR_auto(self):
+        result = True
+        self.logger.info("Test aesni_mb_c_AES_CTR_00")
+        if not self.__execute_l2fwd_crypto_test(
+                test_vectors, "aesni_mb_c_AES_CTR_00"):
+            result = False
+            
+    def test_aesni_mb_AES_DOCSISBPI_auto(self):
+        result = True
+        self.logger.info("Test aesni_mb_c_AES_DOCSISBPI")
+        if not self.__execute_l2fwd_crypto_test(
+                test_vectors, "aesni_mb_c_AES_DOCSISBPI"):
+            result = False
+            
     def test_aesni_AES_GCM_AES_GCM(self):
 
         result = True
 
-        self.logger.info("Test aesni_ch_AES_GCM_AES_GCM_01")
+        self.logger.info("Test aesni_gcm_ch_AES_GCM_AES_GCM_01")
         if not self.__execute_l2fwd_crypto_test(
-                test_vectors, "aesni_ch_AES_GCM_AES_GCM_01"):
+                test_vectors, "aesni_gcm_ch_AES_GCM_AES_GCM_01"):
             result = False
 
         self.verify(result, True)
-
-    def test_kasumi_KASUMI(self):
+    
+    def test_kasumi_KASUMI_auto(self):
 
         result = True
-
         self.logger.info("Test kasumi_c_F8_01")
         if not self.__execute_l2fwd_crypto_test(
                 test_vectors, "kasumi_c_F8_01"):
@@ -238,18 +298,51 @@ class TestL2fwdCrypto(TestCase):
             result = False
 
         self.verify(result, True)
+            
+    def test_null_NULL_CIPHER(self):
 
-    def test_null_NULL(self):
+        result = True
+        self.logger.info("Test null_c_NULL_auto")
+        if not self.__execute_l2fwd_crypto_test(
+                test_vectors, "null_c_NULL_auto"):
+            result = False
+
+        self.verify(result, True)
+      
+    def test_null_NULL_HASH(self):
 
         result = True
 
-        self.logger.info("Test null_c_NULL_01")
+        self.logger.info("Test null_h_NULL_auto")
         if not self.__execute_l2fwd_crypto_test(
-                test_vectors, "null_c_NULL_01"):
+                test_vectors, "null_h_NULL_auto"):
+            result = False
+
+        self.verify(result, True)
+        
+    def test_null_c_NULL_auto(self):
+
+        result = True
+
+        self.logger.info("Test null_c_NULL_auto")
+        if not self.__execute_l2fwd_crypto_test(
+                test_vectors, "null_c_NULL_auto"):
+            result = False
+
+        self.verify(result, True)
+                 
+    def test_null_h_NULL_auto(self):
+
+        result = True
+
+        self.logger.info("Test null_h_NULL_auto")
+        if not self.__execute_l2fwd_crypto_test(
+                test_vectors, "null_h_NULL_auto"):
             result = False
 
         self.verify(result, True)
 
+        
     def test_snow3g_SNOW3G(self):
 
         result = True
@@ -265,7 +358,130 @@ class TestL2fwdCrypto(TestCase):
             result = False
 
         self.verify(result, True)
+    
+    def test_zun_ZUC_auto(self):
 
+        result = True
+        self.logger.info("Test zuc_c_EEA3_01")
+        if not self.__execute_l2fwd_crypto_test(
+                test_vectors, "zuc_c_EEA3_01"):
+            result = False
+
+        self.logger.info("Test zuc_h_EIA3_01")
+        if not self.__execute_l2fwd_crypto_test(
+                test_vectors, "zuc_h_EIA3_01"):
+            result = False
+            
+    # openssl pmd cases 
+    def test_openssl_3DES_CBC_auto(self):
+        result = True
+        self.logger.info("Test openssl_c_3DES_CBC_00")
+        if not self.__execute_l2fwd_crypto_test(
+                test_vectors, "openssl_c_3DES_CBC_00"):
+            result = False
+            
+    def test_openssl_3DES_CTR_auto(self):
+        result = True
+        self.logger.info("Test openssl_c_3DES_CTR_00")
+        if not self.__execute_l2fwd_crypto_test(
+                test_vectors, "openssl_c_3DES_CTR_00"):
+            result = False   
+                    
+    def test_openssl_AES_CBC_auto(self):
+        result = True
+        self.logger.info("Test openssl_c_AES_CBC_00")
+        if not self.__execute_l2fwd_crypto_test(
+                test_vectors, "openssl_c_AES_CBC_00"):
+            result = False
+            
+    def test_openssl_AES_CTR_auto(self):
+        result = True
+        self.logger.info("Test openssl_c_AES_CTR_00")
+        if not self.__execute_l2fwd_crypto_test(
+                test_vectors, "openssl_c_AES_CTR_00"):
+            result = False
+        
+    def test_openssl_AES_GCM_auto(self):
+        result = True
+        self.logger.info("Test openssl_c_AES_GCM_00")
+        if not self.__execute_l2fwd_crypto_test(
+                test_vectors, "openssl_c_AES_GCM_00"):
+            result = False
+    
+    def test_openssl_h_MD_SHA_auto(self):
+        result = True
+        self.logger.info("Test openssl_h_MD_SHA_00")
+        if not self.__execute_l2fwd_crypto_test(
+                test_vectors, "openssl_h_MD_SHA_00"):
+            result = False
+    
+    def test_openssl_c_DES_DOCSISBPI_auto(self):
+        result = True
+        self.logger.info("Test openssl_c_DES_DOCSISBPI")
+        if not self.__execute_l2fwd_crypto_test(
+                test_vectors, "openssl_c_DES_DOCSISBPI"):
+            result = False
+            
+    def test_calculatr_case_number(self):
+        
+        self.__calculate_totall_cases_numb()
+    
+    def __calculate_totall_cases_numb(self):
+        alg_map = {}
+        pmd_map = {}
+        map_combine  = {}
+        count = 0
+        alg = ""
+        pmd = ""
+        alg_list = ["AES_CBC","AES_CTR","AES_GCM","3DES_CBC", \
+                   "3DES_CTR","SNOW3G","KASUMI","ZUC","NULL","MD_SHA"]
+        pmd_list = ["qat","aesni_mb","aesni_gcm","snow3g",\
+                   "kasumi","zuc","openssl","null"]
+        valid_map = {
+                    "qat": ["AES_CBC", "AES_CTR","AES_GCM","3DES_CBC", \
+                            "3DES_CTR","SNOW3G","KASUMI","NULL","MD_SHA"],
+                    "aesni_mb":["AES_CBC", "AES_CTR"],
+                    "aesni_gcm":["AES_GCM"],
+                    "snow3g":["SNOW3G"],
+                    "kasumi":["KASUMI"],
+                    "zuc":["ZUC"],
+                    "openssl":["AES_CBC", "AES_CTR","AES_GCM","3DES_CBC","3DES_CTR","MD_SHA"],
+                    "null":["NULL"]                    
+                    }
+        
+        for index,value in test_vectors.iteritems():
+            test_vector_list = self.__test_vector_to_vector_list(value,
+                core_mask="-1",port_mask=self.port_mask)
+            count = count + len(test_vector_list)
+            for i in alg_list:
+                if (index.upper()).find(i) != -1:
+                    alg = i
+                    if i in alg_map:
+                        alg_map[i] += len(test_vector_list)
+                    else:
+                        alg_map[i] = len(test_vector_list)
+            for j in pmd_list:
+                if (index).find(j) != -1:
+                    pmd = j if j !="" else "qat"
+                    if i in pmd_map:
+                        pmd_map[j] += len(test_vector_list)
+                    else:
+                        pmd_map[j] = len(test_vector_list)
+            if alg in valid_map[pmd]:
+                temp_str = pmd + "_" + alg
+                if temp_str in map_combine:
+                    map_combine[temp_str] += len(test_vector_list)
+                else:
+                    map_combine[temp_str] = len(test_vector_list)
+        for k,v in alg_map.iteritems():
+            self.logger.info("Total {name} cases:\t\t\t{number}".format(name=k,number=v))
+        for k,v in pmd_map.iteritems():
+            self.logger.info("Total {name} cases:\t\t\t{number}".format(name=k,number=v))
+        for k,v in map_combine.iteritems():
+            self.logger.info("Total {name} cases:\t\t\t{number}".format(name=k,number=v))
+        self.logger.info("Total cases:\t\t\t {0}".format(count))
+    
+    
     def __execute_l2fwd_crypto_test(self, test_vectors, test_vector_name):
 
         if test_vector_name not in test_vectors:
@@ -274,89 +490,68 @@ class TestL2fwdCrypto(TestCase):
 
         test_vector = test_vectors[test_vector_name]
 
+        test_vector_list = self.__test_vector_to_vector_list(test_vector,
+                core_mask=self.core_mask,
+                port_mask=self.port_mask)
+
         result = True
-        cmd_str = self.__test_vector_to_cmd(test_vector,
-                                            core_mask=self.core_mask,
-                                            port_mask=self.port_mask)
+        self.logger.info("Total Generated {0} Tests".format(len(test_vector_list)))
+        for test_vector in test_vector_list:
+            self.logger.debug(test_vector)
+            cmd_str = self.__test_vector_to_cmd(test_vector,
+                                                core_mask=self.core_mask,
+                                                port_mask=self.port_mask)
+            self.dut.send_expect(cmd_str, "==", 30)
+            time.sleep(5)
+            
+            payload = self.__format_hex_to_list(test_vector["input"])
 
-        self.dut.send_expect(cmd_str, "==", 30)
+            inst = sniff_packets(self.rx_interface, timeout=5)
 
-        self.tester.send_expect("rm -rf %s.pcap" % (self.rx_interface), "#")
-        self.tester.send_expect("tcpdump -P in -w %s.pcap -i %s &" % (self.rx_interface, self.rx_interface), "#")
-        # Wait 5 sec for tcpdump stable
-        time.sleep(5)
+            PACKET_COUNT = 65
+            pkt = Packet()
+            pkt.assign_layers(["ether", "ipv4", "raw"])
+            pkt.config_layer("ether", {"src":"52:00:00:00:00:00"})
+            pkt.config_layer("ipv4", {"src":"192.168.1.1", "dst":"192.168.1.2"})
+            pkt.config_layer("raw", {"payload":payload})
+            pkt.send_pkt(tx_port=self.tx_interface, count=PACKET_COUNT)
+            pkt.pktgen.pkt.show()
 
-        payload = self.__format_hex_to_param(test_vector["input"], "\\x", "\\x")
+            pkt_rec = load_sniff_packets(inst)
 
-        PACKET_COUNT = 65
-
-        self.tester.scapy_foreground()
-        self.tester.scapy_append('sendp([Ether(src="52:00:00:00:00:00")/IP(src="192.168.1.1",dst="192.168.1.2")/Raw(load=\"%s\")], iface="%s", count=%s)' % (payload, self.tx_interface, PACKET_COUNT))
-
-        self.tester.scapy_execute()
-
-        time.sleep(5)
-
-        self.tester.send_expect("killall tcpdump", "#")
-        self.tester.send_expect("^C", "#")
-
-        # Wait 5 secs for tcpdump exit
-        time.sleep(5)
-
-        self.tester.send_expect("scapy", ">>>")
-        self.tester.send_expect("p=rdpcap('%s.pcap', count=%s)" % (self.rx_interface, PACKET_COUNT), ">>>")
-
-        hex_list = []
-        for i in range(PACKET_COUNT):
-            cmd = "linehexdump(p[%s],onlyhex=1)" % i
-            hex_list.append(self.tester.send_expect(cmd, ">>>"))
-
-        # Exit the scapy
-        self.tester.send_expect("exit()", "#", 60)
-
-        for hex_str in hex_list:
-            packet_hex = hex_str.split(" ")
-            # self.logger.info(hex_str)
-            # self.logger.info(packet_hex)
-
-            cipher_offset = 34
-            cipher_length = len(test_vector["output_cipher"])/2
-            if cipher_length == 0:
-                cipher_length = len(test_vector["input"])/2
-            cipher_text = "".join(packet_hex[cipher_offset:cipher_offset+cipher_length])
-            # self.logger.info("Cipher text in packet = " + cipher_text)
-            # self.logger.info("Ref Cipher text       = " + test_vector["output_cipher"])
-            if str.lower(cipher_text) == str.lower(test_vector["output_cipher"]):
-                self.logger.info("Cipher Matched.")
-            else:
-                if test_vector["output_cipher"] != "":
-                    result = False
-                    self.logger.info("Cipher NOT Matched.")
-                    self.logger.info("Cipher text in packet = " + cipher_text)
-                    self.logger.info("Ref Cipher text       = " + test_vector["output_cipher"])
+            for pkt_r in pkt_rec:
+                packet_hex = pkt_r.strip_element_layer4("load")
+                cipher_text = binascii.b2a_hex(packet_hex)
+                self.logger.info("Cipher text in packet = " + cipher_text)
+                self.logger.info("Ref Cipher text       = " + test_vector["output_cipher"]) 
+                if str.lower(cipher_text) == str.lower(test_vector["output_cipher"]):
+                     self.logger.info(cipher_text)
+                     self.logger.info("Cipher Matched.")
                 else:
-                    self.logger.info("Skip Cipher, Since no cipher text set")
+                    if test_vector["output_cipher"] != "":
+                        result = False
+                        self.logger.info("Cipher NOT Matched.")
+                        self.logger.info("Cipher text in packet = " + cipher_text)
+                        self.logger.info("Ref Cipher text       = " + test_vector["output_cipher"])
+                    else:
+                        self.logger.info("Skip Cipher, Since no cipher text set")
 
-            hash_offset = cipher_offset + cipher_length
-            hash_length = len(test_vector["output_hash"])/2
-            if hash_length != 0:
-                hash_text = "".join(packet_hex[hash_offset:hash_offset+hash_length])
-                # self.logger.info("Hash text in packet = " + hash_text)
-                # self.logger.info("Ref Hash text       = " + test_vector["output_hash"])
-                if str.lower(hash_text) == str.lower(test_vector["output_hash"]):
-                    self.logger.info("Hash Matched")
-                else:
-                    result = False
-                    self.logger.info("Hash NOT Matched")
+                hash_length = len(test_vector["output_hash"])/2
+                if hash_length != 0:
+                    hash_text = binascii.b2a_hex(pkt_r.pktgen.pkt["Padding"].getfieldval("load"))
                     self.logger.info("Hash text in packet = " + hash_text)
                     self.logger.info("Ref Hash text       = " + test_vector["output_hash"])
-            else:
-                self.logger.info("Skip Hash, Since no hash text set")
+                    if str.lower(hash_text) == str.lower(test_vector["output_hash"]):
+                        self.logger.info("Hash Matched")
+                    else:
+                        result = False
+                        self.logger.info("Hash NOT Matched")
+                        self.logger.info("Hash text in packet = " + hash_text)
+                        self.logger.info("Ref Hash text       = " + test_vector["output_hash"])
+                else:
+                    self.logger.info("Skip Hash, Since no hash text set")
 
-        # Close l2fwd-crypto
-        # self.dut.send_expect("killall -9 l2fwd-crypto", "# ", 15)
-        self.dut.send_expect("^C", "# ", 15)
-
+            self.logger.info("Packet Size :    %d " % (len(test_vector["input"]) / 2))
         if result:
             self.logger.info("PASSED")
         else:
@@ -365,7 +560,7 @@ class TestL2fwdCrypto(TestCase):
         return result
 
     def tear_down(self):
-        pass
+        self.dut.kill_all()
 
     def tear_down_all(self):
         self.dut.send_expect("sed -i 's/CONFIG_RTE_LIBRTE_PMD_QAT=y$/CONFIG_RTE_LIBRTE_PMD_QAT=n/' config/common_base", "# ")
@@ -373,11 +568,30 @@ class TestL2fwdCrypto(TestCase):
         self.dut.send_expect("sed -i 's/CONFIG_RTE_LIBRTE_PMD_NULL_CRYPTO=y$/CONFIG_RTE_LIBRTE_PMD_NULL_CRYPTO=n/' config/common_base", "# ")
         self.dut.send_expect("sed -i 's/CONFIG_RTE_LIBRTE_PMD_SNOW3G=y$/CONFIG_RTE_LIBRTE_PMD_SNOW3G=n/' config/common_base", "# ")
         self.dut.send_expect("sed -i 's/CONFIG_RTE_LIBRTE_PMD_KASUMI=y$/CONFIG_RTE_LIBRTE_PMD_KASUMI=n/' config/common_base", "# ")
-
+        self.dut.send_expect("sed -i 's/CONFIG_RTE_LIBRTE_PMD_OPENSSL=y$/CONFIG_RTE_LIBRTE_PMD_OPENSSL=n/' config/common_base", "# ")
+        self.dut.send_expect("sed -i 's/CONFIG_RTE_LIBRTE_PMD_AESNI_MB=y$/CONFIG_RTE_LIBRTE_PMD_AESNI_MB=n/' config/common_base", "# ") 
+        self.dut.send_expect("sed -i 's/CONFIG_RTE_LIBRTE_PMD_ZUC=y$/CONFIG_RTE_LIBRTE_PMD_ZUC=n/' config/common_base", "# ")
+        
+    def __get_tcpdump_cmd(self,interface):
+        cmd = ""        
+      
+        status, output = commands.getstatusoutput("tcpdump --version")
+        head = output.find('tcpdump version')
+        strlen = len("tcpdump version ")
+        tail = output.find("\nlibpcap version")
+        version = output[head + strlen : tail]
+        v =  int(version.replace('.',''))
+        if v < 462 :
+            cmd = "".join("tcpdump -P in -w %s.pcap -i %s &"%(interface,interface))
+        else:
+            cmd = "".join("tcpdump -Q in -w %s.pcap -i %s &"%(interface,interface))
+        return cmd 
+    
     def __test_vector_to_cmd(self, test_vector, core_mask="", port_mask=""):
         L2FWD_CRYPTO_APP = "./examples/l2fwd-crypto/build/app/l2fwd-crypto"
         EAL_CORE_MASK = " -cf" if core_mask == "" else " -c" + core_mask
         EAL_MM_CHANNEL = " -n4"
+        EAL_SOCKET_MEM = " --socket-mem=512,512 "
         EAL_SEP = " --"
         PORT_MASK = "" if port_mask == "" else " -p" + port_mask
         QUEUE_NUM = ""
@@ -434,7 +648,7 @@ class TestL2fwdCrypto(TestCase):
         if self.__check_field_in_vector(test_vector, "aad_random_size"):
             aad_random_size = " --aad_random_size " + test_vector["aad_random_size"]
 
-        cmd_str = "".join([L2FWD_CRYPTO_APP, EAL_CORE_MASK, EAL_MM_CHANNEL, vdev, vdev, EAL_SEP,
+        cmd_str = "".join([L2FWD_CRYPTO_APP, EAL_CORE_MASK, EAL_MM_CHANNEL,EAL_SOCKET_MEM, vdev, vdev, EAL_SEP,
                           PORT_MASK, QUEUE_NUM, chain, cdev_type, cipher_algo, cipher_op, cipher_key,
                           iv, auth_algo, auth_op, auth_key, auth_key_random_size, aad, aad_random_size])
 
@@ -460,66 +674,675 @@ class TestL2fwdCrypto(TestCase):
 
         return result
 
+    def __format_hex_to_list(self, hex_str):
+        if not hex_str:
+            return []
+        if len(hex_str) == 1:
+            return [hex_str]
+
+        result = []
+        result.append(hex_str[0:2])
+        for i in range(2, len(hex_str), 2):
+            if len(hex_str) < i + 2:
+                result.append(hex_str[i:])
+            else:
+                result.append(hex_str[i:i+2])
+        return result
+
+    def __gen_input(self, length, pattern=None):
+        pattern = "11"
+        input_str = ""
+        for i in range(length):
+            input_str += pattern
+        return input_str
+
+    def __gen_key(self, length, pattern=None, mask="000000"):
+        base_key = "000102030405060708090a0b0c0d0e0f"
+        key = ""
+        n = length // 16
+        for i in range(n):
+            key = key + base_key
+            base_key = base_key[2:] + base_key[0:2]
+        m = length % 16
+        key = key + base_key[0:2*m]
+        return key
+    
+    def __cryptography_cipher(self, vector):
+        key = binascii.a2b_hex(vector["cipher_key"])
+        iv = binascii.a2b_hex(vector["iv"])
+        cipher_algo_str = vector["cipher_algo"]
+        if vector["cipher_algo"] == "AES_CBC":
+            cipher_algo = algorithms.AES(key)
+            cipher_mode = modes.CBC(iv)
+        elif vector["cipher_algo"] == "AES_CTR":
+            cipher_algo = algorithms.AES(key)
+            cipher_mode = modes.CTR(iv)
+        elif vector["cipher_algo"] == "3DES_CBC":
+            cipher_algo = algorithms.TripleDES(key)
+            cipher_mode = modes.CBC(iv)
+        elif vector["cipher_algo"] == "AES_GCM":
+            cipher_algo = algorithms.AES(key)
+            cipher_mode = modes.GCM(iv)
+        else:
+            cipher_algo = algorithms.AES(key)
+            cipher_mode = modes.CBC(iv)
+
+        cipher = Cipher(cipher_algo, cipher_mode, backend=default_backend())
+        encryptor = cipher.encryptor()
+        cipher_text = encryptor.update(binascii.a2b_hex(vector["input"])) + encryptor.finalize()
+
+        return binascii.b2a_hex(cipher_text)
+
+    def __CryptoMoble_cipher(self,vector):
+        # default is kasumi , kasumi alg we need to guarantee IV is :0001020304000000
+        #so count is 66051 , dir =1 , bearer = 0 
+        cipher_str = ""  
+        out_str = ""    
+        cipher_algo = vector['cipher_algo']
+
+        mBitlen = 8 * (len(vector['input']) / 2)        
+        bin_input = bytearray.fromhex(vector["input"])
+        str_input = str(bin_input)
+        bin_key = binascii.a2b_hex(vector["cipher_key"])
+        if ((cipher_algo.upper()).find("KASUMI") != -1):     
+            vector["iv"] = vector["iv"][:10] + "000000"             
+            out_str = cm.UEA1(key=bin_key,count=66051, bearer=0, \
+                           dir=1,data=str_input,bitlen=mBitlen)   
+           
+        elif ((cipher_algo.upper()).find("SNOW3G") != -1):
+
+            vector["iv"] = "00000000000000000000000000000000"
+            out_str = cm.UEA2(key=bin_key,count=0,bearer=0,dir=0, \
+                           data=str_input,bitlen=mBitlen)
+            
+        elif ((cipher_algo.upper()).find("ZUC") != -1):
+            vector["iv"] = "00010203040000000001020304000000"  
+            out_str = cm.EEA3(key=bin_key,count=0x10203,bearer=0,dir=1, \
+                           data=str_input,bitlen=mBitlen)                      
+           
+        cipher_str = out_str.encode("hex").upper()
+            
+        return cipher_str
+            
+    def __gen_null_cipher_out(self,vector):
+        cipher_str = ""
+        if (vector['chain'] == "CIPHER_ONLY") or (vector['chain'] == "CIPHER_HASH"):
+            cipher_str  = vector['input']
+        elif (vector['chain'] == "HASH_CIPHER"):
+            cipher_str  = vector['output_hash']
+        return cipher_str 
+           
+    def __gen_cipher_output(self, vector):
+        #import pdb
+        #pdb.set_trace()
+        if vector["chain"] == "HASH_ONLY":
+            vector["output_cipher"] == ""
+            return
+
+        if vector["output_cipher"] != "*":
+            return
+        
+        cipher_str = ""
+        ####
+        if(((vector['cipher_algo']).upper()).find("KASUMI") != -1) or  \
+                (((vector['cipher_algo']).upper()).find("SNOW3G") != -1) or \
+                (((vector['cipher_algo']).upper()).find("ZUC") != -1):
+            cipher_str = self.__CryptoMoble_cipher(vector)
+        elif (vector['cipher_algo'] == "NULL"):
+            cipher_str = self.__gen_null_cipher_out(vector)
+        else:
+            cipher_str = self.__cryptography_cipher(vector)
+        vector["output_cipher"] = cipher_str.upper()
+    
+    def __gen_kasumi_hash(self,vector):
+        auth_str = ""     
+        auth_algo = vector['auth_algo']   
+        mBitlen = 8 * (len(vector['input']) / 2)     
+        bin_input = bytearray.fromhex(vector["input"])
+        str_input = str(bin_input)
+        bin_key = binascii.a2b_hex(vector["auth_key"])
+         
+        #vector["add"] = vector["add"][:6] + "000000"      
+        #ADD IS 0001020304050607      
+        hash_out = cm.UIA1(key=bin_key,count=0X10203, fresh=0X4050607,dir=0, \
+                        data=str_input)            
+        auth_str = hash_out.encode("hex").upper()                                              
+            
+        return auth_str
+    
+    def __gen_snow3g_hash(self,vector):
+        auth_str = ""     
+        auth_algo = vector['auth_algo']
+        mBitlen = 8 * (len(vector['input']) / 2) 
+        bin_input = bytearray.fromhex(vector["input"])
+        str_input = str(bin_input)
+        bin_key = binascii.a2b_hex(vector["auth_key"])
+        #ADD IS  00010203040506070001020304050607
+        vector["aad"] = "00000000000000000000000000000000"
+        #vector["aad"][:16] + vector["aad"][:16]      
+               
+        hash_out = cm.UIA2(key=bin_key,count=0, fresh=0,dir=0, \
+                        data=str_input)  
+        
+        #hash_out = cm.UIA2(key=bin_key,count=0x7060504, fresh=0x3020100,dir=0, \
+         #               data=str_input)            
+        auth_str = hash_out.encode("hex").upper()                                              
+            
+        return auth_str
+    
+    def __gen_zuc_hash(self,vector):
+        auth_str = ""     
+        auth_algo = vector['auth_algo']
+        mBitlen = 8 * (len(vector['input']) / 2) 
+        bin_input = bytearray.fromhex(vector["input"])
+        str_input = str(bin_input)
+        bin_key = binascii.a2b_hex(vector["auth_key"])
+        
+        #add is 00010203080000000001020308000000
+        #vector["aad"] = vector["aad"][:8] + "08000000" + vector["aad"][:8] + "08000000"     
+        vector["aad"] = "00000000000000000000000000000000"
+        hash_out = cm.EIA3(key=bin_key,count=0, bearer=0,dir=0,data=str_input,bitlen=mBitlen)            
+        auth_str = hash_out.encode("hex").upper()                                              
+            
+        return auth_str
+    
+    def __gen_null_hash(self,vector):
+        auth_str =  ""
+        if (vector['chain'] == "HASH_ONLY") or (vector['chain'] == "HASH_CIPHER"):
+            auth_str  = vector['input']
+        elif (vector['chain'] == "CIPHER_HASH"):
+            auth_str  = vector['output_cipher']
+        return auth_str 
+    
+    def __gen_hash_output(self, vector):
+        if vector["chain"] == "CIPHER_ONLY":
+            vector["output_hash"] == ""
+            return
+           
+        if vector["output_hash"] != "*":
+            return
+
+        if vector["chain"] == "HASH_ONLY":
+            vector["output_cipher"] = ""
+ 
+        hash_str = ""
+
+        if vector["chain"] == "CIPHER_HASH":
+            input_str = vector["output_cipher"]
+        else:
+            input_str = vector["input"]
+        
+        auth_algo = vector["auth_algo"]
+        if auth_algo == "MD5_HMAC":
+            hash_str = hmac.new(binascii.a2b_hex(vector["auth_key"]),\
+                    binascii.a2b_hex(input_str), hashlib.md5).hexdigest()
+        elif auth_algo == "SHA1_HMAC":
+            hash_str = hmac.new(binascii.a2b_hex(vector["auth_key"]),\
+                    binascii.a2b_hex(input_str), hashlib.sha1).hexdigest()
+        elif auth_algo == "SH224_HMAC":
+            hash_str = hmac.new(binascii.a2b_hex(vector["auth_key"]),\
+                    binascii.a2b_hex(input_str), hashlib.sha224).hexdigest()
+        elif auth_algo == "SH256_HMAC":
+            hash_str = hmac.new(binascii.a2b_hex(vector["auth_key"]),\
+                    binascii.a2b_hex(input_str), hashlib.sha256).hexdigest()
+        elif auth_algo == "SHA384_HMAC":
+            hash_str = hmac.new(binascii.a2b_hex(vector["auth_key"]),\
+                    binascii.a2b_hex(input_str), hashlib.sha384).hexdigest()
+        elif auth_algo == "SHA512_HMAC":
+            hash_str = hmac.new(binascii.a2b_hex(vector["auth_key"]),\
+                    binascii.a2b_hex(input_str), hashlib.sha512).hexdigest()
+        elif auth_algo == "AES_XCBC_MAC":
+            pass
+        elif auth_algo == "AES_GCM":
+            pass
+        elif auth_algo == "AES_GMAC":
+            pass
+        elif auth_algo == "SNOW3G_UIA2":
+            hash_str = self.__gen_snow3g_hash(vector)
+        elif auth_algo == "ZUC_EIA3":
+            hash_str = self.__gen_zuc_hash(vector)
+        elif auth_algo == "KASUMI_F9":
+            hash_str = self.__gen_kasumi_hash(vector)
+        elif auth_algo == "NULL":
+            hash_str = self.__gen_null_hash(vector)
+        elif auth_algo == "MD5":
+             hash_str = hashlib.md5(binascii.a2b_hex(vector["auth_key"])).hexdigest() 
+        elif auth_algo == "SHA1":
+            hash_str = hashlib.sha1(binascii.a2b_hex(vector["auth_key"])).hexdigest() 
+        elif auth_algo == "SHA224":
+            hash_str = hashlib.sha224(binascii.a2b_hex(vector["auth_key"])).hexdigest() 
+        elif auth_algo == "SHA256":
+            hash_str = hashlib.sha256(binascii.a2b_hex(vector["auth_key"])).hexdigest() 
+        elif auth_algo == "SHA384":
+            hash_str = hashlib.sha384(binascii.a2b_hex(vector["auth_key"])).hexdigest() 
+        elif auth_algo == "SHA512":
+            hash_str = hashlib.sha512(binascii.a2b_hex(vector["auth_key"])).hexdigest() 
+        else:
+            pass
+        vector["output_hash"] =  hash_str.upper()
+        self.__actually_aesni_mb_digest(vector)
+
+    def __gen_output(self, vector, cmds, core_mask="", port_mask=""):
+        if core_mask != "-1":
+            self.__gen_cipher_output(vector)
+            self.__gen_hash_output(vector)
+        cmds.append(vector)
+
+    def __var2list(self, var):
+        var_list = var if isinstance(var, list) else [var]
+        return var_list
+
+    def __is_valid_op(self, chain, op):
+        chain_op_map = {
+                "CIPHER_ONLY": ["ENCRYPT", "DECRYPT"],
+                "HASH_ONLY": ["GENERATE", "VERIFY"],
+                "CIPHER_HASH": ["ENCRYPT", "GENERATE"],
+                "HASH_CIPHER": ["DECRYPT", "VERIFY"],
+                }
+        if op in chain_op_map[chain]:
+            return True
+        return False
+
+    def __is_valid_size(self, key_type, algo, size):
+        algo_size_map = {
+                "AES_CBC": {
+                    "cipher_key": [16, 24, 32],
+                    "iv": [16],
+                    },
+                "SHA1_HMAC": {
+                    "auth_key": [64],
+                    "aad": [0]
+                    },
+            
+                "aes-cbc": {
+                    "cipher_key": [16, 24, 32],
+                    "iv": [16],
+                    },
+                "aes-ctr": {
+                    "cipher_key": [16, 24, 32],
+                    "iv": [16]
+                    },
+                "3des-cbc": {
+                    "cipher_key": [16, 24],
+                    "iv": [8]
+                    },
+                "3des-ctr": {
+                    "cipher_key": [16, 24],
+                    "iv": [8]
+                    },
+                "aes-gcm": {
+                    "cipher_key": [16, 24, 32],
+                    "auth_key": [16, 24, 32],
+                    "aad": [0,1,2,3,4,5,6,8,9,12,16,24,32,64,128,155,256,1024,65535],
+                    "iv": [12,16]
+                    },
+                "aes-docsisbpi":{
+                    "cipher_key": [16],
+                    "iv": [16],
+                    },
+                "des-docsisbpi":{
+                    "cipher_key": [8],
+                    "iv": [8],
+                    },
+                "snow3g-uea2": {
+                    "cipher_key": [16],
+                    "iv": [16]
+                    },
+                "kasumi-f8": {
+                    "cipher_key": [16],
+                    "iv": [8]
+                    },
+                "zuc-eea3": {
+                    "cipher_key": [16],
+                    "iv": [16]
+                    },
+                "null": {
+                    "cipher_key": [0],
+                    "auth_key": [0],
+                    "aad": [0],
+                    "iv": [0]
+                    },                        
+                "md-hmac": {
+                    "auth_key": [64],
+                    "aad": [0],
+                    },
+                "sha1-hmac": {
+                    "auth_key": [64],
+                    "aad": [0]
+                    },
+                "sha2-224-hmac": {
+                    "auth_key": [64],
+                    "aad": [0]
+                    },
+                "sha2-256-hmac": {
+                    "auth_key": [64],
+                    "aad": [0]
+                    },
+                "sha2-384-hmac": {
+                    "auth_key": [128],
+                    "aad": [0]
+                    },
+                "sha2-512-hmac": {
+                    "auth_key": [128],
+                    "aad": [0]
+                    },
+                "AES_XCBC_MAC": {
+                    "auth_key": [16],
+                    "aad": [0]
+                    },
+                "aes-gmac": {
+                    "auth_key": [16, 24, 32],
+                    "aad": [1, 16, 64, 128, 256, 65535]
+                    },
+                "snow-uia2": {
+                    "auth_key": [16],
+                    "aad": [16]
+                    },
+                "kasumi-f9": {
+                    "auth_key": [16],
+                    "aad": [8]
+                    },
+                "zuc-eia3": {
+                    "auth_key": [16],
+                    "aad": [16]
+                    },
+                "md5": {
+                    "auth_key": [0],
+                    "aad": [0],
+                    },
+                "sha1": {
+                    "auth_key": [0],
+                    "aad": [0]
+                    },
+                "sha2-224": {
+                    "auth_key": [0],
+                    "aad": [0]
+                    },
+                "sha2-256": {
+                    "auth_key": [0],
+                    "aad": [0]
+                    },
+                "sha2-384": {
+                    "auth_key": [0],
+                    "aad": [0]
+                    },
+                "sha2-512": {
+                    "auth_key": [0],
+                    "aad": [0]
+                    },
+                }
+        result = False
+        if algo in algo_size_map:
+            if key_type in algo_size_map[algo]:
+                if size in algo_size_map[algo][key_type]:
+                    result = True
+        return result
+    
+    def __actually_aesni_mb_digest(self,vector):
+
+        if ((vector["vdev"]).find("crypto_aesni_mb") == -1):
+            return
+        
+        auth_algo_dgst_map = {
+                "md4-hmac": 12,
+                "sha1-hmac": 12,
+                "sha2-224-hamc": 14,
+                "sha2-256-hmac": 16,
+                "sha2-384-hamc": 24,
+                "sha2-512-hmac": 32,
+                "AES_XCBC_MAC": 12
+                }
+        if vector["auth_algo"] in auth_algo_dgst_map:
+            digest = auth_algo_dgst_map[vector["auth_algo"]]
+            vector["output_hash"] = vector["output_hash"] if digest >= (len(vector["output_hash"]) / 2) \
+                    else (vector["output_hash"])[0:2*digest]
+        
+        
+    def __iter_cipher_algo(self, vector, vector_list, core_mask="", port_mask=""):
+        test_vector = vector.copy()
+        if test_vector["chain"] == "HASH_ONLY":
+            test_vector["cipher_algo"] = ""
+            self.__iter_cipher_op(test_vector, vector_list, core_mask, port_mask)
+        else:
+            cipher_algo_list = self.__var2list(test_vector["cipher_algo"])
+            for cipher_algo in cipher_algo_list:
+                test_vector = vector.copy()
+                test_vector["cipher_algo"] = cipher_algo
+                self.__iter_cipher_op(test_vector, vector_list, core_mask, port_mask)
+
+    def __iter_cipher_op(self, vector, vector_list, core_mask="", port_mask=""):
+        test_vector = vector.copy()
+        if test_vector["chain"] == "HASH_ONLY":
+            test_vector["cipher_op"] = ""
+            self.__iter_cipher_key(test_vector, vector_list, core_mask, port_mask)
+        else:
+            cipher_op_list = self.__var2list(test_vector["cipher_op"])
+            for cipher_op in cipher_op_list:
+                if self.__is_valid_op(test_vector["chain"], cipher_op):
+                    test_vector = vector.copy()
+                    test_vector["cipher_op"] = cipher_op
+                    self.__iter_cipher_key(test_vector, vector_list, \
+                            core_mask, port_mask)
+
+    def __iter_cipher_key(self, vector, vector_list, core_mask="", port_mask=""):
+        test_vector = vector.copy()
+        if test_vector["chain"] == "HASH_ONLY":
+            test_vector["cipher_key"] = ""
+            self.__iter_iv(test_vector, vector_list, core_mask, port_mask)
+        else:
+            cipher_key_list = self.__var2list(test_vector["cipher_key"])
+            for cipher_key in cipher_key_list:
+                test_vector = vector.copy()
+                if isinstance(cipher_key, int):
+                    if self.__is_valid_size("cipher_key", \
+                            test_vector["cipher_algo"], \
+                            cipher_key):
+                        test_vector["cipher_key"] = self.__gen_key(cipher_key)
+                        self.__iter_iv(test_vector, vector_list, core_mask, port_mask)
+                    else:
+                        continue
+                else:
+                    test_vector["cipher_key"] = cipher_key
+                    self.__iter_iv(test_vector, vector_list, core_mask, port_mask)
+
+    def __iter_iv(self, vector, vector_list, core_mask="", port_mask=""):
+        test_vector = vector.copy()
+        if test_vector["chain"] == "HASH_ONLY":
+            test_vector["iv"] = ""
+            self.__iter_auth_algo(test_vector, vector_list, core_mask, port_mask)
+        else:
+            iv_list = self.__var2list(test_vector["iv"])
+            for iv in iv_list:
+                test_vector = vector.copy()
+                if isinstance(iv, int):
+                    if self.__is_valid_size("iv", \
+                            test_vector["cipher_algo"], \
+                            iv):
+                        test_vector["iv"] = self.__gen_key(iv)
+                        self.__iter_auth_algo(test_vector, vector_list, \
+                                core_mask, port_mask)
+                    else:
+                        continue
+                else:
+                    test_vector["iv"] = iv
+                    self.__iter_auth_algo(test_vector, vector_list, \
+                            core_mask, port_mask)
+
+    def __iter_auth_algo(self, vector, vector_list, core_mask="", port_mask=""):
+        test_vector = vector.copy()
+        if test_vector["chain"] == "CIPHER_ONLY":
+            test_vector["auth_algo"] = ""
+            self.__iter_auth_op(test_vector, vector_list, core_mask, port_mask)
+        else:
+            auth_algo_list = self.__var2list(test_vector["auth_algo"])
+            for auth_algo in auth_algo_list:
+                test_vector = vector.copy()
+                test_vector["auth_algo"] = auth_algo
+                self.__iter_auth_op(test_vector, vector_list, core_mask, port_mask)
+
+    def __iter_auth_op(self, vector, vector_list, core_mask="", port_mask=""):
+        test_vector = vector.copy()
+        if test_vector["chain"] == "CIPHER_ONLY":
+            test_vector["auth_op"] = ""
+            self.__iter_auth_key(test_vector, vector_list, core_mask, port_mask)
+        else:
+            auth_op_list = self.__var2list(test_vector["auth_op"])
+            for auth_op in auth_op_list:
+                if self.__is_valid_op(test_vector["chain"], auth_op):
+                    test_vector = vector.copy()
+                    test_vector["auth_op"] = auth_op 
+                    self.__iter_auth_key(test_vector, vector_list, \
+                            core_mask, port_mask)
+
+    def __iter_auth_key(self, vector, vector_list, core_mask="", port_mask=""):
+        test_vector = vector.copy()
+        if test_vector["chain"] == "CIPHER_ONLY":
+            test_vector["auth_key"] = ""
+            self.__iter_aad(test_vector, vector_list, core_mask, port_mask)
+        else:
+            auth_key_list = self.__var2list(test_vector["auth_key"])
+            for auth_key in auth_key_list:
+                test_vector = vector.copy()
+                if isinstance(auth_key, int):
+                    if self.__is_valid_size("auth_key", \
+                            test_vector["auth_algo"], \
+                            auth_key):
+                        test_vector["auth_key"] = self.__gen_key(auth_key)
+                        self.__iter_aad(test_vector, vector_list, core_mask, port_mask)
+                    else:
+                        continue
+                else:
+                    test_vector["auth_key"] = auth_key 
+                    self.__iter_aad(test_vector, vector_list, core_mask, port_mask)
+
+    def __iter_aad(self, vector, vector_list, core_mask="", port_mask=""):
+        test_vector = vector.copy()
+        if test_vector["chain"] == "CIPHER_ONLY":
+            test_vector["aad"] = ""
+            self.__iter_input(test_vector, vector_list, core_mask, port_mask)
+        else:
+            aad_list = self.__var2list(test_vector["aad"])
+            for aad in aad_list:
+                test_vector = vector.copy()
+                if isinstance(aad, int):
+                    if self.__is_valid_size("aad", \
+                            test_vector["auth_algo"], \
+                            aad):
+                        test_vector["aad"] = self.__gen_key(aad)
+                        self.__iter_input(test_vector, vector_list, \
+                                core_mask, port_mask)
+                    else:
+                        continue
+                else:
+                    test_vector["aad"] = aad
+                    self.__iter_input(test_vector, vector_list, \
+                            core_mask, port_mask)
+
+    def __iter_input(self, vector, vector_list, core_mask="", port_mask=""):
+        input_list = self.__var2list(vector["input"])
+        for input_data in input_list:
+            test_vector = vector.copy()
+            test_vector["input"] = self.__gen_input(input_data) \
+                    if isinstance(input_data, int) else input_data
+                            
+            self.__gen_output(test_vector, vector_list, core_mask, port_mask)
+
+    def __test_vector_to_vector_list(self, test_vector,core_mask="", port_mask=""):
+        vector_list = []
+        
+        chain_list = self.__var2list(test_vector["chain"])
+ 
+        for chain in chain_list:
+            test_vector["chain"] = chain
+            self.__iter_cipher_algo(test_vector, vector_list, core_mask, port_mask)
+        return vector_list
+
+
 test_vectors = {
 
-    "qat_c_AES_CBC_01": {
+    "qat_c_AES_CBC_00": {
         "vdev": "",
-        "chain": "CIPHER_ONLY",
+        "chain": ["CIPHER_ONLY", "CIPHER_HASH"],
         "cdev_type": "ANY",
-        "cipher_algo": "AES_CBC",
-        "cipher_op": "ENCRYPT",
-        "cipher_key": "000102030405060708090a0b0c0d0e0f",
-        "iv": "000102030405060708090a0b0c0d0e0f",
-        "auth_algo": "",
-        "auth_op": "",
-        "auth_key": "",
+        "cipher_algo": ["aes-cbc"],
+        "cipher_op": ["ENCRYPT", "DECRYPT"],
+        "cipher_key": [16, 24, 32],
+        "iv": [16],
+        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256","sha2-384", "sha2-512",
+                      "md5-hmac", "sha1-hmac", "sha2-224-hmac", "sha2-256-hmac",
+                      "sha2-384-hmac", "sha2-512-hmac"],
+        "auth_op": ["GENERATE"],
+        "auth_key": [8, 16, 24, 32, 40, 48, 56, 64, 128],
         "auth_key_random_size": "",
-        "aad": "",
+        "aad": [0],
         "aad_random_size": "",
-        "input": "111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
-        "output_cipher": "96A702D1CC8DD6D625D971915FCE8C40B8C522042B7126D51BB204CECA048C13793B75FF84A4B524370A45534C2BC476",
-        "output_hash": "",
+        "input":[16,48,64, 128, 129,256, 512, 1024],
+        "output_cipher":"*",
+        "output_hash": "*"
     },
-
-    "qat_c_AES_CTR_01": {
+                
+     "qat_c_AES_CTR_00": {
         "vdev": "",
-        "chain": "CIPHER_ONLY",
+        "chain": ["CIPHER_ONLY", "CIPHER_HASH"],
         "cdev_type": "ANY",
-        "cipher_algo": "AES_CTR",
-        "cipher_op": "ENCRYPT",
-        "cipher_key": "000102030405060708090a0b0c0d0e0f",
-        "iv": "000102030405060708090a0b0c0d0e0f",
-        "auth_algo": "",
-        "auth_op": "",
-        "auth_key": "",
+        "cipher_algo": ["aes-ctr"],
+        "cipher_op": ["ENCRYPT", "DECRYPT"],
+        "cipher_key": [16, 24, 32],
+        "iv": [16],
+        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256","sha2-384", "sha2-512",
+                      "md5-hmac", "sha1-hmac", "sha2-224-hmac", "sha2-256-hmac",
+                      "sha2-384-hmac", "sha2-512-hmac"],
+        "auth_op": ["GENERATE"],
+        "auth_key": [8, 16, 24, 32, 40, 48, 56, 64, 128],
         "auth_key_random_size": "",
-        "aad": "",
+        "aad": [0],
         "aad_random_size": "",
-        "input": "111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
-        "output_cipher": "1B851AA4507FE154E0D28549D742FB4B1372FD85770963878BCBEC1E5AB51ECD0B3C85A2000DB4E9ACD3D95CDD38FD56",
-        "output_hash": "",
+        "input":[16,48,64, 128,129, 256, 512, 1024],
+        "output_cipher":"*",
+        "output_hash": "*"
     },
-
-    "qat_c_AES_GCM_01": {
+            
+    "qat_c_AES_GCM_00": {
         "vdev": "",
-        "chain": "CIPHER_ONLY",
+        "chain": ["CIPHER_HASH"],
         "cdev_type": "ANY",
-        "cipher_algo": "AES_GCM",
-        "cipher_op": "ENCRYPT",
-        "cipher_key": "000102030405060708090a0b0c0d0e0f",
-        "iv": "000102030405060708090a0b0c0d0e0f",
-        "auth_algo": "",
-        "auth_op": "",
-        "auth_key": "",
+        "cipher_algo": ["aes-gcm"],
+        "cipher_op": ["ENCRYPT", "DECRYPT"],
+        "cipher_key": [16],
+        "iv": [12,16],
+        "auth_algo": ["aes-gcm","aes-gmac"],
+        "auth_op": ["GENERATE"],
+        "auth_key": [8, 16, 24, 32, 40, 48, 56, 64, 128],
         "auth_key_random_size": "",
-        "aad": "",
+        "aad": [0],
         "aad_random_size": "",
-        "input": "111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
-        "output_cipher": "1b851aa4507fe154e0d28549d742fb4b1372fd85770963878bcbec1e5ab51ecd0b3c85a2000db4e9acd3d95cdd38fd56",
-        "output_hash": "",
+        "input":[16,48,64, 128, 129,256, 512, 1024],
+        "output_cipher":"*",
+        "output_hash": "*"
     },
-
-    "qat_h_MD5_HMAC_01": {
+        
+    "qat_h_MD_SHA_00": {
+        "vdev": "",
+        "chain": ["HASH_ONLY"],
+        "cdev_type": "ANY",
+        "cipher_algo": "",
+        "cipher_op": "",
+        "cipher_key": "",
+        "iv": "",
+        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256","sha2-384", "sha2-512",
+                      "md5-hmac", "sha1-hmac", "sha2-224-hmac", "sha2-256-hmac",
+                      "sha2-384-hmac", "sha2-512-hmac"],
+        "auth_op": ["GENERATE"],
+        "auth_key": [8, 16, 24, 32, 40, 48, 56, 64, 128],
+        "auth_key_random_size": "",
+        "aad": [0],
+        "aad_random_size": "",
+        "input":[16,48,64, 128,129, 256, 512, 1024],
+        "output_cipher":"*",
+        "output_hash": "*"
+    },
+                
+     "qat_h_AES_XCBC_MAC_01": {
         "vdev": "",
         "chain": "HASH_ONLY",
         "cdev_type": "ANY",
@@ -527,342 +1350,718 @@ test_vectors = {
         "cipher_op": "",
         "cipher_key": "",
         "iv": "",
-        "auth_algo": "MD5_HMAC",
+        "auth_algo": ["AES_XCBC_MAC"],
         "auth_op": "GENERATE",
-        "auth_key": "000102030405060708090a0b0c0d0e0f",
+        "auth_key": [16],
         "auth_key_random_size": "",
-        "aad": "",
+        "aad": [0],
         "aad_random_size": "",
-        "input": "11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111100000000000000000000000000000000",
-        "output_cipher": "",
-        "output_hash": None
+        "input": [16,48,64, 128, 129,256, 512, 1024],
+        "output_cipher": "*",
+        "output_hash": "*"
     },
-
-    "qat_h_SHA1_HMAC_01": {
+    
+    "qat_c_3DES_CBC_00": {
         "vdev": "",
-        "chain": "HASH_ONLY",
+        "chain": ["CIPHER_ONLY", "CIPHER_HASH"],
         "cdev_type": "ANY",
-        "cipher_algo": "",
-        "cipher_op": "",
-        "cipher_key": "",
-        "iv": "",
-        "auth_algo": "SHA1_HMAC",
-        "auth_op": "GENERATE",
-        "auth_key": "000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f",
+        "cipher_algo": ["3des-cbc"],
+        "cipher_op": ["ENCRYPT", "DECRYPT"],
+        "cipher_key": [16, 24],
+        "iv": [8],
+        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256","sha2-384", "sha2-512",
+                      "md5-hmac", "sha1-hmac", "sha2-224-hmac", "sha2-256-hmac",
+                      "sha2-384-hmac", "sha2-512-hmac"],
+        "auth_op": ["GENERATE"],
+        "auth_key": [8, 16, 24, 32, 40, 48, 56, 64, 128],
         "auth_key_random_size": "",
-        "aad": "",
+        "aad": [0],
         "aad_random_size": "",
-        "input": "11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111100000000000000000000000000000000",
-        "output_cipher": "",
-        "output_hash": "12E2EF8B7EBFE556C73307B04E1E46D12BA34884"
+        "input":[16,48,64, 128,129, 256, 512, 1024],
+        "output_cipher":"*",
+        "output_hash": "*"
     },
-
-    "qat_h_SHA224_HMAC_01": {
+                
+    "qat_c_3DES_CTR_00": {
         "vdev": "",
-        "chain": "HASH_ONLY",
+        "chain": ["CIPHER_ONLY", "CIPHER_HASH"],
         "cdev_type": "ANY",
-        "cipher_algo": "",
-        "cipher_op": "",
-        "cipher_key": "",
-        "iv": "",
-        "auth_algo": "SHA224_HMAC",
-        "auth_op": "GENERATE",
-        "auth_key": "000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f",
+        "cipher_algo": ["3des-ctr"],
+        "cipher_op": ["ENCRYPT", "DECRYPT"],
+        "cipher_key": [16, 24],
+        "iv": [8],
+        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256","sha2-384", "sha2-512",
+                      "md5-hmac", "sha1-hmac", "sha2-224-hmac", "sha2-256-hmac",
+                      "sha2-384-hmac", "sha2-512-hmac"],
+        "auth_op": ["GENERATE"],
+        "auth_key": [8, 16, 24, 32, 40, 48, 56, 64, 128],
         "auth_key_random_size": "",
-        "aad": "",
+        "aad": [0],
         "aad_random_size": "",
-        "input": "11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111100000000000000000000000000000000",
-        "output_cipher": "",
-        "output_hash": "45BBF9A798501F225E2C9671863B96BF2DD1C5DAC5DB554A7B9BDB6D"
+        "input":[16,48,64, 128,129, 256, 512, 1024],
+        "output_cipher":"*",
+        "output_hash": "*"
     },
-
-    "qat_h_SHA256_HMAC_01": {
+                
+     "qat_c_AES_GCM_01": {
         "vdev": "",
-        "chain": "HASH_ONLY",
+        "chain": ["CIPHER_HASH"],
         "cdev_type": "ANY",
-        "cipher_algo": "",
-        "cipher_op": "",
-        "cipher_key": "",
-        "iv": "",
-        "auth_algo": "SHA256_HMAC",
-        "auth_op": "GENERATE",
-        "auth_key": "000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f",
+        "cipher_algo": ["aes-gcm"],
+        "cipher_op": ["ENCRYPT", "DECRYPT"],
+        "cipher_key": [16],
+        "iv": [12,16],
+        "auth_algo": ["aes-gcm"],
+        "auth_op": ["GENERATE"],
+        "auth_key": [16, 24, 32],
         "auth_key_random_size": "",
-        "aad": "",
+        "aad": [8,12],
         "aad_random_size": "",
-        "input": "11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111100000000000000000000000000000000",
-        "output_cipher": "",
-        "output_hash": "AC9E0BA3A0716F4F4A2734B407BE28D6F276CE0472B827D6EE47B7E518C2BC0D"
+        "input": [16,48,64, 128, 129,256, 512, 1024],
+        "output_cipher": "*",
+        "output_hash": "*"
     },
-
-    "qat_h_SHA384_HMAC_01": {
+    
+    "qat_ch_AES_GCM_AES_GCM_01": {
         "vdev": "",
-        "chain": "HASH_ONLY",
+        "chain": ["CIPHER_HASH"],
         "cdev_type": "ANY",
-        "cipher_algo": "",
-        "cipher_op": "",
-        "cipher_key": "",
-        "iv": "",
-        "auth_algo": "SHA384_HMAC",
-        "auth_op": "GENERATE",
-        "auth_key": "000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f",
+        "cipher_algo": ["aes-gcm"],
+        "cipher_op": ["ENCRYPT", "DECRYPT"],
+        "cipher_key": [16],
+        "iv": [12,16],
+        "auth_algo": ["aes-gcm"],
+        "auth_op": ["GENERATE"],
+        "auth_key": [16, 24, 32],
         "auth_key_random_size": "",
-        "auth_key_random_size": "",
-        "aad": "",
+        "aad": [8,12],
         "aad_random_size": "",
-        "input": "11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111100000000000000000000000000000000",
-        "output_cipher": "",
-        "output_hash": "2CE1BD8F18A93A63AF04C21EDE42EE4D8468C6DFD17474B64D2C36E6CAA9F9D177B424F91DAB8D2D4CAF2AAF63FFAE09"
+        "input": [16,48,64, 128, 129,256, 512, 1024],
+        "output_cipher": "*",
+        "output_hash": "*"
     },
-
-    "qat_h_SHA512_HMAC_01": {
+          
+    "qat_ch_AES_DOCSISBPI": {
         "vdev": "",
-        "chain": "HASH_ONLY",
+        "chain": ["CIPHER_ONLY"],
         "cdev_type": "ANY",
-        "cipher_algo": "",
-        "cipher_op": "",
-        "cipher_key": "",
-        "iv": "",
-        "auth_algo": "SHA512_HMAC",
-        "auth_op": "GENERATE",
-        "auth_key": "000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f",
+        "cipher_algo": "aes-docsisbpi",
+        "cipher_op": ["ENCRYPT","DECRYPT"],
+        "cipher_key": [16],
+        "iv": [16],
+        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256","sha2-384", "sha2-512",
+                      "md5-hmac", "sha1-hmac", "sha2-224-hmac", "sha2-256-hmac",
+                      "sha2-384-hmac", "sha2-512-hmac"],
+        "auth_op": ["GENERATE"],
+        "auth_key": [8, 16, 24, 32, 40, 48, 56, 64, 128],
         "auth_key_random_size": "",
-        "aad": "",
+        "aad": [0],
         "aad_random_size": "",
-        "input": "1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111110000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-        "output_cipher": "",
-        "output_hash": "C8917E7490FC2CFF0CFDD0509C1C0D711CD27FFDFAAEA375E123F25F7532D4FA7D02D95CD52FAC8A27E21B3F5F734241897A37BB8953C52FFADB3B605A864569"
+        "input":[15,16,17,129,256,258,515,772,1019,1547,2011,2048],
+        "output_cipher":"*",
+        "output_hash": "*"
     },
-
-    "qat_h_AES_XCBC_MAC_01": {
+          
+    "qat_c_DES_DOCSISBPI": {
         "vdev": "",
-        "chain": "HASH_ONLY",
+        "chain": ["CIPHER_ONLY"],
         "cdev_type": "ANY",
-        "cipher_algo": "",
-        "cipher_op": "",
-        "cipher_key": "",
-        "iv": "",
-        "auth_algo": "AES_XCBC_MAC",
-        "auth_op": "GENERATE",
-        "auth_key": "000102030405060708090a0b0c0d0e0f",
+        "cipher_algo": "des-docsisbpi",
+        "cipher_op": ["ENCRYPT","DECRYPT"],
+        "cipher_key": [8],
+        "iv": [8],
+        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256","sha2-384", "sha2-512",
+                      "md5-hmac", "sha1-hmac", "sha2-224-hmac", "sha2-256-hmac",
+                      "sha2-384-hmac", "sha2-512-hmac"],
+        "auth_op": ["GENERATE"],
+        "auth_key": [8, 16, 24, 32, 40, 48, 56, 64, 128],
         "auth_key_random_size": "",
         "aad": "",
         "aad_random_size": "",
-        "input": "111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
-        "output_cipher": "",
-        "output_hash": "A7AD120ED744A9EC0618C0D9"
-    },
-
-    "qat_ch_AES_CBC_SHA1_HMAC_01": {
-        "vdev": "",
-        "chain": "CIPHER_HASH",
-        "cdev_type": "ANY",
-        "cipher_algo": "AES_CBC",
-        "cipher_op": "ENCRYPT",
-        "cipher_key": "000102030405060708090a0b0c0d0e0f",
-        "iv": "000102030405060708090a0b0c0d0e0f",
-        "auth_algo": "SHA1_HMAC",
-        "auth_op": "GENERATE",
-        "auth_key": "000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f",
-        "auth_key_random_size": "",
-        "aad": "",
-        "aad_random_size": "",
-        "input": "111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
-        "output_cipher": "96A702D1CC8DD6D625D971915FCE8C40B8C522042B7126D51BB204CECA048C13793B75FF84A4B524370A45534C2BC476",
-        "output_hash": "2D6EFD5929812460E2DE34A1BD768F209C985143BA7333E8D59EFED291517EF7"
-    },
-
+        "input":[5,8,11,16,64,127,258,506,512,521,1020,1022,1024],
+        "output_cipher":"*",
+        "output_hash": "*"
+    },            
     "qat_c_UEA2_01": {
         "vdev": "",
-        "chain": "CIPHER_ONLY",
+        "chain": ["CIPHER_ONLY", "CIPHER_HASH"],
         "cdev_type": "ANY",
-        "cipher_algo": "SNOW3G_UEA2",
-        "cipher_op": "ENCRYPT",
-        "cipher_key": "000102030405060708090a0b0c0d0e0f",
-        "iv": "000102030405060708090a0b0c0d0e0f",
-        "auth_algo": "",
-        "auth_op": "",
-        "auth_key": "",
+        "cipher_algo": ["snow3g-uea2"],
+        "cipher_op": ["ENCRYPT", "DECRYPT"],
+        "cipher_key": [16],
+        "iv": [16],
+        "auth_algo": ["snow3g-uia2"],
+        "auth_op": ["GENERATE"],
+        "auth_key": [16],
         "auth_key_random_size": "",
-        "aad": "",
+        "aad": [16],
         "aad_random_size": "",
-        "input": "111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
-        "output_cipher": "fa0d2ff5dbf973e7082b128396fbc2c1ff5721099a1eb82918e66c1fa1b8fd52ce1763963f73859595d89b0b8d3907a8",
-        "output_hash": ""
+        "input": [16,48,64, 128, 129,256, 512, 1024],
+        "output_cipher": "*",
+        "output_hash": "*"
     },
 
     "qat_h_UIA2_01": {
         "vdev": "",
-        "chain": "HASH_ONLY",
+        "chain": ["HASH_ONLY"],
         "cdev_type": "ANY",
         "cipher_algo": "",
         "cipher_op": "",
         "cipher_key": "",
         "iv": "",
-        "auth_algo": "SNOW3G_UIA2",
-        "auth_op": "GENERATE",
-        "auth_key": "000102030405060708090a0b0c0d0e0f",
+        "auth_algo": ["snow3g-uia2"],
+        "auth_op": ["GENERATE"],
+        "auth_key": [16],
         "auth_key_random_size": "",
-        "aad": "000102030405060708090a0b0c0d0e0f",
+        "aad": [16],
         "aad_random_size": "",
-        "input": "111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
-        "output_cipher": "",
-        "output_hash": "741D4316"
+        "input": [16,48,64, 128,129, 256, 512, 1024],
+        "output_cipher": "*",
+        "output_hash": "*"
+    },
+          
+    "qat_kasumi_c_F8_01": {
+        "vdev": "",
+        "chain": ["CIPHER_ONLY", "CIPHER_HASH"],
+        "cdev_type": "ANY",
+        "cipher_algo": ["kasumi-f8"],
+        "cipher_op": ["ENCRYPT", "DECRYPT"],
+        "cipher_key": [16],
+        "iv": [8],
+        "auth_algo": ["kasumi-f9"],
+        "auth_op": ["GENERATE"],
+        "auth_key": [16],
+        "auth_key_random_size": "",
+        "aad": [8],
+        "aad_random_size": "",
+        "input": [16,48,64, 128, 129,256, 512, 1024],
+        "output_cipher": "*",
+        "output_hash": "*"
     },
 
-    "snow3g_c_UEA2_01": {
-        "vdev": "cryptodev_snow3g_pmd,socket_id=1,max_nb_sessions=128",
-        "chain": "CIPHER_ONLY",
+    "qat_kasumi_h_F9_01": {
+        "vdev": "",
+        "chain": ["HASH_ONLY"],
         "cdev_type": "ANY",
-        "cipher_algo": "SNOW3G_UEA2",
-        "cipher_op": "ENCRYPT",
-        "cipher_key": "000102030405060708090a0b0c0d0e0f",
-        "iv": "000102030405060708090a0b0c0d0e0f",
+        "cipher_algo": "",
+        "cipher_op": "",
+        "cipher_key": "",
+        "iv": "",
+        "auth_algo": ["kasumi-f9"],
+        "auth_op": ["GENERATE"],
+        "auth_key": [16],
+        "auth_key_random_size": "",
+        "aad": [8],
+        "aad_random_size": "",
+        "input": [16,48,64, 128,129, 256, 512, 1024],
+        "output_cipher": "*",
+        "output_hash": "*"
+    },   
+        
+    "qat_c_EEA3_01": {
+        "vdev": "",
+        "chain": ["CIPHER_ONLY", "CIPHER_HASH"],
+        "cdev_type": "ANY",
+        "cipher_algo": ["zuc-eea3"],
+        "cipher_op": ["ENCRYPT", "DECRYPT"],
+        "cipher_key": [16],
+        "iv": [16],
+        "auth_algo": ["zuc-eia3"],
+        "auth_op": ["GENERATE"],
+        "auth_key": [16],
+        "auth_key_random_size": "",
+        "aad": [16],
+        "aad_random_size": "",
+        "input": [16,48,64, 128,129, 256, 512, 1024],
+        "output_cipher": "*",
+        "output_hash": "*"
+    },
+
+    "qat_h_EIA3_01": {
+        "vdev": "",
+        "chain": ["HASH_ONLY"],
+        "cdev_type": "ANY",
+        "cipher_algo": "",
+        "cipher_op": "",
+        "cipher_key": "",
+        "iv": "",
+        "auth_algo": ["zuc-eia3"],
+        "auth_op": ["GENERATE"],
+        "auth_key": [16],
+        "auth_key_random_size": "",
+        "aad": [16],
+        "aad_random_size": "",
+        "input": [16,48,64, 128,129, 256, 512, 1024],
+        "output_cipher": "*",
+        "output_hash": "*"
+    },
+                 
+    "qat_c_NULL_auto": {
+        "vdev": "",
+        "chain": ["CIPHER_ONLY","CIPHER_HASH"],
+        "cdev_type": "ANY",
+        "cipher_algo": ["null"],
+        "cipher_op": ["ENCRYPT", "DECRYPT"],
+        "cipher_key": [0],
+        "iv": "",
+        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256","sha2-384", "sha2-512",
+                      "md5-hmac", "sha1-hmac", "sha2-224-hmac", "sha2-256-hmac",
+                      "sha2-384-hmac", "sha2-512-hmac"],
+        "auth_op": ["GENERATE"],
+        "auth_key": [8, 16, 24, 32, 40, 48, 56, 64, 128],
+        "auth_key_random_size": "",
+        "aad": [0],
+        "aad_random_size": "",
+        "digest": "",
+        "input": [16,48,64, 128,129, 256, 512, 1024],
+        "output_cipher": "*",
+        "output_hash": "*"
+    },
+       
+    "qat_h_NULL_auto": {
+        "vdev": "",
+        "chain": ["CIPHER_ONLY","CIPHER_HASH"],
+        "cdev_type": "ANY",
+        "cipher_algo": ["null","aes-cbc","aes-ctr","3des-ctr","snow3g-uea2","kasumi-f8"],
+        "cipher_op": ["ENCRYPT", "DECRYPT"],
+        "cipher_key": [8, 16, 24, 32, 40, 48, 56, 64],
+        "iv": "",
+        "auth_algo": ["null"],
+        "auth_op": ["GENERATE"],
+        "auth_key": [0],
+        "auth_key_random_size": "",
+        "aad": [0],
+        "aad_random_size": "",
+        "digest": "",
+        "input": [16,48,64, 128,129, 256, 512, 1024],
+        "output_cipher": "*",
+        "output_hash": "*"
+    }, 
+        
+    "aesni_mb_c_AES_CBC_00": {
+        "vdev": "crypto_aesni_mb,socket_id=1,max_nb_sessions=128",
+        "chain": ["CIPHER_HASH"],
+        "cdev_type": "ANY",
+        "cipher_algo": ["aes-cbc"],
+        "cipher_op": ["ENCRYPT"],
+        "cipher_key": [16, 24, 32],
+        "iv": [16],
+        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256","sha2-384", "sha2-512",
+            "md5-hmac", "sha1-hmac", "sha2-224-hmac", "sha2-256-hmac",
+            "sha2-384-hmac", "sha2-512-hmac"],
+        "auth_op": ["GENERATE"],
+        "auth_key": [8, 16, 24, 32, 40, 48, 56, 64, 128], 
+        "auth_key_random_size": "",
+        "aad": [0],
+        "aad_random_size": "",
+        "input":[16,48,64, 128,129, 256, 512, 1024],
+        "output_cipher":"*",
+        "output_hash": "*"
+    },
+                
+     "aesni_mb_c_AES_CTR_00": {
+        "vdev": "crypto_aesni_mb,socket_id=1,max_nb_sessions=128",
+        "chain": ["CIPHER_HASH"],
+        "cdev_type": "ANY",
+        "cipher_algo": ["aes-ctr"],
+        "cipher_op": ["ENCRYPT", "DECRYPT"],
+        "cipher_key": [16, 24, 32],
+        "iv": [16],
+        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256","sha2-384", "sha2-512",
+                      "md5-hmac", "sha1-hmac", "sha2-224-hmac", "sha2-256-hmac",
+                      "sha2-384-hmac", "sha2-512-hmac"],
+        "auth_op": ["GENERATE"],
+        "auth_key": [8, 16, 24, 32, 40, 48, 56, 64, 128],
+        "auth_key_random_size": "",
+        "aad": [0],
+        "aad_random_size": "",
+        "input":[16,48,64, 128, 129,256, 512, 1024],
+        "output_cipher":"*",
+        "output_hash": "*"
+    },
+          
+    "aesni_mb_c_AES_DOCSISBPI": {
+        "vdev": "crypto_aesni_mb,socket_id=1,max_nb_sessions=128",
+        "chain": ["CIPHER_ONLY"],
+        "cdev_type": "ANY",
+        "cipher_algo": "aes-docsisbpi",
+        "cipher_op": ["ENCRYPT","DECRYPT"],
+        "cipher_key": [16],
+        "iv": [16],
         "auth_algo": "",
         "auth_op": "",
         "auth_key": "",
         "auth_key_random_size": "",
         "aad": "",
         "aad_random_size": "",
-        "input": "111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
-        "output_cipher": "fa0d2ff5dbf973e7082b128396fbc2c1ff5721099a1eb82918e66c1fa1b8fd52ce1763963f73859595d89b0b8d3907a8",
-        "output_hash": ""
+        "input":[15,16,17,129,256,258,515,772,1019,1547,2011,2048],
+        "output_cipher":"*",
+        "output_hash": "*"
+    },
+                                              
+    "null_c_NULL_01": {
+        "vdev": "crypto_null_pmd,socket_id=1,max_nb_sessions=128",
+        "chain": ["CIPHER_ONLY","CIPHER_HASH"],
+        "cdev_type": "ANY",
+        "cipher_algo": ["null"],
+        "cipher_op": ["ENCRYPT", "DECRYPT"],
+        "cipher_key": ["0"],
+        "iv": "",
+        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256","sha2-384", "sha2-512",
+                      "md5-hmac", "sha1-hmac", "sha2-224-hmac", "sha2-256-hmac",
+                      "sha2-384-hmac", "sha2-512-hmac"],
+        "auth_op": ["GENERATE"],
+        "auth_key": [8, 16, 24, 32, 40, 48, 56, 64, 128],
+        "auth_key_random_size": "",
+        "aad": [0],
+        "aad_random_size": "",
+        "digest": "",
+        "input": [16,48,64, 128, 129,256, 512, 1024],
+        "output_cipher": "*",
+        "output_hash": "*"
     },
 
-    "snow3g_h_UIA2_01": {
-        "vdev": "cryptodev_snow3g_pmd,socket_id=1,max_nb_sessions=128",
+    "null_h_NULL": {
+        "vdev": "crypto_null_pmd,socket_id=1,max_nb_sessions=128",
         "chain": "HASH_ONLY",
         "cdev_type": "ANY",
         "cipher_algo": "",
         "cipher_op": "",
-        "cipher_key": "",
+        "cipher_key": [0],
         "iv": "",
-        "auth_algo": "SNOW3G_UIA2",
-        "auth_op": "GENERATE",
-        "auth_key": "000102030405060708090a0b0c0d0e0f",
+        "auth_algo": ["null"],
+        "auth_op": ["GENERATE"],
+        "auth_key": [0],
         "auth_key_random_size": "",
-        "aad": "000102030405060708090a0b0c0d0e0f",
+        "aad": [0],
         "aad_random_size": "",
-        "input": "111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
-        "output_cipher": "",
-        "output_hash": "741D4316"
+        "digest": "",
+        "input": [16,48,64, 128,129, 256, 512, 1024],
+        "output_cipher": "*",
+        "output_hash": "*"
     },
-
+                    
+    "null_c_NULL_auto": {
+        "vdev": "crypto_null_pmd,socket_id=1,max_nb_sessions=128",
+        "chain": ["CIPHER_ONLY","CIPHER_HASH"],
+        "cdev_type": "ANY",
+        "cipher_algo": ["null"],
+        "cipher_op": ["ENCRYPT", "DECRYPT"],
+        "cipher_key": [0],
+        "iv": [0],
+        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256","sha2-384", "sha2-512",
+                      "md5-hmac", "sha1-hmac", "sha2-224-hmac", "sha2-256-hmac",
+                      "sha2-384-hmac", "sha2-512-hmac"],
+        "auth_op": ["GENERATE"],
+        "auth_key": [0,8, 16, 24, 32, 40, 48, 56, 64, 128],
+        "auth_key_random_size": "",
+        "aad": [0],
+        "aad_random_size": "",
+        "digest": "",
+        "input": [16,48,64, 128, 129,256, 512, 1024],
+        "output_cipher": "*",
+        "output_hash": "*"
+    },          
+       
+    "null_h_NULL_auto": {
+        "vdev": "crypto_null_pmd,socket_id=1,max_nb_sessions=128",
+        "chain": ["CIPHER_ONLY","CIPHER_HASH"],
+        "cdev_type": "ANY",
+        "cipher_algo": ["null"],
+        "cipher_op": ["ENCRYPT", "DECRYPT"],
+        "cipher_key": [0,8, 16, 24, 32, 40, 48, 56, 64],
+        "iv": [0],
+        "auth_algo": ["null"],
+        "auth_op": ["GENERATE"],
+        "auth_key": [0],
+        "auth_key_random_size": "",
+        "aad": [0],
+        "aad_random_size": "",
+        "digest": "",
+        "input": [16,48,64, 128, 129,256, 512, 1024],
+        "output_cipher": "*",
+        "output_hash": "*"
+    }, 
+             
+                            
+    "aesni_gcm_ch_AES_GCM_AES_GCM_01": {
+        "vdev": "crypto_aesni_gcm_pmd,socket_id=1,max_nb_sessions=128",
+        "chain": ["CIPHER_HASH"],
+        "cdev_type": "ANY",
+        "cipher_algo": ["aes-gcm"],
+        "cipher_op": ["ENCRYPT", "DECRYPT"],
+        "cipher_key": [16],
+        "iv": [12,16],
+        "auth_algo": ["aes-gcm"],
+        "auth_op": ["GENERATE"],
+        "auth_key": [16, 24, 32],
+        "auth_key_random_size": "",
+        "aad": [8,12],
+        "aad_random_size": "",
+        "input": [16,48,64, 128, 129,256, 512, 1024],
+        "output_cipher": "*",
+        "output_hash": "*"
+    },
+    
+    
+                
     "kasumi_c_F8_01": {
-        "vdev": "cryptodev_kasumi_pmd,socket_id=1,max_nb_sessions=128",
-        "chain": "CIPHER_ONLY",
+        "vdev": "crypto_kasumi_pmd,socket_id=1,max_nb_sessions=128",
+        "chain": ["CIPHER_ONLY", "CIPHER_HASH"],
         "cdev_type": "ANY",
-        "cipher_algo": "KASUMI_F8",
-        "cipher_op": "ENCRYPT",
-        "cipher_key": "000102030405060708090a0b0c0d0e0f",
-        "iv": "0001020304050607",
-        "auth_algo": "",
-        "auth_op": "",
-        "auth_key": "",
+        "cipher_algo": ["kasumi-f8"],
+        "cipher_op": ["ENCRYPT", "DECRYPT"],
+        "cipher_key": [16],
+        "iv": [8],
+        "auth_algo": ["kasumi-f9"],
+        "auth_op": ["GENERATE"],
+        "auth_key": [16],
         "auth_key_random_size": "",
-        "aad": "",
+        "aad": [8],
         "aad_random_size": "",
-        "input": "111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
-        "output_cipher": "ede654ff0caab546b654cd7a3b0a4199e957579214f45bd7e25fcbbda41e38fc885fbbd6195cf8e22905480191b2f861",
-        "output_hash": ""
+        "input": [16,48,64, 128, 129,256, 512, 1024],
+        "output_cipher": "*",
+        "output_hash": "*"
     },
 
     "kasumi_h_F9_01": {
-        "vdev": "cryptodev_kasumi_pmd,socket_id=1,max_nb_sessions=128",
-        "chain": "HASH_ONLY",
+        "vdev": "crypto_kasumi_pmd,socket_id=1,max_nb_sessions=128",
+        "chain": ["HASH_ONLY"],
         "cdev_type": "ANY",
         "cipher_algo": "",
         "cipher_op": "",
         "cipher_key": "",
         "iv": "",
-        "auth_algo": "KASUMI_F9",
-        "auth_op": "GENERATE",
-        "auth_key": "000102030405060708090a0b0c0d0e0f",
+        "auth_algo": ["kasumi-f9"],
+        "auth_op": ["GENERATE"],
+        "auth_key": [16],
         "auth_key_random_size": "",
-        # aad length min=8 max=8
-        "aad": "0001020304050607",
+        "aad": [8],
         "aad_random_size": "",
-        "input": "111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
-        "output_cipher": "",
-        "output_hash": "D1C2BE1E"
+        "input": [16,48,64, 128,129, 256, 512, 1024],
+        "output_cipher": "*",
+        "output_hash": "*"
+    },
+    
+    "snow3g_c_UEA2_01": {
+        "vdev": "crypto_snow3g_pmd,socket_id=1,max_nb_sessions=128",
+        "chain": ["CIPHER_ONLY", "CIPHER_HASH"],
+        "cdev_type": "ANY",
+        "cipher_algo": ["sno3g-uea2"],
+        "cipher_op": ["ENCRYPT", "DECRYPT"],
+        "cipher_key": [16],
+        "iv": [16],
+        "auth_algo": ["snow3g-uia2"],
+        "auth_op": ["GENERATE"],
+        "auth_key": [16],
+        "auth_key_random_size": "",
+        "aad": [16],
+        "aad_random_size": "",
+        "input": [16,48,64, 128,129, 256, 512, 1024],
+        "output_cipher": "*",
+        "output_hash": "*"
     },
 
-    "null_c_NULL_01": {
-        "vdev": "cryptodev_null_pmd,socket_id=1,max_nb_sessions=128",
-        "chain": "CIPHER_ONLY",
+    "snow3g_h_UIA2_01": {
+        "vdev": "crypto_snow3g_pmd,socket_id=1,max_nb_sessions=128",
+        "chain": ["HASH_ONLY"],
         "cdev_type": "ANY",
-        "cipher_algo": "NULL",
-        "cipher_op": "ENCRYPT",
+        "cipher_algo": "",
+        "cipher_op": "",
         "cipher_key": "",
         "iv": "",
+        "auth_algo": ["snow3g-uia2"],
+        "auth_op": ["GENERATE"],
+        "auth_key": [16],
+        "auth_key_random_size": "",
+        "aad": [16],
+        "aad_random_size": "",
+        "input": [16,48,64, 128,129, 256, 512, 1024],
+        "output_cipher": "*",
+        "output_hash": "*"
+    },   
+    
+    "zuc_c_EEA3_01": {
+        "vdev": "crypto_zuc_pmd,socket_id=1,max_nb_sessions=128",
+        "chain": ["CIPHER_ONLY", "CIPHER_HASH"],
+        "cdev_type": "ANY",
+        "cipher_algo": ["zuc-eea3"],
+        "cipher_op": ["ENCRYPT", "DECRYPT"],
+        "cipher_key": [16],
+        "iv": [16],
+        "auth_algo": ["zuc-eia3"],
+        "auth_op": ["GENERATE"],
+        "auth_key": [16],
+        "auth_key_random_size": "",
+        "aad": [16],
+        "aad_random_size": "",
+        "input": [16,48,64, 128,129, 256, 512, 1024],
+        "output_cipher": "*",
+        "output_hash": "*"
+    },
+
+    "zuc_h_EIA3_01": {
+        "vdev": "crypto_zuc_pmd,socket_id=1,max_nb_sessions=128",
+        "chain": ["HASH_ONLY"],
+        "cdev_type": "ANY",
+        "cipher_algo": "",
+        "cipher_op": "",
+        "cipher_key": "",
+        "iv": "",
+        "auth_algo": ["zuc-eia3"],
+        "auth_op": ["GENERATE"],
+        "auth_key": [16],
+        "auth_key_random_size": "",
+        "aad": [16],
+        "aad_random_size": "",
+        "input": [16,48,64, 128,129, 256, 512, 1024],
+        "output_cipher": "*",
+        "output_hash": "*"
+    },
+                
+    "openssl_c_3DES_CBC_00": {
+        "vdev": "crypto_openssl_pmd,socket_id=1,max_nb_sessions=128",
+        "chain": ["CIPHER_ONLY", "CIPHER_HASH"],
+        "cdev_type": "ANY",
+        "cipher_algo": ["3des-cbc"],
+        "cipher_op": ["ENCRYPT", "DECRYPT"],
+        "cipher_key": [16, 24],
+        "iv": [8],
+        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256","sha2-384", "sha2-512",
+                      "md5-hmac", "sha1-hmac", "sha2-224-hmac", "sha2-256-hmac",
+                      "sha2-384-hmac", "sha2-512-hmac"],
+        "auth_op": ["GENERATE"],
+        "auth_key": [8, 16, 24, 32, 40, 48, 56, 64, 128],
+        "auth_key_random_size": "",
+        "aad": [0],
+        "aad_random_size": "",
+        "input":[16,48,64, 128,129, 256, 512, 1024],
+        "output_cipher":"*",
+        "output_hash": "*"
+    },
+                
+    "openssl_c_3DES_CTR_00": {
+        "vdev": "crypto_openssl_pmd,socket_id=1,max_nb_sessions=128",
+        "chain": ["CIPHER_ONLY", "CIPHER_HASH"],
+        "cdev_type": "ANY",
+        "cipher_algo": ["3des-ctr"],
+        "cipher_op": ["ENCRYPT", "DECRYPT"],
+        "cipher_key": [16, 24],
+        "iv": [8],
+        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256","sha2-384", "sha2-512",
+                      "md5-hmac", "sha1-hmac", "sha2-224-hmac", "sha2-256-hmac",
+                      "sha2-384-hmac", "sha2-512-hmac"],
+        "auth_op": ["GENERATE"],
+        "auth_key": [8, 16, 24, 32, 40, 48, 56, 64, 128],
+        "auth_key_random_size": "",
+        "aad": [0],
+        "aad_random_size": "",
+        "input":[16,48,64, 128, 129,256, 512, 1024],
+        "output_cipher":"*",
+        "output_hash": "*"
+    },
+    
+    "openssl_c_AES_CBC_00": {
+        "vdev": "crypto_openssl_pmd,socket_id=1,max_nb_sessions=128",
+        "chain": ["CIPHER_ONLY", "CIPHER_HASH"],
+        "cdev_type": "ANY",
+        "cipher_algo": ["aes-cbc"],
+        "cipher_op": ["ENCRYPT", "DECRYPT"],
+        "cipher_key": [16, 24, 32],
+        "iv": [16],
+        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256","sha2-384", "sha2-512",
+                      "md5-hmac", "sha1-hmac", "sha2-224-hmac", "sha2-256-hmac",
+                      "sha2-384-hmac", "sha2-512-hmac"],
+        "auth_op": ["GENERATE"],
+        "auth_key": [8, 16, 24, 32, 40, 48, 56, 64, 128],
+        "auth_key_random_size": "",
+        "aad": [0],
+        "aad_random_size": "",
+        "input":[16,48,64, 128,129, 256, 512, 1024],
+        "output_cipher":"*",
+        "output_hash": "*"
+    },
+                
+     "openssl_c_AES_CTR_00": {
+        "vdev": "crypto_openssl_pmd,socket_id=1,max_nb_sessions=128",
+        "chain": ["CIPHER_ONLY", "CIPHER_HASH"],
+        "cdev_type": "ANY",
+        "cipher_algo": ["aes-ctr"],
+        "cipher_op": ["ENCRYPT", "DECRYPT"],
+        "cipher_key": [16, 24, 32],
+        "iv": [16],
+        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256","sha2-384", "sha2-512",
+                      "md5-hmac", "sha1-hmac", "sha2-224-hmac", "sha2-256-hmac",
+                      "sha2-384-hmac", "sha2-512-hmac"],
+        "auth_op": ["GENERATE"],
+        "auth_key": [8, 16, 24, 32, 40, 48, 56, 64, 128],
+        "auth_key_random_size": "",
+        "aad": [0],
+        "aad_random_size": "",
+        "input":[16,48,64, 128,129, 256, 512, 1024],
+        "output_cipher":"*",
+        "output_hash": "*"
+    },
+            
+    "openssl_c_AES_GCM_00": {
+        "vdev": "crypto_openssl_pmd,socket_id=1,max_nb_sessions=128",
+        "chain": ["CIPHER_HASH"],
+        "cdev_type": "ANY",
+        "cipher_algo": ["aes-gcm"],
+        "cipher_op": ["ENCRYPT", "DECRYPT"],
+        "cipher_key": [16],
+        "iv": [12,16],
+        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256","sha2-384", "sha2-512",
+                      "md5-hmac", "sha1-hmac", "sha2-224-hmac", "sha2-256-hmac",
+                      "sha2-384-hmac", "sha2-512-hmac"],
+        "auth_op": ["GENERATE"],
+        "auth_key": [8, 16, 24, 32, 40, 48, 56, 64, 128],
+        "auth_key_random_size": "",
+        "aad": [0],
+        "aad_random_size": "",
+        "input":[16,48,64, 128, 129,256, 512, 1024],
+        "output_cipher":"*",
+        "output_hash": "*"
+    },
+        
+    "openssl_h_MD_SHA_00": {
+        "vdev": "crypto_openssl_pmd,socket_id=1,max_nb_sessions=128",
+        "chain": ["HASH_ONLY"],
+        "cdev_type": "ANY",
+        "cipher_algo": "",
+        "cipher_op": "",
+        "cipher_key": "",
+        "iv": "",
+        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256","sha2-384", "sha2-512",
+                      "md5-hmac", "sha1-hmac", "sha2-224-hmac", "sha2-256-hmac",
+                      "sha2-384-hmac", "sha2-512-hmac"],
+        "auth_op": ["GENERATE"],
+        "auth_key": [8, 16, 24, 32, 40, 48, 56, 64, 128],
+        "auth_key_random_size": "",
+        "aad": [0],
+        "aad_random_size": "",
+        "input":[16,48,64, 128,129, 256, 512, 1024],
+        "output_cipher":"*",
+        "output_hash": "*"
+    },
+                
+    "openssl_c_DES_DOCSISBPI": {
+        "vdev": "crypto_openssl_pmd,socket_id=1,max_nb_sessions=128",
+        "chain": ["CIPHER_ONLY"],
+        "cdev_type": "ANY",
+        "cipher_algo": "des-docsisbpi",
+        "cipher_op": ["ENCRYPT","DECRYPT"],
+        "cipher_key": [8],
+        "iv": [8],
         "auth_algo": "",
         "auth_op": "",
         "auth_key": "",
         "auth_key_random_size": "",
         "aad": "",
         "aad_random_size": "",
-        "input": "111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
-        "output_cipher": "111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
-        "output_hash": ""
+        "input":[5,8,11,16,64,127,258,506,512,521,1020,1022,1024],
+        "output_cipher":"*",
+        "output_hash": "*"
     },
-
-    "qat_ch_AES_GCM_AES_GCM_01": {
-        "vdev": "",
-        "chain": "CIPHER_HASH",
-        "cdev_type": "ANY",
-        "cipher_algo": "AES_GCM",
-        "cipher_op": "ENCRYPT",
-        "cipher_key": "000102030405060708090a0b0c0d0e0f",
-        "iv": "000102030405060708090a0b0c0d0e0f",
-        "auth_algo": "AES_GCM",
-        "auth_op": "GENERATE",
-        "auth_key": "000102030405060708090a0b0c0d0e0f",
-        "auth_key_random_size": "",
-        # aad length min=8 max=12
-        "aad": "0001020304050607",
-        "aad_random_size": "",
-        "input": "111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
-        "output_cipher": "1372fd85770963878bcbec1e5ab51ecd0b3c85a2000db4e9acd3d95cdd38fd565c1abac3884e8e167332357956a4c21f",
-        "output_hash": "00A2EBC33A8A1C8C"
-    },
-
-    "aesni_ch_AES_GCM_AES_GCM_01": {
-        "vdev": "cryptodev_aesni_gcm_pmd,socket_id=1,max_nb_sessions=128",
-        "chain": "CIPHER_HASH",
-        "cdev_type": "ANY",
-        "cipher_algo": "AES_GCM",
-        "cipher_op": "ENCRYPT",
-        "cipher_key": "000102030405060708090a0b0c0d0e0f",
-        "iv": "000102030405060708090a0b0c0d0e0f",
-        "auth_algo": "AES_GCM",
-        "auth_op": "GENERATE",
-        "auth_key": "000102030405060708090a0b0c0d0e0f",
-        "auth_key_random_size": "",
-        # aad length min=8 max=12
-        "aad": "0001020304050607",
-        "aad_random_size": "",
-        "input": "111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
-        "output_cipher": "1372fd85770963878bcbec1e5ab51ecd0b3c85a2000db4e9acd3d95cdd38fd565c1abac3884e8e167332357956a4c21f",
-        "output_hash": "00A2EBC33A8A1C8C"
-    },
-
-    "aesni_ch_AES_CBC_SHA1_HMAC_01": {
-        "vdev": "cryptodev_aesni_mb_pmd,socket_id=1,max_nb_sessions=128",
-        "chain": "CIPHER_HASH",
-        "cdev_type": "ANY",
-        "cipher_algo": "AES_CBC",
-        "cipher_op": "ENCRYPT",
-        "cipher_key": "000102030405060708090a0b0c0d0e0f",
-        "iv": "000102030405060708090a0b0c0d0e0f",
-        "auth_algo": "SHA1_HMAC",
-        "auth_op": "GENERATE",
-        "auth_key": "000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f",
-        "auth_key_random_size": "",
-        "aad": "",
-        "aad_random_size": "",
-        "input": "111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
-        "output_cipher": "96A702D1CC8DD6D625D971915FCE8C40B8C522042B7126D51BB204CECA048C13793B75FF84A4B524370A45534C2BC476",
-        "output_hash": "2D6EFD5929812460E2DE34A1BD768F209C985143BA7333E8D59EFED291517EF7"
-    },
-
+                            
 }
