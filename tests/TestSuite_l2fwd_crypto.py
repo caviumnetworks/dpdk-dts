@@ -92,16 +92,16 @@ class TestL2fwdCrypto(TestCase):
         self.dut.send_expect("sed -i 's/CONFIG_RTE_LIBRTE_PMD_SNOW3G=n$/CONFIG_RTE_LIBRTE_PMD_SNOW3G=y/' config/common_base", "# ")
         self.dut.send_expect("sed -i 's/CONFIG_RTE_LIBRTE_PMD_KASUMI=n$/CONFIG_RTE_LIBRTE_PMD_KASUMI=y/' config/common_base", "# ")
         self.dut.send_expect("sed -i 's/CONFIG_RTE_LIBRTE_PMD_OPENSSL=n$/CONFIG_RTE_LIBRTE_PMD_OPENSSL=y/' config/common_base", "# ")
-        self.dut.send_expect("sed -i 's/CONFIG_RTE_LIBRTE_PMD_AESNI_MB=n$/CONFIG_RTE_LIBRTE_PMD_AESNI_MB=y/' config/common_base", "# ") 
+        self.dut.send_expect("sed -i 's/CONFIG_RTE_LIBRTE_PMD_AESNI_MB=n$/CONFIG_RTE_LIBRTE_PMD_AESNI_MB=y/' config/common_base", "# ")
         self.dut.send_expect("sed -i 's/CONFIG_RTE_LIBRTE_PMD_ZUC=n$/CONFIG_RTE_LIBRTE_PMD_ZUC=y/' config/common_base", "# ")
         self.dut.skip_setup = False
         self.dut.build_install_dpdk(self.dut.target)
-        
+
         # l2fwd-crypto compile
         out = self.dut.build_dpdk_apps("./examples/l2fwd-crypto")
         self.verify("Error" not in out, "Compilation error")
         self.verify("No such" not in out, "Compilation error")
-        
+
         # Bind QAT VF devices
         out = self.dut.send_expect("lspci -d:443|awk '{print $1}'", "# ", 10)
         self.dut.send_expect('echo "8086 0443" > /sys/bus/pci/drivers/igb_uio/new_id', "# ", 10)
@@ -120,49 +120,49 @@ class TestL2fwdCrypto(TestCase):
         if not self.__execute_l2fwd_crypto_test(
                 test_vectors, "qat_c_AES_CBC_00"):
             result = False
-        
+
     def test_qat_AES_CTR_auto(self):
         result = True
         self.logger.info("Test qat_c_AES_CTR_00")
         if not self.__execute_l2fwd_crypto_test(
                 test_vectors, "qat_c_AES_CTR_00"):
             result = False
-        
+
     def test_qat_AES_GCM_auto(self):
         result = True
         self.logger.info("Test qat_c_AES_GCM_00")
         if not self.__execute_l2fwd_crypto_test(
                 test_vectors, "qat_c_AES_GCM_00"):
             result = False
-    
+
     def test_qat_h_MD_SHA_auto(self):
         result = True
         self.logger.info("Test qat_h_MD_SHA_00")
         if not self.__execute_l2fwd_crypto_test(
                 test_vectors, "qat_h_MD_SHA_00"):
             result = False
-    
+
     def test_qat_h_AES_XCBC_MAC_auto(self):
         result = True
         self.logger.info("Test qat_h_AES_XCBC_MAC_01")
         if not self.__execute_l2fwd_crypto_test(
                 test_vectors, "qat_h_AES_XCBC_MAC_01"):
             result = False
-    
+
     def test_qat_3DES_CBC_auto(self):
         result = True
         self.logger.info("Test qat_c_3DES_CBC_00")
         if not self.__execute_l2fwd_crypto_test(
                 test_vectors, "qat_c_3DES_CBC_00"):
             result = False
-            
+
     def test_qat_3DES_CTR_auto(self):
         result = True
         self.logger.info("Test qat_c_3DES_CTR_00")
         if not self.__execute_l2fwd_crypto_test(
                 test_vectors, "qat_c_3DES_CTR_00"):
             result = False
-      
+
     def test_qat_AES_GCM_AES_GCM(self):
 
         result = True
@@ -171,21 +171,21 @@ class TestL2fwdCrypto(TestCase):
         if not self.__execute_l2fwd_crypto_test(
                 test_vectors, "qat_ch_AES_GCM_AES_GCM_01"):
             result = False
-    
+
     def test_qat_AES_DOCSISBPI_auto(self):
         result = True
         self.logger.info("Test qat_ch_AES_DOCSISBPI")
         if not self.__execute_l2fwd_crypto_test(
                 test_vectors, "qat_ch_AES_DOCSISBPI"):
             result = False
-            
+
     def test_qat_c_DES_DOCSISBPI_auto(self):
         result = True
         self.logger.info("Test qat_c_DES_DOCSISBPI")
         if not self.__execute_l2fwd_crypto_test(
                 test_vectors, "qat_c_DES_DOCSISBPI"):
             result = False
-            
+
     def test_qat_SNOW3G_auto(self):
 
         result = True
@@ -199,9 +199,9 @@ class TestL2fwdCrypto(TestCase):
         if not self.__execute_l2fwd_crypto_test(
                 test_vectors, "qat_h_UIA2_01"):
             result = False
-        
+
         self.verify(result, True)
-        
+
     def test_qat_KASUMI_auto(self):
 
         result = True
@@ -216,7 +216,7 @@ class TestL2fwdCrypto(TestCase):
             result = False
 
         self.verify(result, True)
-        
+
     def test_qat_ZUC_auto(self):
 
         result = True
@@ -229,7 +229,7 @@ class TestL2fwdCrypto(TestCase):
         if not self.__execute_l2fwd_crypto_test(
                 test_vectors, "qat_h_EIA3_01"):
             result = False
-            
+
     def test_qat_c_NULL_auto(self):
 
         result = True
@@ -240,7 +240,7 @@ class TestL2fwdCrypto(TestCase):
             result = False
 
         self.verify(result, True)
-                 
+
     def test_qat_h_NULL_auto(self):
 
         result = True
@@ -251,28 +251,28 @@ class TestL2fwdCrypto(TestCase):
             result = False
 
         self.verify(result, True)
-          
+
     def test_aesni_mb_AES_CBC_auto(self):
         result = True
         self.logger.info("Test aesni_mb_c_AES_CBC_00")
         if not self.__execute_l2fwd_crypto_test(
                 test_vectors, "aesni_mb_c_AES_CBC_00"):
             result = False
-        
+
     def test_aesni_mb_AES_CTR_auto(self):
         result = True
         self.logger.info("Test aesni_mb_c_AES_CTR_00")
         if not self.__execute_l2fwd_crypto_test(
                 test_vectors, "aesni_mb_c_AES_CTR_00"):
             result = False
-            
+
     def test_aesni_mb_AES_DOCSISBPI_auto(self):
         result = True
         self.logger.info("Test aesni_mb_c_AES_DOCSISBPI")
         if not self.__execute_l2fwd_crypto_test(
                 test_vectors, "aesni_mb_c_AES_DOCSISBPI"):
             result = False
-            
+
     def test_aesni_AES_GCM_AES_GCM(self):
 
         result = True
@@ -283,7 +283,7 @@ class TestL2fwdCrypto(TestCase):
             result = False
 
         self.verify(result, True)
-    
+
     def test_kasumi_KASUMI_auto(self):
 
         result = True
@@ -298,7 +298,7 @@ class TestL2fwdCrypto(TestCase):
             result = False
 
         self.verify(result, True)
-            
+
     def test_null_NULL_CIPHER(self):
 
         result = True
@@ -308,7 +308,7 @@ class TestL2fwdCrypto(TestCase):
             result = False
 
         self.verify(result, True)
-      
+
     def test_null_NULL_HASH(self):
 
         result = True
@@ -319,7 +319,7 @@ class TestL2fwdCrypto(TestCase):
             result = False
 
         self.verify(result, True)
-        
+
     def test_null_c_NULL_auto(self):
 
         result = True
@@ -330,7 +330,7 @@ class TestL2fwdCrypto(TestCase):
             result = False
 
         self.verify(result, True)
-                 
+
     def test_null_h_NULL_auto(self):
 
         result = True
@@ -342,7 +342,6 @@ class TestL2fwdCrypto(TestCase):
 
         self.verify(result, True)
 
-        
     def test_snow3g_SNOW3G(self):
 
         result = True
@@ -358,7 +357,7 @@ class TestL2fwdCrypto(TestCase):
             result = False
 
         self.verify(result, True)
-    
+
     def test_zun_ZUC_auto(self):
 
         result = True
@@ -371,87 +370,84 @@ class TestL2fwdCrypto(TestCase):
         if not self.__execute_l2fwd_crypto_test(
                 test_vectors, "zuc_h_EIA3_01"):
             result = False
-            
-    # openssl pmd cases 
+
+    # openssl pmd cases
     def test_openssl_3DES_CBC_auto(self):
         result = True
         self.logger.info("Test openssl_c_3DES_CBC_00")
         if not self.__execute_l2fwd_crypto_test(
                 test_vectors, "openssl_c_3DES_CBC_00"):
             result = False
-            
+
     def test_openssl_3DES_CTR_auto(self):
         result = True
         self.logger.info("Test openssl_c_3DES_CTR_00")
         if not self.__execute_l2fwd_crypto_test(
                 test_vectors, "openssl_c_3DES_CTR_00"):
-            result = False   
-                    
+            result = False
+
     def test_openssl_AES_CBC_auto(self):
         result = True
         self.logger.info("Test openssl_c_AES_CBC_00")
         if not self.__execute_l2fwd_crypto_test(
                 test_vectors, "openssl_c_AES_CBC_00"):
             result = False
-            
+
     def test_openssl_AES_CTR_auto(self):
         result = True
         self.logger.info("Test openssl_c_AES_CTR_00")
         if not self.__execute_l2fwd_crypto_test(
                 test_vectors, "openssl_c_AES_CTR_00"):
             result = False
-        
+
     def test_openssl_AES_GCM_auto(self):
         result = True
         self.logger.info("Test openssl_c_AES_GCM_00")
         if not self.__execute_l2fwd_crypto_test(
                 test_vectors, "openssl_c_AES_GCM_00"):
             result = False
-    
+
     def test_openssl_h_MD_SHA_auto(self):
         result = True
         self.logger.info("Test openssl_h_MD_SHA_00")
         if not self.__execute_l2fwd_crypto_test(
                 test_vectors, "openssl_h_MD_SHA_00"):
             result = False
-    
+
     def test_openssl_c_DES_DOCSISBPI_auto(self):
         result = True
         self.logger.info("Test openssl_c_DES_DOCSISBPI")
         if not self.__execute_l2fwd_crypto_test(
                 test_vectors, "openssl_c_DES_DOCSISBPI"):
             result = False
-            
-    def test_calculatr_case_number(self):
-        
-        self.__calculate_totall_cases_numb()
-    
+
     def __calculate_totall_cases_numb(self):
         alg_map = {}
         pmd_map = {}
-        map_combine  = {}
+        map_combine = {}
         count = 0
         alg = ""
         pmd = ""
-        alg_list = ["AES_CBC","AES_CTR","AES_GCM","3DES_CBC", \
-                   "3DES_CTR","SNOW3G","KASUMI","ZUC","NULL","MD_SHA"]
-        pmd_list = ["qat","aesni_mb","aesni_gcm","snow3g",\
-                   "kasumi","zuc","openssl","null"]
+        alg_list = ["AES_CBC", "AES_CTR", "AES_GCM", "3DES_CBC",
+                    "3DES_CTR", "SNOW3G", "KASUMI", "ZUC", "NULL", "MD_SHA"]
+        pmd_list = ["qat", "aesni_mb", "aesni_gcm", "snow3g",
+                    "kasumi", "zuc", "openssl", "null"]
         valid_map = {
-                    "qat": ["AES_CBC", "AES_CTR","AES_GCM","3DES_CBC", \
-                            "3DES_CTR","SNOW3G","KASUMI","NULL","MD_SHA"],
-                    "aesni_mb":["AES_CBC", "AES_CTR"],
-                    "aesni_gcm":["AES_GCM"],
-                    "snow3g":["SNOW3G"],
-                    "kasumi":["KASUMI"],
-                    "zuc":["ZUC"],
-                    "openssl":["AES_CBC", "AES_CTR","AES_GCM","3DES_CBC","3DES_CTR","MD_SHA"],
-                    "null":["NULL"]                    
+                    "qat": ["AES_CBC", "AES_CTR", "AES_GCM", "3DES_CBC",
+                            "3DES_CTR", "SNOW3G", "KASUMI", "NULL", "MD_SHA"],
+                    "aesni_mb": ["AES_CBC", "AES_CTR"],
+                    "aesni_gcm": ["AES_GCM"],
+                    "snow3g": ["SNOW3G"],
+                    "kasumi": ["KASUMI"],
+                    "zuc": ["ZUC"],
+                    "openssl": ["AES_CBC", "AES_CTR", "AES_GCM", "3DES_CBC",
+                                "3DES_CTR", "MD_SHA"],
+                    "null": ["NULL"]
                     }
-        
-        for index,value in test_vectors.iteritems():
+
+        for index, value in test_vectors.iteritems():
             test_vector_list = self.__test_vector_to_vector_list(value,
-                core_mask="-1",port_mask=self.port_mask)
+                core_mask="-1", port_mask=self.port_mask)
             count = count + len(test_vector_list)
             for i in alg_list:
                 if (index.upper()).find(i) != -1:
@@ -462,7 +458,7 @@ class TestL2fwdCrypto(TestCase):
                         alg_map[i] = len(test_vector_list)
             for j in pmd_list:
                 if (index).find(j) != -1:
-                    pmd = j if j !="" else "qat"
+                    pmd = j if j != "" else "qat"
                     if i in pmd_map:
                         pmd_map[j] += len(test_vector_list)
                     else:
@@ -473,15 +469,14 @@ class TestL2fwdCrypto(TestCase):
                     map_combine[temp_str] += len(test_vector_list)
                 else:
                     map_combine[temp_str] = len(test_vector_list)
-        for k,v in alg_map.iteritems():
-            self.logger.info("Total {name} cases:\t\t\t{number}".format(name=k,number=v))
-        for k,v in pmd_map.iteritems():
-            self.logger.info("Total {name} cases:\t\t\t{number}".format(name=k,number=v))
-        for k,v in map_combine.iteritems():
-            self.logger.info("Total {name} cases:\t\t\t{number}".format(name=k,number=v))
+        for k, v in alg_map.iteritems():
+            self.logger.info("Total {name} cases:\t\t\t{number}".format(name=k, number=v))
+        for k, v in pmd_map.iteritems():
+            self.logger.info("Total {name} cases:\t\t\t{number}".format(name=k, number=v))
+        for k, v in map_combine.iteritems():
+            self.logger.info("Total {name} cases:\t\t\t{number}".format(name=k, number=v))
         self.logger.info("Total cases:\t\t\t {0}".format(count))
-    
-    
+
     def __execute_l2fwd_crypto_test(self, test_vectors, test_vector_name):
 
         if test_vector_name not in test_vectors:
@@ -491,8 +486,8 @@ class TestL2fwdCrypto(TestCase):
         test_vector = test_vectors[test_vector_name]
 
         test_vector_list = self.__test_vector_to_vector_list(test_vector,
-                core_mask=self.core_mask,
-                port_mask=self.port_mask)
+                           core_mask=self.core_mask,
+                           port_mask=self.port_mask)
 
         result = True
         self.logger.info("Total Generated {0} Tests".format(len(test_vector_list)))
@@ -503,7 +498,7 @@ class TestL2fwdCrypto(TestCase):
                                                 port_mask=self.port_mask)
             self.dut.send_expect(cmd_str, "==", 30)
             time.sleep(5)
-            
+
             payload = self.__format_hex_to_list(test_vector["input"])
 
             inst = sniff_packets(self.rx_interface, timeout=5)
@@ -511,9 +506,9 @@ class TestL2fwdCrypto(TestCase):
             PACKET_COUNT = 65
             pkt = Packet()
             pkt.assign_layers(["ether", "ipv4", "raw"])
-            pkt.config_layer("ether", {"src":"52:00:00:00:00:00"})
-            pkt.config_layer("ipv4", {"src":"192.168.1.1", "dst":"192.168.1.2"})
-            pkt.config_layer("raw", {"payload":payload})
+            pkt.config_layer("ether", {"src": "52:00:00:00:00:00"})
+            pkt.config_layer("ipv4", {"src": "192.168.1.1", "dst": "192.168.1.2"})
+            pkt.config_layer("raw", {"payload": payload})
             pkt.send_pkt(tx_port=self.tx_interface, count=PACKET_COUNT)
             pkt.pktgen.pkt.show()
 
@@ -522,11 +517,9 @@ class TestL2fwdCrypto(TestCase):
             for pkt_r in pkt_rec:
                 packet_hex = pkt_r.strip_element_layer4("load")
                 cipher_text = binascii.b2a_hex(packet_hex)
-                self.logger.info("Cipher text in packet = " + cipher_text)
-                self.logger.info("Ref Cipher text       = " + test_vector["output_cipher"]) 
                 if str.lower(cipher_text) == str.lower(test_vector["output_cipher"]):
-                     self.logger.info(cipher_text)
-                     self.logger.info("Cipher Matched.")
+                    self.logger.info(cipher_text)
+                    self.logger.info("Cipher Matched.")
                 else:
                     if test_vector["output_cipher"] != "":
                         result = False
@@ -539,8 +532,6 @@ class TestL2fwdCrypto(TestCase):
                 hash_length = len(test_vector["output_hash"])/2
                 if hash_length != 0:
                     hash_text = binascii.b2a_hex(pkt_r.pktgen.pkt["Padding"].getfieldval("load"))
-                    self.logger.info("Hash text in packet = " + hash_text)
-                    self.logger.info("Ref Hash text       = " + test_vector["output_hash"])
                     if str.lower(hash_text) == str.lower(test_vector["output_hash"]):
                         self.logger.info("Hash Matched")
                     else:
@@ -552,6 +543,10 @@ class TestL2fwdCrypto(TestCase):
                     self.logger.info("Skip Hash, Since no hash text set")
 
             self.logger.info("Packet Size :    %d " % (len(test_vector["input"]) / 2))
+
+            # Close l2fwd-crypto process
+            self.dut.send_excpet("^C", "#", 30)
+
         if result:
             self.logger.info("PASSED")
         else:
@@ -569,24 +564,9 @@ class TestL2fwdCrypto(TestCase):
         self.dut.send_expect("sed -i 's/CONFIG_RTE_LIBRTE_PMD_SNOW3G=y$/CONFIG_RTE_LIBRTE_PMD_SNOW3G=n/' config/common_base", "# ")
         self.dut.send_expect("sed -i 's/CONFIG_RTE_LIBRTE_PMD_KASUMI=y$/CONFIG_RTE_LIBRTE_PMD_KASUMI=n/' config/common_base", "# ")
         self.dut.send_expect("sed -i 's/CONFIG_RTE_LIBRTE_PMD_OPENSSL=y$/CONFIG_RTE_LIBRTE_PMD_OPENSSL=n/' config/common_base", "# ")
-        self.dut.send_expect("sed -i 's/CONFIG_RTE_LIBRTE_PMD_AESNI_MB=y$/CONFIG_RTE_LIBRTE_PMD_AESNI_MB=n/' config/common_base", "# ") 
+        self.dut.send_expect("sed -i 's/CONFIG_RTE_LIBRTE_PMD_AESNI_MB=y$/CONFIG_RTE_LIBRTE_PMD_AESNI_MB=n/' config/common_base", "# ")
         self.dut.send_expect("sed -i 's/CONFIG_RTE_LIBRTE_PMD_ZUC=y$/CONFIG_RTE_LIBRTE_PMD_ZUC=n/' config/common_base", "# ")
-        
-    def __get_tcpdump_cmd(self,interface):
-        cmd = ""        
-      
-        status, output = commands.getstatusoutput("tcpdump --version")
-        head = output.find('tcpdump version')
-        strlen = len("tcpdump version ")
-        tail = output.find("\nlibpcap version")
-        version = output[head + strlen : tail]
-        v =  int(version.replace('.',''))
-        if v < 462 :
-            cmd = "".join("tcpdump -P in -w %s.pcap -i %s &"%(interface,interface))
-        else:
-            cmd = "".join("tcpdump -Q in -w %s.pcap -i %s &"%(interface,interface))
-        return cmd 
-    
+
     def __test_vector_to_cmd(self, test_vector, core_mask="", port_mask=""):
         L2FWD_CRYPTO_APP = "./examples/l2fwd-crypto/build/app/l2fwd-crypto"
         EAL_CORE_MASK = " -cf" if core_mask == "" else " -c" + core_mask
@@ -648,9 +628,12 @@ class TestL2fwdCrypto(TestCase):
         if self.__check_field_in_vector(test_vector, "aad_random_size"):
             aad_random_size = " --aad_random_size " + test_vector["aad_random_size"]
 
-        cmd_str = "".join([L2FWD_CRYPTO_APP, EAL_CORE_MASK, EAL_MM_CHANNEL,EAL_SOCKET_MEM, vdev, vdev, EAL_SEP,
-                          PORT_MASK, QUEUE_NUM, chain, cdev_type, cipher_algo, cipher_op, cipher_key,
-                          iv, auth_algo, auth_op, auth_key, auth_key_random_size, aad, aad_random_size])
+        cmd_str = "".join([L2FWD_CRYPTO_APP, EAL_CORE_MASK, EAL_MM_CHANNEL,
+                            EAL_SOCKET_MEM, vdev, vdev, EAL_SEP, PORT_MASK,
+                            QUEUE_NUM, chain, cdev_type, cipher_algo,
+                            cipher_op, cipher_key, iv, auth_algo, auth_op,
+                            auth_key, auth_key_random_size, aad,
+                            aad_random_size])
 
         return cmd_str
 
@@ -706,21 +689,21 @@ class TestL2fwdCrypto(TestCase):
         m = length % 16
         key = key + base_key[0:2*m]
         return key
-    
+
     def __cryptography_cipher(self, vector):
         key = binascii.a2b_hex(vector["cipher_key"])
         iv = binascii.a2b_hex(vector["iv"])
         cipher_algo_str = vector["cipher_algo"]
-        if vector["cipher_algo"] == "AES_CBC":
+        if vector["cipher_algo"] == "aes-cbc":
             cipher_algo = algorithms.AES(key)
             cipher_mode = modes.CBC(iv)
-        elif vector["cipher_algo"] == "AES_CTR":
+        elif vector["cipher_algo"] == "aes-ctr":
             cipher_algo = algorithms.AES(key)
             cipher_mode = modes.CTR(iv)
-        elif vector["cipher_algo"] == "3DES_CBC":
+        elif vector["cipher_algo"] == "3des-cbc":
             cipher_algo = algorithms.TripleDES(key)
             cipher_mode = modes.CBC(iv)
-        elif vector["cipher_algo"] == "AES_GCM":
+        elif vector["cipher_algo"] == "aes-gcm":
             cipher_algo = algorithms.AES(key)
             cipher_mode = modes.GCM(iv)
         else:
@@ -729,61 +712,55 @@ class TestL2fwdCrypto(TestCase):
 
         cipher = Cipher(cipher_algo, cipher_mode, backend=default_backend())
         encryptor = cipher.encryptor()
-        cipher_text = encryptor.update(binascii.a2b_hex(vector["input"])) + encryptor.finalize()
+        cipher_str = encryptor.update(binascii.a2b_hex(vector["input"])) + encryptor.finalize()
 
-        return binascii.b2a_hex(cipher_text)
+        return binascii.b2a_hex(cipher_str)
 
-    def __CryptoMoble_cipher(self,vector):
-        # default is kasumi , kasumi alg we need to guarantee IV is :0001020304000000
-        #so count is 66051 , dir =1 , bearer = 0 
-        cipher_str = ""  
-        out_str = ""    
+    def __CryptoMoble_cipher(self, vector):
+        cipher_str = ""
+        out_str = ""
         cipher_algo = vector['cipher_algo']
 
-        mBitlen = 8 * (len(vector['input']) / 2)        
+        mBitlen = 8 * (len(vector['input']) / 2)
         bin_input = bytearray.fromhex(vector["input"])
         str_input = str(bin_input)
         bin_key = binascii.a2b_hex(vector["cipher_key"])
-        if ((cipher_algo.upper()).find("KASUMI") != -1):     
-            vector["iv"] = vector["iv"][:10] + "000000"             
-            out_str = cm.UEA1(key=bin_key,count=66051, bearer=0, \
-                           dir=1,data=str_input,bitlen=mBitlen)   
-           
-        elif ((cipher_algo.upper()).find("SNOW3G") != -1):
+        if ((cipher_algo.upper()).find("KASUMI") != -1):
+            vector["iv"] = vector["iv"][:10] + "000000"
+            out_str = cm.UEA1(key=bin_key, count=66051, bearer=0,
+                           dir=1, data=str_input, bitlen=mBitlen)
 
+        elif ((cipher_algo.upper()).find("SNOW3G") != -1):
             vector["iv"] = "00000000000000000000000000000000"
-            out_str = cm.UEA2(key=bin_key,count=0,bearer=0,dir=0, \
-                           data=str_input,bitlen=mBitlen)
-            
+            out_str = cm.UEA2(key=bin_key, count=0, bearer=0, dir=0,
+                           data=str_input, bitlen=mBitlen)
         elif ((cipher_algo.upper()).find("ZUC") != -1):
-            vector["iv"] = "00010203040000000001020304000000"  
-            out_str = cm.EEA3(key=bin_key,count=0x10203,bearer=0,dir=1, \
-                           data=str_input,bitlen=mBitlen)                      
-           
+            vector["iv"] = "00010203040000000001020304000000"
+            out_str = cm.EEA3(key=bin_key, count=0x10203, bearer=0, dir=1,
+                           data=str_input, bitlen=mBitlen)
+
         cipher_str = out_str.encode("hex").upper()
-            
+
         return cipher_str
-            
-    def __gen_null_cipher_out(self,vector):
+
+    def __gen_null_cipher_out(self, vector):
         cipher_str = ""
         if (vector['chain'] == "CIPHER_ONLY") or (vector['chain'] == "CIPHER_HASH"):
-            cipher_str  = vector['input']
+            cipher_str = vector['input']
         elif (vector['chain'] == "HASH_CIPHER"):
-            cipher_str  = vector['output_hash']
-        return cipher_str 
-           
+            cipher_str = vector['output_hash']
+        return cipher_str
+
     def __gen_cipher_output(self, vector):
-        #import pdb
-        #pdb.set_trace()
         if vector["chain"] == "HASH_ONLY":
             vector["output_cipher"] == ""
             return
 
         if vector["output_cipher"] != "*":
             return
-        
+
         cipher_str = ""
-        ####
+
         if(((vector['cipher_algo']).upper()).find("KASUMI") != -1) or  \
                 (((vector['cipher_algo']).upper()).find("SNOW3G") != -1) or \
                 (((vector['cipher_algo']).upper()).find("ZUC") != -1):
@@ -793,103 +770,95 @@ class TestL2fwdCrypto(TestCase):
         else:
             cipher_str = self.__cryptography_cipher(vector)
         vector["output_cipher"] = cipher_str.upper()
-    
-    def __gen_kasumi_hash(self,vector):
-        auth_str = ""     
-        auth_algo = vector['auth_algo']   
-        mBitlen = 8 * (len(vector['input']) / 2)     
-        bin_input = bytearray.fromhex(vector["input"])
-        str_input = str(bin_input)
-        bin_key = binascii.a2b_hex(vector["auth_key"])
-         
-        #vector["add"] = vector["add"][:6] + "000000"      
-        #ADD IS 0001020304050607      
-        hash_out = cm.UIA1(key=bin_key,count=0X10203, fresh=0X4050607,dir=0, \
-                        data=str_input)            
-        auth_str = hash_out.encode("hex").upper()                                              
-            
-        return auth_str
-    
-    def __gen_snow3g_hash(self,vector):
-        auth_str = ""     
+
+    def __gen_kasumi_hash(self, vector):
+        auth_str = ""
         auth_algo = vector['auth_algo']
-        mBitlen = 8 * (len(vector['input']) / 2) 
+        mBitlen = 8 * (len(vector['input']) / 2)
         bin_input = bytearray.fromhex(vector["input"])
         str_input = str(bin_input)
         bin_key = binascii.a2b_hex(vector["auth_key"])
-        #ADD IS  00010203040506070001020304050607
-        vector["aad"] = "00000000000000000000000000000000"
-        #vector["aad"][:16] + vector["aad"][:16]      
-               
-        hash_out = cm.UIA2(key=bin_key,count=0, fresh=0,dir=0, \
-                        data=str_input)  
-        
-        #hash_out = cm.UIA2(key=bin_key,count=0x7060504, fresh=0x3020100,dir=0, \
-         #               data=str_input)            
-        auth_str = hash_out.encode("hex").upper()                                              
-            
+
+        hash_out = cm.UIA1(key=bin_key, count=0X10203, fresh=0X4050607, dir=0,
+                        data=str_input)
+        auth_str = hash_out.encode("hex").upper()
+
         return auth_str
-    
-    def __gen_zuc_hash(self,vector):
-        auth_str = ""     
+
+    def __gen_snow3g_hash(self, vector):
+        auth_str = ""
         auth_algo = vector['auth_algo']
-        mBitlen = 8 * (len(vector['input']) / 2) 
+        mBitlen = 8 * (len(vector['input']) / 2)
         bin_input = bytearray.fromhex(vector["input"])
         str_input = str(bin_input)
         bin_key = binascii.a2b_hex(vector["auth_key"])
-        
-        #add is 00010203080000000001020308000000
-        #vector["aad"] = vector["aad"][:8] + "08000000" + vector["aad"][:8] + "08000000"     
         vector["aad"] = "00000000000000000000000000000000"
-        hash_out = cm.EIA3(key=bin_key,count=0, bearer=0,dir=0,data=str_input,bitlen=mBitlen)            
-        auth_str = hash_out.encode("hex").upper()                                              
-            
+
+        hash_out = cm.UIA2(key=bin_key, count=0, fresh=0, dir=0,
+                        data=str_input)
+
+        auth_str = hash_out.encode("hex").upper()
+
         return auth_str
-    
-    def __gen_null_hash(self,vector):
-        auth_str =  ""
+
+    def __gen_zuc_hash(self, vector):
+        auth_str = ""
+        auth_algo = vector['auth_algo']
+        mBitlen = 8 * (len(vector['input']) / 2)
+        bin_input = bytearray.fromhex(vector["input"])
+        str_input = str(bin_input)
+        bin_key = binascii.a2b_hex(vector["auth_key"])
+
+        vector["aad"] = "00000000000000000000000000000000"
+        hash_out = cm.EIA3(key=bin_key, count=0, bearer=0, dir=0, data=str_input, bitlen=mBitlen)
+        auth_str = hash_out.encode("hex").upper()
+
+        return auth_str
+
+    def __gen_null_hash(self, vector):
+        auth_str = ""
         if (vector['chain'] == "HASH_ONLY") or (vector['chain'] == "HASH_CIPHER"):
-            auth_str  = vector['input']
+            auth_str = vector['input']
         elif (vector['chain'] == "CIPHER_HASH"):
-            auth_str  = vector['output_cipher']
-        return auth_str 
-    
+            auth_str = vector['output_cipher']
+        return auth_str
+
     def __gen_hash_output(self, vector):
         if vector["chain"] == "CIPHER_ONLY":
             vector["output_hash"] == ""
             return
-           
+
         if vector["output_hash"] != "*":
             return
 
         if vector["chain"] == "HASH_ONLY":
             vector["output_cipher"] = ""
- 
+
         hash_str = ""
 
         if vector["chain"] == "CIPHER_HASH":
             input_str = vector["output_cipher"]
         else:
             input_str = vector["input"]
-        
+
         auth_algo = vector["auth_algo"]
         if auth_algo == "MD5_HMAC":
-            hash_str = hmac.new(binascii.a2b_hex(vector["auth_key"]),\
+            hash_str = hmac.new(binascii.a2b_hex(vector["auth_key"]),
                     binascii.a2b_hex(input_str), hashlib.md5).hexdigest()
         elif auth_algo == "SHA1_HMAC":
-            hash_str = hmac.new(binascii.a2b_hex(vector["auth_key"]),\
+            hash_str = hmac.new(binascii.a2b_hex(vector["auth_key"]),
                     binascii.a2b_hex(input_str), hashlib.sha1).hexdigest()
         elif auth_algo == "SH224_HMAC":
-            hash_str = hmac.new(binascii.a2b_hex(vector["auth_key"]),\
+            hash_str = hmac.new(binascii.a2b_hex(vector["auth_key"]),
                     binascii.a2b_hex(input_str), hashlib.sha224).hexdigest()
         elif auth_algo == "SH256_HMAC":
-            hash_str = hmac.new(binascii.a2b_hex(vector["auth_key"]),\
+            hash_str = hmac.new(binascii.a2b_hex(vector["auth_key"]),
                     binascii.a2b_hex(input_str), hashlib.sha256).hexdigest()
         elif auth_algo == "SHA384_HMAC":
-            hash_str = hmac.new(binascii.a2b_hex(vector["auth_key"]),\
+            hash_str = hmac.new(binascii.a2b_hex(vector["auth_key"]),
                     binascii.a2b_hex(input_str), hashlib.sha384).hexdigest()
         elif auth_algo == "SHA512_HMAC":
-            hash_str = hmac.new(binascii.a2b_hex(vector["auth_key"]),\
+            hash_str = hmac.new(binascii.a2b_hex(vector["auth_key"]),
                     binascii.a2b_hex(input_str), hashlib.sha512).hexdigest()
         elif auth_algo == "AES_XCBC_MAC":
             pass
@@ -906,20 +875,20 @@ class TestL2fwdCrypto(TestCase):
         elif auth_algo == "NULL":
             hash_str = self.__gen_null_hash(vector)
         elif auth_algo == "MD5":
-             hash_str = hashlib.md5(binascii.a2b_hex(vector["auth_key"])).hexdigest() 
+             hash_str = hashlib.md5(binascii.a2b_hex(vector["auth_key"])).hexdigest()
         elif auth_algo == "SHA1":
-            hash_str = hashlib.sha1(binascii.a2b_hex(vector["auth_key"])).hexdigest() 
+            hash_str = hashlib.sha1(binascii.a2b_hex(vector["auth_key"])).hexdigest()
         elif auth_algo == "SHA224":
-            hash_str = hashlib.sha224(binascii.a2b_hex(vector["auth_key"])).hexdigest() 
+            hash_str = hashlib.sha224(binascii.a2b_hex(vector["auth_key"])).hexdigest()
         elif auth_algo == "SHA256":
-            hash_str = hashlib.sha256(binascii.a2b_hex(vector["auth_key"])).hexdigest() 
+            hash_str = hashlib.sha256(binascii.a2b_hex(vector["auth_key"])).hexdigest()
         elif auth_algo == "SHA384":
-            hash_str = hashlib.sha384(binascii.a2b_hex(vector["auth_key"])).hexdigest() 
+            hash_str = hashlib.sha384(binascii.a2b_hex(vector["auth_key"])).hexdigest()
         elif auth_algo == "SHA512":
-            hash_str = hashlib.sha512(binascii.a2b_hex(vector["auth_key"])).hexdigest() 
+            hash_str = hashlib.sha512(binascii.a2b_hex(vector["auth_key"])).hexdigest()
         else:
             pass
-        vector["output_hash"] =  hash_str.upper()
+        vector["output_hash"] = hash_str.upper()
         self.__actually_aesni_mb_digest(vector)
 
     def __gen_output(self, vector, cmds, core_mask="", port_mask=""):
@@ -945,15 +914,6 @@ class TestL2fwdCrypto(TestCase):
 
     def __is_valid_size(self, key_type, algo, size):
         algo_size_map = {
-                "AES_CBC": {
-                    "cipher_key": [16, 24, 32],
-                    "iv": [16],
-                    },
-                "SHA1_HMAC": {
-                    "auth_key": [64],
-                    "aad": [0]
-                    },
-            
                 "aes-cbc": {
                     "cipher_key": [16, 24, 32],
                     "iv": [16],
@@ -973,14 +933,14 @@ class TestL2fwdCrypto(TestCase):
                 "aes-gcm": {
                     "cipher_key": [16, 24, 32],
                     "auth_key": [16, 24, 32],
-                    "aad": [0,1,2,3,4,5,6,8,9,12,16,24,32,64,128,155,256,1024,65535],
-                    "iv": [12,16]
+                    "aad": [0, 1, 2, 3, 4, 5, 6, 8, 9, 12, 16, 24, 32, 64, 128, 155, 256, 1024, 65535],
+                    "iv": [12, 16]
                     },
-                "aes-docsisbpi":{
+                "aes-docsisbpi": {
                     "cipher_key": [16],
                     "iv": [16],
                     },
-                "des-docsisbpi":{
+                "des-docsisbpi": {
                     "cipher_key": [8],
                     "iv": [8],
                     },
@@ -1001,7 +961,7 @@ class TestL2fwdCrypto(TestCase):
                     "auth_key": [0],
                     "aad": [0],
                     "iv": [0]
-                    },                        
+                    },
                 "md-hmac": {
                     "auth_key": [64],
                     "aad": [0],
@@ -1077,12 +1037,11 @@ class TestL2fwdCrypto(TestCase):
                 if size in algo_size_map[algo][key_type]:
                     result = True
         return result
-    
-    def __actually_aesni_mb_digest(self,vector):
 
+    def __actually_aesni_mb_digest(self, vector):
         if ((vector["vdev"]).find("crypto_aesni_mb") == -1):
             return
-        
+
         auth_algo_dgst_map = {
                 "md4-hmac": 12,
                 "sha1-hmac": 12,
@@ -1096,8 +1055,7 @@ class TestL2fwdCrypto(TestCase):
             digest = auth_algo_dgst_map[vector["auth_algo"]]
             vector["output_hash"] = vector["output_hash"] if digest >= (len(vector["output_hash"]) / 2) \
                     else (vector["output_hash"])[0:2*digest]
-        
-        
+
     def __iter_cipher_algo(self, vector, vector_list, core_mask="", port_mask=""):
         test_vector = vector.copy()
         if test_vector["chain"] == "HASH_ONLY":
@@ -1121,7 +1079,7 @@ class TestL2fwdCrypto(TestCase):
                 if self.__is_valid_op(test_vector["chain"], cipher_op):
                     test_vector = vector.copy()
                     test_vector["cipher_op"] = cipher_op
-                    self.__iter_cipher_key(test_vector, vector_list, \
+                    self.__iter_cipher_key(test_vector, vector_list,
                             core_mask, port_mask)
 
     def __iter_cipher_key(self, vector, vector_list, core_mask="", port_mask=""):
@@ -1134,8 +1092,8 @@ class TestL2fwdCrypto(TestCase):
             for cipher_key in cipher_key_list:
                 test_vector = vector.copy()
                 if isinstance(cipher_key, int):
-                    if self.__is_valid_size("cipher_key", \
-                            test_vector["cipher_algo"], \
+                    if self.__is_valid_size("cipher_key",
+                            test_vector["cipher_algo"],
                             cipher_key):
                         test_vector["cipher_key"] = self.__gen_key(cipher_key)
                         self.__iter_iv(test_vector, vector_list, core_mask, port_mask)
@@ -1155,17 +1113,17 @@ class TestL2fwdCrypto(TestCase):
             for iv in iv_list:
                 test_vector = vector.copy()
                 if isinstance(iv, int):
-                    if self.__is_valid_size("iv", \
-                            test_vector["cipher_algo"], \
+                    if self.__is_valid_size("iv",
+                            test_vector["cipher_algo"],
                             iv):
                         test_vector["iv"] = self.__gen_key(iv)
-                        self.__iter_auth_algo(test_vector, vector_list, \
+                        self.__iter_auth_algo(test_vector, vector_list,
                                 core_mask, port_mask)
                     else:
                         continue
                 else:
                     test_vector["iv"] = iv
-                    self.__iter_auth_algo(test_vector, vector_list, \
+                    self.__iter_auth_algo(test_vector, vector_list,
                             core_mask, port_mask)
 
     def __iter_auth_algo(self, vector, vector_list, core_mask="", port_mask=""):
@@ -1190,8 +1148,8 @@ class TestL2fwdCrypto(TestCase):
             for auth_op in auth_op_list:
                 if self.__is_valid_op(test_vector["chain"], auth_op):
                     test_vector = vector.copy()
-                    test_vector["auth_op"] = auth_op 
-                    self.__iter_auth_key(test_vector, vector_list, \
+                    test_vector["auth_op"] = auth_op
+                    self.__iter_auth_key(test_vector, vector_list,
                             core_mask, port_mask)
 
     def __iter_auth_key(self, vector, vector_list, core_mask="", port_mask=""):
@@ -1204,15 +1162,15 @@ class TestL2fwdCrypto(TestCase):
             for auth_key in auth_key_list:
                 test_vector = vector.copy()
                 if isinstance(auth_key, int):
-                    if self.__is_valid_size("auth_key", \
-                            test_vector["auth_algo"], \
+                    if self.__is_valid_size("auth_key",
+                            test_vector["auth_algo"],
                             auth_key):
                         test_vector["auth_key"] = self.__gen_key(auth_key)
                         self.__iter_aad(test_vector, vector_list, core_mask, port_mask)
                     else:
                         continue
                 else:
-                    test_vector["auth_key"] = auth_key 
+                    test_vector["auth_key"] = auth_key
                     self.__iter_aad(test_vector, vector_list, core_mask, port_mask)
 
     def __iter_aad(self, vector, vector_list, core_mask="", port_mask=""):
@@ -1225,17 +1183,17 @@ class TestL2fwdCrypto(TestCase):
             for aad in aad_list:
                 test_vector = vector.copy()
                 if isinstance(aad, int):
-                    if self.__is_valid_size("aad", \
-                            test_vector["auth_algo"], \
+                    if self.__is_valid_size("aad",
+                            test_vector["auth_algo"],
                             aad):
                         test_vector["aad"] = self.__gen_key(aad)
-                        self.__iter_input(test_vector, vector_list, \
+                        self.__iter_input(test_vector, vector_list,
                                 core_mask, port_mask)
                     else:
                         continue
                 else:
                     test_vector["aad"] = aad
-                    self.__iter_input(test_vector, vector_list, \
+                    self.__iter_input(test_vector, vector_list,
                             core_mask, port_mask)
 
     def __iter_input(self, vector, vector_list, core_mask="", port_mask=""):
@@ -1244,14 +1202,14 @@ class TestL2fwdCrypto(TestCase):
             test_vector = vector.copy()
             test_vector["input"] = self.__gen_input(input_data) \
                     if isinstance(input_data, int) else input_data
-                            
+
             self.__gen_output(test_vector, vector_list, core_mask, port_mask)
 
-    def __test_vector_to_vector_list(self, test_vector,core_mask="", port_mask=""):
+    def __test_vector_to_vector_list(self, test_vector, core_mask="", port_mask=""):
         vector_list = []
-        
+
         chain_list = self.__var2list(test_vector["chain"])
- 
+
         for chain in chain_list:
             test_vector["chain"] = chain
             self.__iter_cipher_algo(test_vector, vector_list, core_mask, port_mask)
@@ -1259,7 +1217,6 @@ class TestL2fwdCrypto(TestCase):
 
 
 test_vectors = {
-
     "qat_c_AES_CBC_00": {
         "vdev": "",
         "chain": ["CIPHER_ONLY", "CIPHER_HASH"],
@@ -1268,7 +1225,7 @@ test_vectors = {
         "cipher_op": ["ENCRYPT", "DECRYPT"],
         "cipher_key": [16, 24, 32],
         "iv": [16],
-        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256","sha2-384", "sha2-512",
+        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256", "sha2-384", "sha2-512",
                       "md5-hmac", "sha1-hmac", "sha2-224-hmac", "sha2-256-hmac",
                       "sha2-384-hmac", "sha2-512-hmac"],
         "auth_op": ["GENERATE"],
@@ -1276,12 +1233,12 @@ test_vectors = {
         "auth_key_random_size": "",
         "aad": [0],
         "aad_random_size": "",
-        "input":[16,48,64, 128, 129,256, 512, 1024],
-        "output_cipher":"*",
+        "input": [48, 64, 128, 129, 256, 512, 1024],
+        "output_cipher": "*",
         "output_hash": "*"
     },
-                
-     "qat_c_AES_CTR_00": {
+
+    "qat_c_AES_CTR_00": {
         "vdev": "",
         "chain": ["CIPHER_ONLY", "CIPHER_HASH"],
         "cdev_type": "ANY",
@@ -1289,7 +1246,7 @@ test_vectors = {
         "cipher_op": ["ENCRYPT", "DECRYPT"],
         "cipher_key": [16, 24, 32],
         "iv": [16],
-        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256","sha2-384", "sha2-512",
+        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256", "sha2-384", "sha2-512",
                       "md5-hmac", "sha1-hmac", "sha2-224-hmac", "sha2-256-hmac",
                       "sha2-384-hmac", "sha2-512-hmac"],
         "auth_op": ["GENERATE"],
@@ -1297,11 +1254,11 @@ test_vectors = {
         "auth_key_random_size": "",
         "aad": [0],
         "aad_random_size": "",
-        "input":[16,48,64, 128,129, 256, 512, 1024],
-        "output_cipher":"*",
+        "input": [48, 64, 128, 129, 256, 512, 1024],
+        "output_cipher": "*",
         "output_hash": "*"
     },
-            
+
     "qat_c_AES_GCM_00": {
         "vdev": "",
         "chain": ["CIPHER_HASH"],
@@ -1309,18 +1266,18 @@ test_vectors = {
         "cipher_algo": ["aes-gcm"],
         "cipher_op": ["ENCRYPT", "DECRYPT"],
         "cipher_key": [16],
-        "iv": [12,16],
-        "auth_algo": ["aes-gcm","aes-gmac"],
+        "iv": [12, 16],
+        "auth_algo": ["aes-gcm", "aes-gmac"],
         "auth_op": ["GENERATE"],
         "auth_key": [8, 16, 24, 32, 40, 48, 56, 64, 128],
         "auth_key_random_size": "",
         "aad": [0],
         "aad_random_size": "",
-        "input":[16,48,64, 128, 129,256, 512, 1024],
-        "output_cipher":"*",
+        "input": [48, 64, 128, 129, 256, 512, 1024],
+        "output_cipher": "*",
         "output_hash": "*"
     },
-        
+
     "qat_h_MD_SHA_00": {
         "vdev": "",
         "chain": ["HASH_ONLY"],
@@ -1329,7 +1286,7 @@ test_vectors = {
         "cipher_op": "",
         "cipher_key": "",
         "iv": "",
-        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256","sha2-384", "sha2-512",
+        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256", "sha2-384", "sha2-512",
                       "md5-hmac", "sha1-hmac", "sha2-224-hmac", "sha2-256-hmac",
                       "sha2-384-hmac", "sha2-512-hmac"],
         "auth_op": ["GENERATE"],
@@ -1337,12 +1294,12 @@ test_vectors = {
         "auth_key_random_size": "",
         "aad": [0],
         "aad_random_size": "",
-        "input":[16,48,64, 128,129, 256, 512, 1024],
-        "output_cipher":"*",
+        "input": [48, 64, 128, 129, 256, 512, 1024],
+        "output_cipher": "*",
         "output_hash": "*"
     },
-                
-     "qat_h_AES_XCBC_MAC_01": {
+
+    "qat_h_AES_XCBC_MAC_01": {
         "vdev": "",
         "chain": "HASH_ONLY",
         "cdev_type": "ANY",
@@ -1356,11 +1313,11 @@ test_vectors = {
         "auth_key_random_size": "",
         "aad": [0],
         "aad_random_size": "",
-        "input": [16,48,64, 128, 129,256, 512, 1024],
+        "input": [48, 64, 128, 129, 256, 512, 1024],
         "output_cipher": "*",
         "output_hash": "*"
     },
-    
+
     "qat_c_3DES_CBC_00": {
         "vdev": "",
         "chain": ["CIPHER_ONLY", "CIPHER_HASH"],
@@ -1369,7 +1326,7 @@ test_vectors = {
         "cipher_op": ["ENCRYPT", "DECRYPT"],
         "cipher_key": [16, 24],
         "iv": [8],
-        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256","sha2-384", "sha2-512",
+        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256", "sha2-384", "sha2-512",
                       "md5-hmac", "sha1-hmac", "sha2-224-hmac", "sha2-256-hmac",
                       "sha2-384-hmac", "sha2-512-hmac"],
         "auth_op": ["GENERATE"],
@@ -1377,11 +1334,11 @@ test_vectors = {
         "auth_key_random_size": "",
         "aad": [0],
         "aad_random_size": "",
-        "input":[16,48,64, 128,129, 256, 512, 1024],
-        "output_cipher":"*",
+        "input": [48, 64, 128, 129, 256, 512, 1024],
+        "output_cipher": "*",
         "output_hash": "*"
     },
-                
+
     "qat_c_3DES_CTR_00": {
         "vdev": "",
         "chain": ["CIPHER_ONLY", "CIPHER_HASH"],
@@ -1390,7 +1347,7 @@ test_vectors = {
         "cipher_op": ["ENCRYPT", "DECRYPT"],
         "cipher_key": [16, 24],
         "iv": [8],
-        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256","sha2-384", "sha2-512",
+        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256", "sha2-384", "sha2-512",
                       "md5-hmac", "sha1-hmac", "sha2-224-hmac", "sha2-256-hmac",
                       "sha2-384-hmac", "sha2-512-hmac"],
         "auth_op": ["GENERATE"],
@@ -1398,30 +1355,30 @@ test_vectors = {
         "auth_key_random_size": "",
         "aad": [0],
         "aad_random_size": "",
-        "input":[16,48,64, 128,129, 256, 512, 1024],
-        "output_cipher":"*",
+        "input": [48, 64, 128, 129, 256, 512, 1024],
+        "output_cipher": "*",
         "output_hash": "*"
     },
-                
-     "qat_c_AES_GCM_01": {
+
+    "qat_c_AES_GCM_01": {
         "vdev": "",
         "chain": ["CIPHER_HASH"],
         "cdev_type": "ANY",
         "cipher_algo": ["aes-gcm"],
         "cipher_op": ["ENCRYPT", "DECRYPT"],
         "cipher_key": [16],
-        "iv": [12,16],
+        "iv": [12, 16],
         "auth_algo": ["aes-gcm"],
         "auth_op": ["GENERATE"],
         "auth_key": [16, 24, 32],
         "auth_key_random_size": "",
-        "aad": [8,12],
+        "aad": [8, 12],
         "aad_random_size": "",
-        "input": [16,48,64, 128, 129,256, 512, 1024],
+        "input": [48, 64, 128, 129, 256, 512, 1024],
         "output_cipher": "*",
         "output_hash": "*"
     },
-    
+
     "qat_ch_AES_GCM_AES_GCM_01": {
         "vdev": "",
         "chain": ["CIPHER_HASH"],
@@ -1429,27 +1386,27 @@ test_vectors = {
         "cipher_algo": ["aes-gcm"],
         "cipher_op": ["ENCRYPT", "DECRYPT"],
         "cipher_key": [16],
-        "iv": [12,16],
+        "iv": [12, 16],
         "auth_algo": ["aes-gcm"],
         "auth_op": ["GENERATE"],
         "auth_key": [16, 24, 32],
         "auth_key_random_size": "",
-        "aad": [8,12],
+        "aad": [8, 12],
         "aad_random_size": "",
-        "input": [16,48,64, 128, 129,256, 512, 1024],
+        "input": [48, 64, 128, 129, 256, 512, 1024],
         "output_cipher": "*",
         "output_hash": "*"
     },
-          
+
     "qat_ch_AES_DOCSISBPI": {
         "vdev": "",
         "chain": ["CIPHER_ONLY"],
         "cdev_type": "ANY",
         "cipher_algo": "aes-docsisbpi",
-        "cipher_op": ["ENCRYPT","DECRYPT"],
+        "cipher_op": ["ENCRYPT", "DECRYPT"],
         "cipher_key": [16],
         "iv": [16],
-        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256","sha2-384", "sha2-512",
+        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256", "sha2-384", "sha2-512",
                       "md5-hmac", "sha1-hmac", "sha2-224-hmac", "sha2-256-hmac",
                       "sha2-384-hmac", "sha2-512-hmac"],
         "auth_op": ["GENERATE"],
@@ -1457,20 +1414,20 @@ test_vectors = {
         "auth_key_random_size": "",
         "aad": [0],
         "aad_random_size": "",
-        "input":[15,16,17,129,256,258,515,772,1019,1547,2011,2048],
-        "output_cipher":"*",
+        "input": [129, 256, 258, 515, 772, 1019, 1547, 2011, 2048],
+        "output_cipher": "*",
         "output_hash": "*"
     },
-          
+
     "qat_c_DES_DOCSISBPI": {
         "vdev": "",
         "chain": ["CIPHER_ONLY"],
         "cdev_type": "ANY",
         "cipher_algo": "des-docsisbpi",
-        "cipher_op": ["ENCRYPT","DECRYPT"],
+        "cipher_op": ["ENCRYPT", "DECRYPT"],
         "cipher_key": [8],
         "iv": [8],
-        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256","sha2-384", "sha2-512",
+        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256", "sha2-384", "sha2-512",
                       "md5-hmac", "sha1-hmac", "sha2-224-hmac", "sha2-256-hmac",
                       "sha2-384-hmac", "sha2-512-hmac"],
         "auth_op": ["GENERATE"],
@@ -1478,10 +1435,10 @@ test_vectors = {
         "auth_key_random_size": "",
         "aad": "",
         "aad_random_size": "",
-        "input":[5,8,11,16,64,127,258,506,512,521,1020,1022,1024],
-        "output_cipher":"*",
+        "input": [64, 127, 258, 506, 512, 521, 1020, 1022, 1024],
+        "output_cipher": "*",
         "output_hash": "*"
-    },            
+    },
     "qat_c_UEA2_01": {
         "vdev": "",
         "chain": ["CIPHER_ONLY", "CIPHER_HASH"],
@@ -1496,7 +1453,7 @@ test_vectors = {
         "auth_key_random_size": "",
         "aad": [16],
         "aad_random_size": "",
-        "input": [16,48,64, 128, 129,256, 512, 1024],
+        "input": [48, 64, 128, 129, 256, 512, 1024],
         "output_cipher": "*",
         "output_hash": "*"
     },
@@ -1515,11 +1472,11 @@ test_vectors = {
         "auth_key_random_size": "",
         "aad": [16],
         "aad_random_size": "",
-        "input": [16,48,64, 128,129, 256, 512, 1024],
+        "input": [48, 64, 128, 129, 256, 512, 1024],
         "output_cipher": "*",
         "output_hash": "*"
     },
-          
+
     "qat_kasumi_c_F8_01": {
         "vdev": "",
         "chain": ["CIPHER_ONLY", "CIPHER_HASH"],
@@ -1534,7 +1491,7 @@ test_vectors = {
         "auth_key_random_size": "",
         "aad": [8],
         "aad_random_size": "",
-        "input": [16,48,64, 128, 129,256, 512, 1024],
+        "input": [48, 64, 128, 129, 256, 512, 1024],
         "output_cipher": "*",
         "output_hash": "*"
     },
@@ -1553,11 +1510,11 @@ test_vectors = {
         "auth_key_random_size": "",
         "aad": [8],
         "aad_random_size": "",
-        "input": [16,48,64, 128,129, 256, 512, 1024],
+        "input": [48, 64, 128, 129, 256, 512, 1024],
         "output_cipher": "*",
         "output_hash": "*"
-    },   
-        
+    },
+
     "qat_c_EEA3_01": {
         "vdev": "",
         "chain": ["CIPHER_ONLY", "CIPHER_HASH"],
@@ -1572,7 +1529,7 @@ test_vectors = {
         "auth_key_random_size": "",
         "aad": [16],
         "aad_random_size": "",
-        "input": [16,48,64, 128,129, 256, 512, 1024],
+        "input": [48, 64, 128, 129, 256, 512, 1024],
         "output_cipher": "*",
         "output_hash": "*"
     },
@@ -1591,20 +1548,20 @@ test_vectors = {
         "auth_key_random_size": "",
         "aad": [16],
         "aad_random_size": "",
-        "input": [16,48,64, 128,129, 256, 512, 1024],
+        "input": [48, 64, 128, 129, 256, 512, 1024],
         "output_cipher": "*",
         "output_hash": "*"
     },
-                 
+
     "qat_c_NULL_auto": {
         "vdev": "",
-        "chain": ["CIPHER_ONLY","CIPHER_HASH"],
+        "chain": ["CIPHER_ONLY", "CIPHER_HASH"],
         "cdev_type": "ANY",
         "cipher_algo": ["null"],
         "cipher_op": ["ENCRYPT", "DECRYPT"],
         "cipher_key": [0],
         "iv": "",
-        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256","sha2-384", "sha2-512",
+        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256", "sha2-384", "sha2-512",
                       "md5-hmac", "sha1-hmac", "sha2-224-hmac", "sha2-256-hmac",
                       "sha2-384-hmac", "sha2-512-hmac"],
         "auth_op": ["GENERATE"],
@@ -1613,16 +1570,16 @@ test_vectors = {
         "aad": [0],
         "aad_random_size": "",
         "digest": "",
-        "input": [16,48,64, 128,129, 256, 512, 1024],
+        "input": [48, 64, 128, 129, 256, 512, 1024],
         "output_cipher": "*",
         "output_hash": "*"
     },
-       
+
     "qat_h_NULL_auto": {
         "vdev": "",
-        "chain": ["CIPHER_ONLY","CIPHER_HASH"],
+        "chain": ["CIPHER_ONLY", "CIPHER_HASH"],
         "cdev_type": "ANY",
-        "cipher_algo": ["null","aes-cbc","aes-ctr","3des-ctr","snow3g-uea2","kasumi-f8"],
+        "cipher_algo": ["null", "aes-cbc", "aes-ctr", "3des-ctr", "snow3g-uea2", "kasumi-f8"],
         "cipher_op": ["ENCRYPT", "DECRYPT"],
         "cipher_key": [8, 16, 24, 32, 40, 48, 56, 64],
         "iv": "",
@@ -1633,11 +1590,11 @@ test_vectors = {
         "aad": [0],
         "aad_random_size": "",
         "digest": "",
-        "input": [16,48,64, 128,129, 256, 512, 1024],
+        "input": [16, 48, 64, 128, 129, 256, 512, 1024],
         "output_cipher": "*",
         "output_hash": "*"
-    }, 
-        
+    },
+
     "aesni_mb_c_AES_CBC_00": {
         "vdev": "crypto_aesni_mb,socket_id=1,max_nb_sessions=128",
         "chain": ["CIPHER_HASH"],
@@ -1646,20 +1603,20 @@ test_vectors = {
         "cipher_op": ["ENCRYPT"],
         "cipher_key": [16, 24, 32],
         "iv": [16],
-        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256","sha2-384", "sha2-512",
+        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256", "sha2-384", "sha2-512",
             "md5-hmac", "sha1-hmac", "sha2-224-hmac", "sha2-256-hmac",
             "sha2-384-hmac", "sha2-512-hmac"],
         "auth_op": ["GENERATE"],
-        "auth_key": [8, 16, 24, 32, 40, 48, 56, 64, 128], 
+        "auth_key": [8, 16, 24, 32, 40, 48, 56, 64, 128],
         "auth_key_random_size": "",
         "aad": [0],
         "aad_random_size": "",
-        "input":[16,48,64, 128,129, 256, 512, 1024],
-        "output_cipher":"*",
+        "input": [48, 64, 128, 129, 256, 512, 1024],
+        "output_cipher": "*",
         "output_hash": "*"
     },
-                
-     "aesni_mb_c_AES_CTR_00": {
+
+    "aesni_mb_c_AES_CTR_00": {
         "vdev": "crypto_aesni_mb,socket_id=1,max_nb_sessions=128",
         "chain": ["CIPHER_HASH"],
         "cdev_type": "ANY",
@@ -1667,7 +1624,7 @@ test_vectors = {
         "cipher_op": ["ENCRYPT", "DECRYPT"],
         "cipher_key": [16, 24, 32],
         "iv": [16],
-        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256","sha2-384", "sha2-512",
+        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256", "sha2-384", "sha2-512",
                       "md5-hmac", "sha1-hmac", "sha2-224-hmac", "sha2-256-hmac",
                       "sha2-384-hmac", "sha2-512-hmac"],
         "auth_op": ["GENERATE"],
@@ -1675,17 +1632,17 @@ test_vectors = {
         "auth_key_random_size": "",
         "aad": [0],
         "aad_random_size": "",
-        "input":[16,48,64, 128, 129,256, 512, 1024],
-        "output_cipher":"*",
+        "input": [48, 64, 128, 129, 256, 512, 1024],
+        "output_cipher": "*",
         "output_hash": "*"
     },
-          
+
     "aesni_mb_c_AES_DOCSISBPI": {
         "vdev": "crypto_aesni_mb,socket_id=1,max_nb_sessions=128",
         "chain": ["CIPHER_ONLY"],
         "cdev_type": "ANY",
         "cipher_algo": "aes-docsisbpi",
-        "cipher_op": ["ENCRYPT","DECRYPT"],
+        "cipher_op": ["ENCRYPT", "DECRYPT"],
         "cipher_key": [16],
         "iv": [16],
         "auth_algo": "",
@@ -1694,20 +1651,20 @@ test_vectors = {
         "auth_key_random_size": "",
         "aad": "",
         "aad_random_size": "",
-        "input":[15,16,17,129,256,258,515,772,1019,1547,2011,2048],
-        "output_cipher":"*",
+        "input": [129, 256, 258, 515, 772, 1019, 1547, 2011, 2048],
+        "output_cipher": "*",
         "output_hash": "*"
     },
-                                              
+
     "null_c_NULL_01": {
         "vdev": "crypto_null_pmd,socket_id=1,max_nb_sessions=128",
-        "chain": ["CIPHER_ONLY","CIPHER_HASH"],
+        "chain": ["CIPHER_ONLY", "CIPHER_HASH"],
         "cdev_type": "ANY",
         "cipher_algo": ["null"],
         "cipher_op": ["ENCRYPT", "DECRYPT"],
         "cipher_key": ["0"],
         "iv": "",
-        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256","sha2-384", "sha2-512",
+        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256", "sha2-384", "sha2-512",
                       "md5-hmac", "sha1-hmac", "sha2-224-hmac", "sha2-256-hmac",
                       "sha2-384-hmac", "sha2-512-hmac"],
         "auth_op": ["GENERATE"],
@@ -1716,7 +1673,7 @@ test_vectors = {
         "aad": [0],
         "aad_random_size": "",
         "digest": "",
-        "input": [16,48,64, 128, 129,256, 512, 1024],
+        "input": [48, 64, 128, 129, 256, 512, 1024],
         "output_cipher": "*",
         "output_hash": "*"
     },
@@ -1736,40 +1693,40 @@ test_vectors = {
         "aad": [0],
         "aad_random_size": "",
         "digest": "",
-        "input": [16,48,64, 128,129, 256, 512, 1024],
+        "input": [48, 64, 128, 129, 256, 512, 1024],
         "output_cipher": "*",
         "output_hash": "*"
     },
-                    
+
     "null_c_NULL_auto": {
         "vdev": "crypto_null_pmd,socket_id=1,max_nb_sessions=128",
-        "chain": ["CIPHER_ONLY","CIPHER_HASH"],
+        "chain": ["CIPHER_ONLY", "CIPHER_HASH"],
         "cdev_type": "ANY",
         "cipher_algo": ["null"],
         "cipher_op": ["ENCRYPT", "DECRYPT"],
         "cipher_key": [0],
         "iv": [0],
-        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256","sha2-384", "sha2-512",
+        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256", "sha2-384", "sha2-512",
                       "md5-hmac", "sha1-hmac", "sha2-224-hmac", "sha2-256-hmac",
                       "sha2-384-hmac", "sha2-512-hmac"],
         "auth_op": ["GENERATE"],
-        "auth_key": [0,8, 16, 24, 32, 40, 48, 56, 64, 128],
+        "auth_key": [0, 8, 16, 24, 32, 40, 48, 56, 64, 128],
         "auth_key_random_size": "",
         "aad": [0],
         "aad_random_size": "",
         "digest": "",
-        "input": [16,48,64, 128, 129,256, 512, 1024],
+        "input": [48, 64, 128, 129, 256, 512, 1024],
         "output_cipher": "*",
         "output_hash": "*"
-    },          
-       
+    },
+
     "null_h_NULL_auto": {
         "vdev": "crypto_null_pmd,socket_id=1,max_nb_sessions=128",
-        "chain": ["CIPHER_ONLY","CIPHER_HASH"],
+        "chain": ["CIPHER_ONLY", "CIPHER_HASH"],
         "cdev_type": "ANY",
         "cipher_algo": ["null"],
         "cipher_op": ["ENCRYPT", "DECRYPT"],
-        "cipher_key": [0,8, 16, 24, 32, 40, 48, 56, 64],
+        "cipher_key": [0, 8, 16, 24, 32, 40, 48, 56, 64],
         "iv": [0],
         "auth_algo": ["null"],
         "auth_op": ["GENERATE"],
@@ -1778,12 +1735,11 @@ test_vectors = {
         "aad": [0],
         "aad_random_size": "",
         "digest": "",
-        "input": [16,48,64, 128, 129,256, 512, 1024],
+        "input": [48, 64, 128, 129, 256, 512, 1024],
         "output_cipher": "*",
         "output_hash": "*"
-    }, 
-             
-                            
+    },
+
     "aesni_gcm_ch_AES_GCM_AES_GCM_01": {
         "vdev": "crypto_aesni_gcm_pmd,socket_id=1,max_nb_sessions=128",
         "chain": ["CIPHER_HASH"],
@@ -1791,20 +1747,18 @@ test_vectors = {
         "cipher_algo": ["aes-gcm"],
         "cipher_op": ["ENCRYPT", "DECRYPT"],
         "cipher_key": [16],
-        "iv": [12,16],
+        "iv": [12, 16],
         "auth_algo": ["aes-gcm"],
         "auth_op": ["GENERATE"],
         "auth_key": [16, 24, 32],
         "auth_key_random_size": "",
-        "aad": [8,12],
+        "aad": [8, 12],
         "aad_random_size": "",
-        "input": [16,48,64, 128, 129,256, 512, 1024],
+        "input": [48, 64, 128, 129, 256, 512, 1024],
         "output_cipher": "*",
         "output_hash": "*"
     },
-    
-    
-                
+
     "kasumi_c_F8_01": {
         "vdev": "crypto_kasumi_pmd,socket_id=1,max_nb_sessions=128",
         "chain": ["CIPHER_ONLY", "CIPHER_HASH"],
@@ -1819,7 +1773,7 @@ test_vectors = {
         "auth_key_random_size": "",
         "aad": [8],
         "aad_random_size": "",
-        "input": [16,48,64, 128, 129,256, 512, 1024],
+        "input": [48, 64, 128, 129, 256, 512, 1024],
         "output_cipher": "*",
         "output_hash": "*"
     },
@@ -1838,11 +1792,11 @@ test_vectors = {
         "auth_key_random_size": "",
         "aad": [8],
         "aad_random_size": "",
-        "input": [16,48,64, 128,129, 256, 512, 1024],
+        "input": [48, 64, 128, 129, 256, 512, 1024],
         "output_cipher": "*",
         "output_hash": "*"
     },
-    
+
     "snow3g_c_UEA2_01": {
         "vdev": "crypto_snow3g_pmd,socket_id=1,max_nb_sessions=128",
         "chain": ["CIPHER_ONLY", "CIPHER_HASH"],
@@ -1857,7 +1811,7 @@ test_vectors = {
         "auth_key_random_size": "",
         "aad": [16],
         "aad_random_size": "",
-        "input": [16,48,64, 128,129, 256, 512, 1024],
+        "input": [48, 64, 128, 129, 256, 512, 1024],
         "output_cipher": "*",
         "output_hash": "*"
     },
@@ -1876,11 +1830,11 @@ test_vectors = {
         "auth_key_random_size": "",
         "aad": [16],
         "aad_random_size": "",
-        "input": [16,48,64, 128,129, 256, 512, 1024],
+        "input": [48, 64, 128, 129, 256, 512, 1024],
         "output_cipher": "*",
         "output_hash": "*"
-    },   
-    
+    },
+
     "zuc_c_EEA3_01": {
         "vdev": "crypto_zuc_pmd,socket_id=1,max_nb_sessions=128",
         "chain": ["CIPHER_ONLY", "CIPHER_HASH"],
@@ -1895,7 +1849,7 @@ test_vectors = {
         "auth_key_random_size": "",
         "aad": [16],
         "aad_random_size": "",
-        "input": [16,48,64, 128,129, 256, 512, 1024],
+        "input": [48, 64, 128, 129, 256, 512, 1024],
         "output_cipher": "*",
         "output_hash": "*"
     },
@@ -1914,11 +1868,11 @@ test_vectors = {
         "auth_key_random_size": "",
         "aad": [16],
         "aad_random_size": "",
-        "input": [16,48,64, 128,129, 256, 512, 1024],
+        "input": [48, 64, 128, 129, 256, 512, 1024],
         "output_cipher": "*",
         "output_hash": "*"
     },
-                
+
     "openssl_c_3DES_CBC_00": {
         "vdev": "crypto_openssl_pmd,socket_id=1,max_nb_sessions=128",
         "chain": ["CIPHER_ONLY", "CIPHER_HASH"],
@@ -1927,7 +1881,7 @@ test_vectors = {
         "cipher_op": ["ENCRYPT", "DECRYPT"],
         "cipher_key": [16, 24],
         "iv": [8],
-        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256","sha2-384", "sha2-512",
+        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256", "sha2-384", "sha2-512",
                       "md5-hmac", "sha1-hmac", "sha2-224-hmac", "sha2-256-hmac",
                       "sha2-384-hmac", "sha2-512-hmac"],
         "auth_op": ["GENERATE"],
@@ -1935,11 +1889,11 @@ test_vectors = {
         "auth_key_random_size": "",
         "aad": [0],
         "aad_random_size": "",
-        "input":[16,48,64, 128,129, 256, 512, 1024],
-        "output_cipher":"*",
+        "input": [48, 64, 128, 129, 256, 512, 1024],
+        "output_cipher": "*",
         "output_hash": "*"
     },
-                
+
     "openssl_c_3DES_CTR_00": {
         "vdev": "crypto_openssl_pmd,socket_id=1,max_nb_sessions=128",
         "chain": ["CIPHER_ONLY", "CIPHER_HASH"],
@@ -1948,7 +1902,7 @@ test_vectors = {
         "cipher_op": ["ENCRYPT", "DECRYPT"],
         "cipher_key": [16, 24],
         "iv": [8],
-        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256","sha2-384", "sha2-512",
+        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256", "sha2-384", "sha2-512",
                       "md5-hmac", "sha1-hmac", "sha2-224-hmac", "sha2-256-hmac",
                       "sha2-384-hmac", "sha2-512-hmac"],
         "auth_op": ["GENERATE"],
@@ -1956,11 +1910,11 @@ test_vectors = {
         "auth_key_random_size": "",
         "aad": [0],
         "aad_random_size": "",
-        "input":[16,48,64, 128, 129,256, 512, 1024],
-        "output_cipher":"*",
+        "input": [48, 64, 128, 129, 256, 512, 1024],
+        "output_cipher": "*",
         "output_hash": "*"
     },
-    
+
     "openssl_c_AES_CBC_00": {
         "vdev": "crypto_openssl_pmd,socket_id=1,max_nb_sessions=128",
         "chain": ["CIPHER_ONLY", "CIPHER_HASH"],
@@ -1969,7 +1923,7 @@ test_vectors = {
         "cipher_op": ["ENCRYPT", "DECRYPT"],
         "cipher_key": [16, 24, 32],
         "iv": [16],
-        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256","sha2-384", "sha2-512",
+        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256", "sha2-384", "sha2-512",
                       "md5-hmac", "sha1-hmac", "sha2-224-hmac", "sha2-256-hmac",
                       "sha2-384-hmac", "sha2-512-hmac"],
         "auth_op": ["GENERATE"],
@@ -1977,12 +1931,12 @@ test_vectors = {
         "auth_key_random_size": "",
         "aad": [0],
         "aad_random_size": "",
-        "input":[16,48,64, 128,129, 256, 512, 1024],
-        "output_cipher":"*",
+        "input": [48, 64, 128, 129, 256, 512, 1024],
+        "output_cipher": "*",
         "output_hash": "*"
     },
-                
-     "openssl_c_AES_CTR_00": {
+
+    "openssl_c_AES_CTR_00": {
         "vdev": "crypto_openssl_pmd,socket_id=1,max_nb_sessions=128",
         "chain": ["CIPHER_ONLY", "CIPHER_HASH"],
         "cdev_type": "ANY",
@@ -1990,7 +1944,7 @@ test_vectors = {
         "cipher_op": ["ENCRYPT", "DECRYPT"],
         "cipher_key": [16, 24, 32],
         "iv": [16],
-        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256","sha2-384", "sha2-512",
+        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256", "sha2-384", "sha2-512",
                       "md5-hmac", "sha1-hmac", "sha2-224-hmac", "sha2-256-hmac",
                       "sha2-384-hmac", "sha2-512-hmac"],
         "auth_op": ["GENERATE"],
@@ -1998,11 +1952,11 @@ test_vectors = {
         "auth_key_random_size": "",
         "aad": [0],
         "aad_random_size": "",
-        "input":[16,48,64, 128,129, 256, 512, 1024],
-        "output_cipher":"*",
+        "input": [48, 64, 128, 129, 256, 512, 1024],
+        "output_cipher": "*",
         "output_hash": "*"
     },
-            
+
     "openssl_c_AES_GCM_00": {
         "vdev": "crypto_openssl_pmd,socket_id=1,max_nb_sessions=128",
         "chain": ["CIPHER_HASH"],
@@ -2010,8 +1964,8 @@ test_vectors = {
         "cipher_algo": ["aes-gcm"],
         "cipher_op": ["ENCRYPT", "DECRYPT"],
         "cipher_key": [16],
-        "iv": [12,16],
-        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256","sha2-384", "sha2-512",
+        "iv": [12, 16],
+        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256", "sha2-384", "sha2-512",
                       "md5-hmac", "sha1-hmac", "sha2-224-hmac", "sha2-256-hmac",
                       "sha2-384-hmac", "sha2-512-hmac"],
         "auth_op": ["GENERATE"],
@@ -2019,11 +1973,11 @@ test_vectors = {
         "auth_key_random_size": "",
         "aad": [0],
         "aad_random_size": "",
-        "input":[16,48,64, 128, 129,256, 512, 1024],
-        "output_cipher":"*",
+        "input": [48, 64, 128, 129, 256, 512, 1024],
+        "output_cipher": "*",
         "output_hash": "*"
     },
-        
+
     "openssl_h_MD_SHA_00": {
         "vdev": "crypto_openssl_pmd,socket_id=1,max_nb_sessions=128",
         "chain": ["HASH_ONLY"],
@@ -2032,7 +1986,7 @@ test_vectors = {
         "cipher_op": "",
         "cipher_key": "",
         "iv": "",
-        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256","sha2-384", "sha2-512",
+        "auth_algo": ["md5", "sha1", "sha2-224", "sha2-256", "sha2-384", "sha2-512",
                       "md5-hmac", "sha1-hmac", "sha2-224-hmac", "sha2-256-hmac",
                       "sha2-384-hmac", "sha2-512-hmac"],
         "auth_op": ["GENERATE"],
@@ -2040,17 +1994,17 @@ test_vectors = {
         "auth_key_random_size": "",
         "aad": [0],
         "aad_random_size": "",
-        "input":[16,48,64, 128,129, 256, 512, 1024],
-        "output_cipher":"*",
+        "input": [48, 64, 128, 129, 256, 512, 1024],
+        "output_cipher": "*",
         "output_hash": "*"
     },
-                
+
     "openssl_c_DES_DOCSISBPI": {
         "vdev": "crypto_openssl_pmd,socket_id=1,max_nb_sessions=128",
         "chain": ["CIPHER_ONLY"],
         "cdev_type": "ANY",
         "cipher_algo": "des-docsisbpi",
-        "cipher_op": ["ENCRYPT","DECRYPT"],
+        "cipher_op": ["ENCRYPT", "DECRYPT"],
         "cipher_key": [8],
         "iv": [8],
         "auth_algo": "",
@@ -2059,9 +2013,8 @@ test_vectors = {
         "auth_key_random_size": "",
         "aad": "",
         "aad_random_size": "",
-        "input":[5,8,11,16,64,127,258,506,512,521,1020,1022,1024],
-        "output_cipher":"*",
+        "input": [64, 127, 258, 506, 512, 521, 1020, 1022, 1024],
+        "output_cipher": "*",
         "output_hash": "*"
     },
-                            
 }
