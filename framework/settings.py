@@ -90,6 +90,7 @@ NICS = {
     'ConnectX3': '15b3:1003',
     'ConnectX4': '15b3:1013',
     'boulderrapid': '8086:15d0',
+    'fortville_25g': '8086:158b',
 }
 
 DRIVERS = {
@@ -134,6 +135,7 @@ DRIVERS = {
     'ConnectX3': 'mlx4_core',
     'ConnectX4': 'mlx5_core',
     'boulderrapid': 'fm10k',
+    'fortville_25g': 'i40e',
 }
 
 """
