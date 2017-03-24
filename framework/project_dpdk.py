@@ -314,7 +314,15 @@ class DPDKdut(Dut):
                 binding_list += '%s ' % (port_info['pci'])
             current_nic += 1
 
-        self.send_expect('usertools/dpdk-devbind.py %s' % binding_list, '# ')
+        op = self.send_command("ls")
+        if "usertools" in op:
+            self.send_expect('usertools/dpdk-devbind.py %s' % binding_list, '# ')
+        else:
+            op = self.send_command("ls tools")
+            if "dpdk_nic_bind.py" in op:
+                self.send_expect('tools/dpdk_nic_bind.py %s' % binding_list, '# ')
+            else:
+                self.send_expect('tools/dpdk-devbind.py %s' % binding_list, '# ')
 
     def unbind_interfaces_linux(self, nics_to_bind=None):
         """
@@ -329,7 +337,15 @@ class DPDKdut(Dut):
                 binding_list += '%s ' % (port_info['pci'])
             current_nic += 1
 
-        self.send_expect('usertools/dpdk-devbind.py %s' % binding_list, '# ', 30)
+        op = self.send_command("ls")
+        if "usertools" in op:
+            self.send_expect('usertools/dpdk-devbind.py %s' % binding_list, '# ')
+        else:
+            op = self.send_command("ls tools")
+            if "dpdk_nic_bind.py" in op:
+                self.send_expect('tools/dpdk_nic_bind.py %s' % binding_list, '# ')
+            else:
+                self.send_expect('tools/dpdk-devbind.py %s' % binding_list, '# ')
 
     def build_dpdk_apps(self, folder, extra_options=''):
         """
