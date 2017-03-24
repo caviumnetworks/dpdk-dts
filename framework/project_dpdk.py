@@ -102,8 +102,17 @@ class DPDKdut(Dut):
             self.send_expect("rmmod vfio", "#", 70)
             self.send_expect("modprobe vfio", "#", 70)
             self.send_expect("modprobe vfio-pci", "#", 70)
-            out = self.send_expect("lsmod | grep vfio_iommu_type1", "#")
-            assert ("vfio_iommu_type1" in out), "Failed to setup vfio-pci"
+            # check with dpdk binding script instead of lsmod - kernel may have builtin modules
+            op = self.send_command("ls")
+            if "usertools" in op:
+                out = self.send_expect('usertools/dpdk-devbind.py --status', '# ')
+            else:
+                op = self.send_command("ls tools")
+                if "dpdk_nic_bind.py" in op:
+                    out = self.send_expect('tools/dpdk_nic_bind.py --status', '# ')
+                else:
+                    out = self.send_expect('tools/dpdk-devbind.py --status', '# ')
+            assert ("vfio-pci" in out), "Failed to setup vfio-pci"
         else:
             self.send_expect("modprobe uio", "#", 70)
             out = self.send_expect("lsmod | grep igb_uio", "#")
