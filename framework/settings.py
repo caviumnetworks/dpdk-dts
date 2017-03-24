@@ -91,6 +91,8 @@ NICS = {
     'ConnectX4': '15b3:1013',
     'boulderrapid': '8086:15d0',
     'fortville_25g': '8086:158b',
+    'cavium_a034': '177d:a034',
+    'cavium_0011': '177d:0011',
 }
 
 DRIVERS = {
@@ -136,6 +138,8 @@ DRIVERS = {
     'ConnectX4': 'mlx5_core',
     'boulderrapid': 'fm10k',
     'fortville_25g': 'i40e',
+    'cavium_a034': 'thunder-nicvf',
+    'cavium_0011': 'thunder-nicvf',
 }
 
 """
