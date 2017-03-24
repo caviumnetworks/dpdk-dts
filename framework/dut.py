@@ -382,7 +382,7 @@ class Dut(Crb):
             return
         op = self.send_command("ls")
         if "usertools" in op:
-            self.send_expect('usertools/dpdk-devbind.py %s' % binding_list, '# ')
+            self.send_expect('usertools/dpdk-devbind.py --force %s' % binding_list, '# ')
         else:
             op = self.send_command("ls tools")
             if "dpdk_nic_bind.py" in op:
@@ -602,7 +602,12 @@ class Dut(Crb):
             if ":" not in ipv6:
                 ipv6 = "Not connected"
 
+            out = self.send_expect("ip -family inet address show dev %s | awk '/inet/ { print $2 }'"
+                    % intf, "# ")
+            ipv4 = out.split('/')[0]
+
             port_info['ipv6'] = ipv6
+            port_info['ipv4'] = ipv4
 
     def rescan_ports_uncached_freebsd(self):
         unknow_interface = RED('Skipped: unknow_interface')
@@ -922,15 +927,20 @@ class Dut(Crb):
                 # skip ping those not connected port
                 ipv6 = self.get_ipv6_address(dutPort)
                 if ipv6 == "Not connected":
-                    continue
-
-                if getattr(self, 'send_ping6', None):
-                    out = self.send_ping6(
-                        dutPort, self.tester.ports_info[remotePort]['ipv6'],
-                        self.get_mac_address(dutPort))
-                else:
-                    out = self.tester.send_ping6(
-                        remotePort, ipv6, self.get_mac_address(dutPort))
+                    if self.tester.ports_info[remotePort].has_key('ipv4'):
+			out = self.tester.send_ping(
+				dutPort, self.tester.ports_info[remotePort]['ipv4'],
+				self.get_mac_address(dutPort))
+		    else:
+                    	continue
+		else:
+                    if getattr(self, 'send_ping6', None):
+                    	out = self.send_ping6(
+                        	dutPort, self.tester.ports_info[remotePort]['ipv6'],
+                        	self.get_mac_address(dutPort))
+                    else:
+                    	out = self.tester.send_ping6(
+				remotePort, ipv6, self.get_mac_address(dutPort))
 
                 if ('64 bytes from' in out):
                     self.logger.info("PORT MAP: [dut %d: tester %d]" % (dutPort, remotePort))

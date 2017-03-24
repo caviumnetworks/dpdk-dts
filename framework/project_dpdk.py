@@ -325,7 +325,7 @@ class DPDKdut(Dut):
 
         op = self.send_command("ls")
         if "usertools" in op:
-            self.send_expect('usertools/dpdk-devbind.py %s' % binding_list, '# ')
+            self.send_expect('usertools/dpdk-devbind.py --force %s' % binding_list, '# ')
         else:
             op = self.send_command("ls tools")
             if "dpdk_nic_bind.py" in op:

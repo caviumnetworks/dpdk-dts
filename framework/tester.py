@@ -336,6 +336,7 @@ class Tester(Crb):
             macaddr = port.get_mac_addr()
 
             ipv6 = port.get_ipv6_addr()
+            ipv4 = port.get_ipv4_addr()
 
             # store the port info to port mapping
             self.ports_info.append({'port': port,
@@ -343,6 +344,7 @@ class Tester(Crb):
                                     'type': pci_id,
                                     'intf': intf,
                                     'mac': macaddr,
+				    'ipv4': ipv4,
                                     'ipv6': ipv6})
 
             # return if port is not connect x3
@@ -363,6 +365,15 @@ class Tester(Crb):
                                     'intf': intf,
                                     'mac': macaddr,
                                     'ipv6': ipv6})
+
+    def send_ping(self, localPort, ipv4, mac):
+        """
+        Send ping6 packet from local port with destination ipv4 address.
+        """
+        if self.ports_info[localPort]['type'] == 'ixia':
+            return "Not implemented yet"
+        else:
+            return self.send_expect("ping -w 5 -c 5 -A -I %s %s" % (self.ports_info[localPort]['intf'], ipv4), "# ", 10)
 
     def send_ping6(self, localPort, ipv6, mac):
         """

@@ -343,21 +343,21 @@ class NetDevice(object):
         """
         get_ipv4_addr = getattr(
             self, 'get_ipv4_addr_%s' % self.__get_os_type())
-        return get_ipv4_addr(self.intf_name, self.currenct_driver)
+        return get_ipv4_addr(self.intf_name, self.current_driver)
 
     def get_ipv4_addr_linux(self, intf, driver):
         """
         Get ipv4 address of specified pci device on linux.
         """
         try:
-            get_ipv4_addr_linux = getattr(self, 'get_ipv4_linux_%s' % driver)
+            get_ipv4_addr_linux = getattr(self, 'get_ipv4_addr_linux_%s' % driver)
         except Exception as e:
             generic_driver = 'generic'
             get_ipv4_addr_linux = getattr(
-                self, 'get_ipv4_linux_%s' %
+                self, 'get_ipv4_addr_linux_%s' %
                 generic_driver)
 
-        return get_ipv4_addr_linux(intf, domain_id, bus_id, devfun_id, driver)
+        return get_ipv4_addr_linux(intf)
 
     def get_ipv4_addr_linux_generic(self, intf):
         """
