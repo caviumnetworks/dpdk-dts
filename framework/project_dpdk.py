@@ -428,9 +428,13 @@ class DPDKtester(Tester):
 
         if not self.skip_setup:
             total_huge_pages = self.get_total_huge_pages()
+            hugepages_size = self.send_expect("awk '/Hugepagesize/ {print $2}' /proc/meminfo", "# ")
             if total_huge_pages == 0:
                 self.mount_huge_pages()
-                self.set_huge_pages(1024)
+                if hugepages_size == "524288":
+                    self.set_huge_pages(8)
+                else:
+                    self.set_huge_pages(1024)
 
             self.session.copy_file_to("dep/tgen.tgz")
             self.session.copy_file_to("dep/tclclient.tgz")
