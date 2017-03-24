@@ -257,7 +257,7 @@ class TestIpReassembly(TestCase):
         """
 
         result = self.tester.send_expect(command, '#')
-        return int(result.strip())
+        return int(result.strip().split()[0])
 
     def number_of_received_packets(self, tcp_port):
         """
