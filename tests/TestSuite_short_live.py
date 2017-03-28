@@ -125,7 +125,7 @@ class TestShortLiveApp(TestCase):
         Basic rx/tx forwarding test
         """
         #dpdk start
-        self.dut.send_expect("./x86_64-native-linuxapp-gcc/app/testpmd -c 0xf -n 4 -- -i --portmask=0x3", "testpmd>", 120)
+        self.dut.send_expect("./%s/app/testpmd -c 0xf -n 4 -- -i --portmask=0x3" % self.target, "testpmd>", 120)
         self.dut.send_expect("set fwd mac", "testpmd>")
         self.dut.send_expect("set promisc all off", "testpmd>")
         self.dut.send_expect("start", "testpmd>")
@@ -137,7 +137,7 @@ class TestShortLiveApp(TestCase):
         """
         time = []
         regex = re.compile(".* (\d+:\d{2}\.\d{2}).*")
-        out = self.dut.send_expect("echo quit | time ./x86_64-native-linuxapp-gcc/app/testpmd -c 0x3 -n 4 --no-pci -- -i", "#", 120)
+        out = self.dut.send_expect("echo quit | time ./%s/app/testpmd -c 0x3 -n 4 --no-pci -- -i" % self.target, "#", 120)
         time = regex.findall(out)
 
         if time != []:
@@ -150,7 +150,7 @@ class TestShortLiveApp(TestCase):
         for i in range(repeat_time):
             #dpdk start
             print "clean_up_with_signal_testpmd round %d" % (i + 1)
-            self.dut.send_expect("./x86_64-native-linuxapp-gcc/app/testpmd -c 0xf -n 4 -- -i --portmask=0x3", "testpmd>", 120)
+            self.dut.send_expect("./%s/app/testpmd -c 0xf -n 4 -- -i --portmask=0x3" % self.target, "testpmd>", 120)
             self.dut.send_expect("set fwd mac", "testpmd>")
             self.dut.send_expect("set promisc all off", "testpmd>")
             self.dut.send_expect("start", "testpmd>")

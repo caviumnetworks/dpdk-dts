@@ -332,25 +332,26 @@ class TestShutdownApi(TestCase):
         jumbo_size = 2048
         self.pmdout.start_testpmd("Default", "--portmask=%s --port-topology=loop" % utils.create_mask(self.ports), socket=self.ports_socket)
         self.dut.send_expect("port stop all", "testpmd> ", 100)
-        self.dut.send_expect("vlan set strip off all", "testpmd> ")
-        self.dut.send_expect("port config all max-pkt-len %d" % jumbo_size, "testpmd> ")
-        for port in self.ports:
-            self.dut.send_expect("rx_vlan add 1 %d" % port, "testpmd> ")
-        self.dut.send_expect("set fwd mac", "testpmd>")
-        self.dut.send_expect("port start all", "testpmd> ", 100)
-        self.dut.send_expect("start", "testpmd> ")
+        out = self.dut.send_expect("vlan set strip off all", "testpmd> ")
+        if "fail" not in out:
+            self.dut.send_expect("port config all max-pkt-len %d" % jumbo_size, "testpmd> ")
+            for port in self.ports:
+                self.dut.send_expect("rx_vlan add 1 %d" % port, "testpmd> ")
+            self.dut.send_expect("set fwd mac", "testpmd>")
+            self.dut.send_expect("port start all", "testpmd> ", 100)
+            self.dut.send_expect("start", "testpmd> ")
 
-        if self.nic in ['magnolia_park', 'niantic', 'twinpond', 'kawela_4', 'ironpond', 'springfountain', 'springville', 'powerville']:
-            # nantic vlan length will not be calculated
-            vlan_jumbo_size = jumbo_size + 4
-        else:
-            vlan_jumbo_size = jumbo_size
+            if self.nic in ['magnolia_park', 'niantic', 'twinpond', 'kawela_4', 'ironpond', 'springfountain', 'springville', 'powerville']:
+                # nantic vlan length will not be calculated
+                vlan_jumbo_size = jumbo_size + 4
+            else:
+                vlan_jumbo_size = jumbo_size
 
-        self.check_forwarding(pktSize=vlan_jumbo_size - 1, vlan=True)
-        self.check_forwarding(pktSize=vlan_jumbo_size, vlan=True)
-        self.check_forwarding(pktSize=vlan_jumbo_size + 1, received=False, vlan=True)
+            self.check_forwarding(pktSize=vlan_jumbo_size - 1, vlan=True)
+            self.check_forwarding(pktSize=vlan_jumbo_size, vlan=True)
+            self.check_forwarding(pktSize=vlan_jumbo_size + 1, received=False, vlan=True)
 
-        self.dut.send_expect("stop", "testpmd> ")
+            self.dut.send_expect("stop", "testpmd> ")
 
         self.dut.send_expect("port stop all", "testpmd> ", 100)
         self.dut.send_expect("port config all hw-vlan off", "testpmd> ")

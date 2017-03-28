@@ -124,6 +124,8 @@ class TestPmdPcap(TestCase):
         command = ("./{}/app/testpmd -c {} -n {} " +
                    "--vdev=eth_pcap0,rx_pcap={},tx_pcap={} " +
                    "-- -i --port-topology=chained")
+        if "cavium" in self.dut.nic_type:
+            command += " --disable-hw-vlan-filter"
 
         self.dut.send_expect(command.format(self.target, core_mask,
                              self.memory_channel,
@@ -158,6 +160,8 @@ class TestPmdPcap(TestCase):
                    "--vdev=eth_pcap0,rx_pcap={},tx_pcap={} " +
                    "--vdev=eth_pcap1,rx_pcap={},tx_pcap={} " +
                    "-- -i")
+        if "cavium" in self.dut.nic_type:
+            command += " --disable-hw-vlan-filter"
 
         self.dut.send_expect(command.format(self.target, core_mask,
                                             self.memory_channel,
