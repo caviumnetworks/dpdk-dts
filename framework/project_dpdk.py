@@ -103,15 +103,8 @@ class DPDKdut(Dut):
             self.send_expect("modprobe vfio", "#", 70)
             self.send_expect("modprobe vfio-pci", "#", 70)
             # check with dpdk binding script instead of lsmod - kernel may have builtin modules
-            op = self.send_command("ls")
-            if "usertools" in op:
-                out = self.send_expect('usertools/dpdk-devbind.py --status', '# ')
-            else:
-                op = self.send_command("ls tools")
-                if "dpdk_nic_bind.py" in op:
-                    out = self.send_expect('tools/dpdk_nic_bind.py --status', '# ')
-                else:
-                    out = self.send_expect('tools/dpdk-devbind.py --status', '# ')
+            bind_script_path = self.get_dpdk_bind_script()
+            out = self.send_expect('%s --status' % bind_script_path, '# ')
             assert ("vfio-pci" in out), "Failed to setup vfio-pci"
         else:
             self.send_expect("modprobe uio", "#", 70)
@@ -323,15 +316,8 @@ class DPDKdut(Dut):
                 binding_list += '%s ' % (port_info['pci'])
             current_nic += 1
 
-        op = self.send_command("ls")
-        if "usertools" in op:
-            self.send_expect('usertools/dpdk-devbind.py --force %s' % binding_list, '# ')
-        else:
-            op = self.send_command("ls tools")
-            if "dpdk_nic_bind.py" in op:
-                self.send_expect('tools/dpdk_nic_bind.py %s' % binding_list, '# ')
-            else:
-                self.send_expect('tools/dpdk-devbind.py %s' % binding_list, '# ')
+        bind_script_path = self.get_dpdk_bind_script()
+        self.send_expect('%s --force %s' % (bind_script_path, binding_list), '# ')
 
     def unbind_interfaces_linux(self, nics_to_bind=None):
         """
@@ -346,15 +332,8 @@ class DPDKdut(Dut):
                 binding_list += '%s ' % (port_info['pci'])
             current_nic += 1
 
-        op = self.send_command("ls")
-        if "usertools" in op:
-            self.send_expect('usertools/dpdk-devbind.py %s' % binding_list, '# ')
-        else:
-            op = self.send_command("ls tools")
-            if "dpdk_nic_bind.py" in op:
-                self.send_expect('tools/dpdk_nic_bind.py %s' % binding_list, '# ')
-            else:
-                self.send_expect('tools/dpdk-devbind.py %s' % binding_list, '# ')
+        bind_script_path = self.get_dpdk_bind_script()
+        self.send_expect('%s --force %s' % (bind_script_path, binding_list), '# ')
 
     def build_dpdk_apps(self, folder, extra_options=''):
         """

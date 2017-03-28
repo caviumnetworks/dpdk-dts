@@ -359,6 +359,18 @@ class Dut(Crb):
         else:
             return False
 
+    def get_dpdk_bind_script(self):
+        op = self.send_command("ls")
+        if "usertools" in op:
+            res = 'usertools/dpdk-devbind.py'
+        else:
+            op = self.send_command("ls tools")
+            if "dpdk_nic_bind.py" in op:
+                res = 'tools/dpdk_nic_bind.py'
+            else:
+                res = 'tools/dpdk-devbind.py'
+        return res
+
     def bind_interfaces_linux(self, driver='igb_uio', nics_to_bind=None):
         """
         Bind the interfaces to the selected driver. nics_to_bind can be None
@@ -380,15 +392,8 @@ class Dut(Crb):
         if current_nic == 0:
             self.logger.info("Not nic need bind driver: %s" % driver)
             return
-        op = self.send_command("ls")
-        if "usertools" in op:
-            self.send_expect('usertools/dpdk-devbind.py --force %s' % binding_list, '# ')
-        else:
-            op = self.send_command("ls tools")
-            if "dpdk_nic_bind.py" in op:
-                self.send_expect('tools/dpdk_nic_bind.py %s' % binding_list, '# ')
-            else:
-                self.send_expect('tools/dpdk-devbind.py %s' % binding_list, '# ')
+        bind_script_path = self.get_dpdk_bind_script()
+        self.send_expect('%s --force %s' % (bind_script_path, binding_list), '# ')
 
     def unbind_interfaces_linux(self, nics_to_bind=None):
         """
@@ -412,15 +417,8 @@ class Dut(Crb):
             self.logger.info("Not nic need unbind driver")
             return
 
-        op = self.send_command("ls")
-        if "usertools" in op:
-            self.send_expect('usertools/dpdk-devbind.py %s' % binding_list, '# ')
-        else:
-            op = self.send_command("ls tools")
-            if "dpdk_nic_bind.py" in op:
-                self.send_expect('tools/dpdk_nic_bind.py %s' % binding_list, '# ')
-            else:
-                self.send_expect('tools/dpdk-devbind.py %s' % binding_list, '# ')
+        bind_script_path = self.get_dpdk_bind_script()
+        self.send_expect('%s --force %s' % (bind_script_path, binding_list), '# ')
 
     def get_ports(self, nic_type='any', perf=None, socket=None):
         """
