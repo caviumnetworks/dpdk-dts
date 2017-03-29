@@ -365,7 +365,7 @@ class TestCase(object):
             bitrate *= 10
         elif nic == 'redrockcanyou':
             bitrate *= 40
-        elif nic == 'thunder-nicvf':
+        elif driver == 'thunder-nicvf':
             bitrate *= 10
 
         return bitrate * num_ports / 8 / (frame_size + 20)
