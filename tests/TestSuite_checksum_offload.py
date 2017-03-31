@@ -43,7 +43,8 @@ import utils
 
 from test_case import TestCase
 from pmd_output import PmdOutput
-
+from packet import Packet, sniff_packets, load_sniff_packets, strip_pktload
+from test_capabilities import DRIVER_TEST_LACK_CAPA
 
 class TestChecksumOffload(TestCase):
 
@@ -169,21 +170,16 @@ class TestChecksumOffload(TestCase):
 
         self.tester.send_expect("exit()", "#")
 
-        self.tester.scapy_background()
-        self.tester.scapy_append('p = sniff(filter="ether src %s", iface="%s", count=%d)' % (sniff_src, rx_interface, len(packets_sent)))
-        self.tester.scapy_append('nr_packets=len(p)')
-        self.tester.scapy_append('reslist = [p[i].sprintf("%IP.chksum%;%TCP.chksum%;%UDP.chksum%;%SCTP.chksum%") for i in range(nr_packets)]')
-        self.tester.scapy_append('import string')
-        self.tester.scapy_append('RESULT = string.join(reslist, ",")')
-
-        # Send packet.
-        self.tester.scapy_foreground()
+        inst = sniff_packets(intf=rx_interface, count=len(packets_sent), filters=[{'layer':'ether', 'config':{'src': sniff_src}}])
 
         for packet_type in packets_sent.keys():
             self.tester.scapy_append('sendp([%s], iface="%s")' % (packets_sent[packet_type], tx_interface))
 
         self.tester.scapy_execute()
-        out = self.tester.scapy_get_result()
+	p = load_sniff_packets(inst)
+	nr_packets=len(p)
+	reslist = [p[i].pktgen.pkt.sprintf("%IP.chksum%;%TCP.chksum%;%UDP.chksum%;%SCTP.chksum%") for i in range(nr_packets)]
+	out = string.join(reslist, ",")
         packets_received = out.split(',')
         self.verify(len(packets_sent) == len(packets_received), "Unexpected Packets Drop")
 
@@ -223,7 +219,7 @@ class TestChecksumOffload(TestCase):
 
         pktsChkErr = {'IP/UDP': 'Ether(dst="%s", src="52:00:00:00:00:00")/Dot1Q(vlan=1)/IP(chksum=0x0)/UDP(chksum=0xf)/("X"*46)' % mac,
                       'IP/TCP': 'Ether(dst="%s", src="52:00:00:00:00:00")/Dot1Q(vlan=1)/IP(chksum=0x0)/TCP(chksum=0xf)/("X"*46)' % mac,
-                      'IP/SCTP': 'Ether(dst="%s", src="52:00:00:00:00:00")/Dot1Q(vlan=1)/IP(chksum=0x0)/SCTP(chksum=0xf)/("X"*48)' % mac,
+		      'IP/SCTP': 'Ether(dst="%s", src="52:00:00:00:00:00")/Dot1Q(vlan=1)/IP(chksum=0x0)/SCTP(chksum=0xf)/("X"*48)' % mac,
                       'IPv6/UDP': 'Ether(dst="%s", src="52:00:00:00:00:00")/Dot1Q(vlan=1)/IPv6(src="::1")/UDP(chksum=0xf)/("X"*46)' % mac,
                       'IPv6/TCP': 'Ether(dst="%s", src="52:00:00:00:00:00")/Dot1Q(vlan=1)/IPv6(src="::1")/TCP(chksum=0xf)/("X"*46)' % mac}
 
@@ -233,7 +229,7 @@ class TestChecksumOffload(TestCase):
                 'IPv6/UDP': 'Ether(dst="02:00:00:00:00:00", src="%s")/Dot1Q(vlan=1)/IPv6(src="::1")/UDP()/("X"*46)' % mac,
                 'IPv6/TCP': 'Ether(dst="02:00:00:00:00:00", src="%s")/Dot1Q(vlan=1)/IPv6(src="::1")/TCP()/("X"*46)' % mac}
 
-        if self.kdriver == "fm10k":
+        if self.kdriver in DRIVER_TEST_LACK_CAPA['sctp_tx_offload']:
             del pktsChkErr['IP/SCTP']
             del pkts['IP/SCTP']
 
@@ -258,11 +254,8 @@ class TestChecksumOffload(TestCase):
                     'IPv6/TCP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IPv6(src="::1")/TCP()/("X"*46)' % mac}
 
         result = dict()
-        if self.kdriver == "fm10k":
-            del pkts['IP/SCTP']
-            del pkts_ref['IP/SCTP']
-
-        self.checksum_enablehw(self.dut_ports[0])
+        
+	self.checksum_enablehw(self.dut_ports[0])
 
         # get the packet checksum value
         result = self.get_chksum_values(pkts_ref)
@@ -280,6 +273,11 @@ class TestChecksumOffload(TestCase):
                     'IP/SCTP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IP(src="10.0.0.1",chksum=0x0)/SCTP(chksum=0xf)/("X"*48)' % mac,
                     'IPv6/UDP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IPv6(src="::1")/UDP(chksum=0xf)/("X"*46)' % mac,
                     'IPv6/TCP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IPv6(src="::1")/TCP(chksum=0xf)/("X"*46)' % mac}
+
+	if self.kdriver in DRIVER_TEST_LACK_CAPA['sctp_tx_offload']:
+            del pkts_good['IP/SCTP']
+            del pkts_bad['IP/SCTP']
+            del pkts_ref['IP/SCTP']
 
         # send the packet checksum value same with the expected value
         self.checksum_valid_flags(pkts_good, 1)
@@ -307,7 +305,7 @@ class TestChecksumOffload(TestCase):
                     'IPv6/UDP': 'Ether(dst="02:00:00:00:00:00", src="%s")/IPv6(src="::1")/UDP()/("X"*46)' % mac,
                     'IPv6/TCP': 'Ether(dst="02:00:00:00:00:00", src="%s")/IPv6(src="::1")/TCP()/("X"*46)' % mac}
 
-        if self.kdriver == "fm10k":
+        if self.kdriver in DRIVER_TEST_LACK_CAPA['sctp_tx_offload']:
             del pkts['IP/SCTP']
             del pkts_ref['IP/SCTP']
 
@@ -396,7 +394,7 @@ class TestChecksumOffload(TestCase):
                 'IPv6/UDP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IPv6()/UDP()/("X"* (lambda x: x - 66 if x > 66 else 0)(%d))',
                 'IPv6/TCP': 'Ether(dst="%s", src="52:00:00:00:00:00")/IPv6()/TCP()/("X"* (lambda x: x - 78 if x > 78 else 0)(%d))'}
 
-        if self.kdriver == "fm10k":
+        if self.kdriver in DRIVER_TEST_LACK_CAPA['sctp_tx_offload']:
             del pkts['IP/SCTP']
 
         lcore = "1S/2C/1T"
