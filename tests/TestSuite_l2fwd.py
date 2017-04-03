@@ -60,7 +60,7 @@ class TestL2fwd(TestCase):
         self.headers_size = HEADER_SIZE['eth'] + HEADER_SIZE['ip'] + \
             HEADER_SIZE['udp']
 
-        self.dut_ports = self.dut.get_ports_performance()
+        self.dut_ports = self.dut.get_ports_performance(force_different_nic=False)
 
         self.verify(len(self.dut_ports) >= self.number_of_ports,
                     "Not enough ports for " + self.nic)
@@ -134,7 +134,7 @@ class TestL2fwd(TestCase):
                 (self.dut.get_memory_channels(), core_mask,
                  str(queues['queues']), port_mask)
 
-            self.dut.send_expect(command_line, "memory mapped", 60)
+            self.dut.send_expect(command_line, "L2FWD: entering main loop", 60)
 
             tgen_input = []
             tx_port = self.tester.get_local_port(self.dut_ports[0])
