@@ -130,7 +130,10 @@ class TestQueueStartStop(TestCase):
         """
         #dpdk start
         try:
-            self.dut.send_expect("./app/test-pmd/testpmd -c 0xf -n 4 -- -i --portmask=0x1 --port-topology=loop", "testpmd>", 120)
+	    cmd = "./app/test-pmd/testpmd -c 0xf -n 4 -- -i --portmask=0x1 --port-topology=loop"
+	    if "cavium" in self.dut.nic_type:
+		cmd += " --disable-hw-vlan-filter"
+            self.dut.send_expect(cmd, "testpmd>", 120)
             self.dut.send_expect("set fwd mac", "testpmd>")
             self.dut.send_expect("start", "testpmd>")
             self.check_forwarding([0, 0], self.nic)
