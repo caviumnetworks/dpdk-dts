@@ -32,10 +32,10 @@
 '''
 '''
 from test_case import TestCase
-import utils
 
 from time import sleep
 from scapy.all import *
+import utils
 
 
 #
@@ -73,8 +73,11 @@ class TestPmdPcap(TestCase):
         else:
             raise Exception(
                 "Unknow os type, please check to make sure pcap can work in OS [ %s ]" % os_type)
-
-        return config_head + config_tail
+	out = self.dut.send_command("cat config/%s" % (config_head + config_tail))
+	if "CONFIG_RTE_LIBRTE_PMD_PCAP" in out:
+        	return config_head + config_tail
+	else:
+		return config_head + "base"
 
     def create_pcap_file(self, filename, number_of_packets):
         flow = []
