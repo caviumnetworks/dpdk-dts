@@ -45,6 +45,7 @@ from test_case import TestCase
 from pmd_output import PmdOutput
 from settings import FOLDERS
 
+from packet import Packet, sniff_packets, load_sniff_packets, strip_pktload
 #
 #
 # Test class.
@@ -95,17 +96,14 @@ class TestShortLiveApp(TestCase):
         dmac = self.dut.get_mac_address(txPort)
         Dut_tx_mac = self.dut.get_mac_address(rxPort)
 
-        self.tester.scapy_background()
         count = 1
         # if only one port rx/tx, we should check count 2 so that both
         # rx and tx packet are list
         if (txPort == rxPort):
             count = 2
 
-        self.tester.scapy_append('p=sniff(iface="%s",count=%d,timeout=5)' % (rxitf, count))
-        self.tester.scapy_append('RESULT=str(p)')
 
-        self.tester.scapy_foreground()
+        inst = sniff_packets(intf=rxitf, count=count)
 
         pktlen = pktSize - 14
         padding = pktlen - 20
@@ -114,7 +112,11 @@ class TestShortLiveApp(TestCase):
         self.tester.scapy_execute()
         time.sleep(3)
 
-        out = self.tester.scapy_get_result()
+	p = load_sniff_packets(inst)
+	nr_packets=len(p)
+	reslist = [p[i].pktgen.pkt for i in range(nr_packets)]
+	out = str(reslist)
+
         if received:
             self.verify(('PPP' in out) and 'src=%s'% Dut_tx_mac in out, "Receive test failed")
         else:
@@ -125,7 +127,10 @@ class TestShortLiveApp(TestCase):
         Basic rx/tx forwarding test
         """
         #dpdk start
-        self.dut.send_expect("./%s/app/testpmd -c 0xf -n 4 -- -i --portmask=0x3" % self.target, "testpmd>", 120)
+	cmd = "./%s/app/testpmd -c 0xf -n 4 -- -i --portmask=0x3"
+	if "cavium" in self.dut.nic_type:
+		cmd += " --disable-hw-vlan-filter"
+        self.dut.send_expect(cmd % self.target, "testpmd>", 120)
         self.dut.send_expect("set fwd mac", "testpmd>")
         self.dut.send_expect("set promisc all off", "testpmd>")
         self.dut.send_expect("start", "testpmd>")
@@ -144,23 +149,33 @@ class TestShortLiveApp(TestCase):
             print "start time: %s s"%time[0]
         else:
             self.verify(0, "start_up_time failed")
+	    if "time: command not found" in out:
+		print "Command time is not installed or is a shell keyword" 
 
     def test_clean_up_with_signal_testpmd(self):
         repeat_time = 5
+	cmd = "./%s/app/testpmd -c 0xf -n 4 -- -i --portmask=0x3"
+	if "cavium" in self.dut.nic_type:
+		cmd += " --disable-hw-vlan-filter"
         for i in range(repeat_time):
             #dpdk start
             print "clean_up_with_signal_testpmd round %d" % (i + 1)
-            self.dut.send_expect("./%s/app/testpmd -c 0xf -n 4 -- -i --portmask=0x3" % self.target, "testpmd>", 120)
+            self.dut.send_expect(cmd % self.target, "testpmd>", 120)
             self.dut.send_expect("set fwd mac", "testpmd>")
             self.dut.send_expect("set promisc all off", "testpmd>")
             self.dut.send_expect("start", "testpmd>")
             self.check_forwarding([0, 1], self.nic)
 
+	    pid = self.dut.send_expect("ps -o pid -C testpmd | tail -n +2", "#", 60, True)
             # kill with differen Signal
             if i%2 == 0:
                 self.dut.send_expect("pkill -2 testpmd", "#", 60, True)
             else:
                 self.dut.send_expect("pkill -15 testpmd", "#", 60, True)
+	    # waiting for the process to truly finish
+	    while True:
+	    	no_lines = int(self.dut.send_expect("ps -p %d | wc -l" % int(pid), "#", 60, True))
+	    	if 1 == no_lines: break # only header is printed out
 
     def test_clean_up_with_signal_l2fwd(self):
         repeat_time = 5
@@ -172,10 +187,16 @@ class TestShortLiveApp(TestCase):
             self.check_forwarding([0, 1], self.nic)
 
             # kill with differen Signal
+	    pid = self.dut.send_expect("ps -o pid -C l2fwd | tail -n +2", "#", 60, True)
             if i%2 == 0:
                 self.dut.send_expect("pkill -2 l2fwd", "#", 60, True)
             else:
                 self.dut.send_expect("pkill -15 l2fwd", "#", 60, True)
+	
+	    while True:
+	    	no_lines = int(self.dut.send_expect("ps -p %d | wc -l" % int(pid), "#", 60, True))
+	    	if 1 == no_lines: break
+	    
 
     def test_clean_up_with_signal_l3fwd(self):
         repeat_time = 5
@@ -186,12 +207,17 @@ class TestShortLiveApp(TestCase):
             self.dut.send_expect("./examples/l3fwd/build/app/l3fwd -n 4 -c 0xf -- -p 0x3 --config='(0,0,1),(1,0,2)' &", "L3FWD:", 120)
             self.check_forwarding([0, 0], self.nic)
 
+	    pid = self.dut.send_expect("ps -o pid -C l3fwd | tail -n +2", "#", 60, True)
             # kill with differen Signal
             if i%2 == 0:
                 self.dut.send_expect("pkill -2 l3fwd", "#", 60, True)
             else:
                 self.dut.send_expect("pkill -15 l3fwd", "#", 60, True)
-
+	
+	    while True:
+	    	no_lines = int(self.dut.send_expect("ps -p %d | wc -l" % int(pid), "#", 60, True))
+	    	if 1 == no_lines: break
+	    
     def tear_down(self):
         """
         Run after each test case.
