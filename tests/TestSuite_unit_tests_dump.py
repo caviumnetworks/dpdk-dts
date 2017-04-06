@@ -85,7 +85,10 @@ class TestUnitTestsDump(TestCase):
         """
         Run history log dump test case.
         """
-        self.dut.send_expect("./%s/app/testpmd -n 1 -c f -- -i" % (self.target), "testpmd>", self.start_test_time)
+	cmd = "./%s/app/testpmd -n 1 -c f -- -i"
+	if "cavium" in self.dut.nic_type:
+		cmd += " --disable-hw-vlan-filter"
+        self.dut.send_expect(cmd % (self.target), "testpmd>", self.start_test_time)
         out = self.dut.send_expect("dump_ring", "testpmd>", self.run_cmd_time)
         self.dut.send_expect("quit", "# ")
         match_regex = "ring <(.*?)>@0x(.*)\r\n"
@@ -94,13 +97,16 @@ class TestUnitTestsDump(TestCase):
         
         # Nic driver will create multiple rings.
         # Only check the last one to make sure ring_dump function work.
-        self.verify( 'MP_mbuf_pool_socket_0' in result[0][-1], "dump ring name failed")
+        self.verify( 'MP_mbuf_pool_socket_0' in result[0][0], "dump ring name failed")
 
     def test_mempool_dump(self):
         """
         Run mempool dump test case.
         """
-        self.dut.send_expect("./%s/app/testpmd -n 1 -c f -- -i" % (self.target), "testpmd>", self.start_test_time)
+	cmd = "./%s/app/testpmd -n 1 -c f -- -i"
+	if "cavium" in self.dut.nic_type:
+		cmd += " --disable-hw-vlan-filter"
+        self.dut.send_expect(cmd % (self.target), "testpmd>", self.start_test_time)
         out = self.dut.send_expect("dump_mempool", "testpmd>", self.run_cmd_time * 2)
         self.dut.send_expect("quit", "# ")
         match_regex = "mempool <(.*?)>@0x(.*?)\r\n"
@@ -133,7 +139,10 @@ class TestUnitTestsDump(TestCase):
         """
         Run memzone dump test case.
         """
-        self.dut.send_expect("./%s/app/testpmd -n 1 -c f -- -i" % (self.target), "testpmd>", self.start_test_time)
+	cmd = "./%s/app/testpmd -n 1 -c f -- -i"
+	if "cavium" in self.dut.nic_type:
+		cmd += " --disable-hw-vlan-filter"
+        self.dut.send_expect(cmd % (self.target), "testpmd>", self.start_test_time)
         out = self.dut.send_expect("dump_memzone", "testpmd>", self.run_cmd_time * 2)
         self.dut.send_expect("quit", "# ")
 
