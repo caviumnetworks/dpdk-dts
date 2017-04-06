@@ -40,6 +40,7 @@ import time
 from test_case import TestCase
 from time import sleep
 from settings import HEADER_SIZE
+from settings import load_global_setting
 from pmd_output import PmdOutput
 from etgen import IxiaPacketGenerator
 
@@ -68,10 +69,12 @@ class TestPmd(TestCase,IxiaPacketGenerator):
 
         self.blacklist = ""
 
-        # Update config file and rebuild to get best perf on FVL
-        self.dut.send_expect("sed -i -e 's/CONFIG_RTE_LIBRTE_I40E_16BYTE_RX_DESC=n/CONFIG_RTE_LIBRTE_I40E_16BYTE_RX_DESC=y/' ./config/common_base", "#", 20)
-        self.dut.build_install_dpdk(self.target)
-
+	# Adding check for nic_type, rebuild will only initiate if nic_type = FVL
+	if "fvl10g_vf" in self.dut.nic_type:
+	        # Update config file and rebuild to get best perf on FVL
+	        self.dut.send_expect("sed -i -e 's/CONFIG_RTE_LIBRTE_I40E_16BYTE_RX_DESC=n/CONFIG_RTE_LIBRTE_I40E_16BYTE_RX_DESC=y/' ./config/common_base", "#", 20)
+        	self.dut.build_install_dpdk(self.target)
+	
         # Based on h/w type, choose how many ports to use
         self.dut_ports = self.dut.get_ports()
 
