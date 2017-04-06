@@ -85,9 +85,14 @@ class TestUnitTestsLpmIpv6(TestCase):
             pass
         else:
             hugepage_ori = self.dut.get_total_huge_pages()
-            self.dut.set_huge_pages(4096)
+            hugepages_size = self.dut.send_expect("awk '/Hugepagesize/ {print $2}' /proc/meminfo", "# ")
+	    if "524288" == hugepages_size:
+            	nr_hugepages = 16
+	    else:
+            	nr_hugepags = 4096
+            self.dut.set_huge_pages(nr_hugepages)
             hugepage_num = self.dut.get_total_huge_pages()
-            self.verify(hugepage_num >= 4096, "failed to request huge memory")
+            self.verify(hugepage_num >= nr_hugepages, "failed to request huge memory")
 
         self.dut.send_expect("./%s/app/test -n 1 -c f" % self.target, "R.*T.*E.*>.*>", 60)
         out = self.dut.send_expect("lpm6_autotest", "RTE>>", 3600)
