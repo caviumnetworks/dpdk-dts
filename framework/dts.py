@@ -80,8 +80,11 @@ def dts_parse_param(config, section):
     # Set parameters
     parameters = config.get(section, 'parameters').split(':')
     drivername = config.get(section, 'drivername').split('=')[-1]
+    op = config.get(section, 'linkspeed').split('=')[-1]
+    linkspeed = re.sub('[^0-9]+',"",op)
 
     settings.save_global_setting(settings.HOST_DRIVER_SETTING, drivername)
+    settings.save_global_setting(settings.HOST_NIC_LINKSPEED, linkspeed)
 
     paramDict = dict()
     for param in parameters:

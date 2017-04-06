@@ -39,7 +39,7 @@ import signal
 
 from exception import VerifyFailure, TimeoutException
 from settings import DRIVERS, NICS, get_nic_name, load_global_setting
-from settings import PERF_SETTING, FUNC_SETTING, DEBUG_SETTING, DEBUG_CASE_SETTING, HOST_DRIVER_SETTING
+from settings import PERF_SETTING, FUNC_SETTING, DEBUG_SETTING, DEBUG_CASE_SETTING, HOST_DRIVER_SETTING, HOST_NIC_LINKSPEED
 from rst import RstReport
 from test_result import ResultTable, Result
 from logger import getLogger
@@ -366,6 +366,9 @@ class TestCase(object):
         elif nic == 'redrockcanyou':
             bitrate *= 40
         elif driver == 'thunder-nicvf':
-            bitrate *= 10
+            if load_global_setting(HOST_NIC_LINKSPEED) == "10000":
+                bitrate *= 10  # 10 Gb NICs
+            elif load_global_setting(HOST_NIC_LINKSPEED) == "40000":
+                bitrate *= 40  # 40 Gb NICs
 
         return bitrate * num_ports / 8 / (frame_size + 20)
