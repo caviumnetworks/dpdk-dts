@@ -46,9 +46,19 @@ user applications
 import utils
 from test_case import TestCase
 from exception import VerifyFailure
-from packet import Packet
 import time
 
+# so as to bind GRE for GRE testing
+from scapy.packet import *
+from scapy.fields import *
+from scapy.layers.inet import UDP,IP
+from scapy.layers.inet6 import IPv6
+from scapy.layers.l2 import Ether
+from scapy.layers.l2 import GRE
+IPPROTO_GRE=47
+
+# to override the one from scapy
+from packet import Packet
 
 class TestUniPacket(TestCase):
 
@@ -63,8 +73,10 @@ class TestUniPacket(TestCase):
         self.dut_port = valports[0]
         tester_port = self.tester.get_local_port(self.dut_port)
         self.tester_iface = self.tester.get_interface(tester_port)
-        self.dut.send_expect(
-            "./%s/app/testpmd -c f -n 4 -- -i --txqflags=0x0" % self.target, "testpmd>", 20)
+	cmd = "./%s/app/testpmd -c f -n 4 -- -i --txqflags=0x0" 
+	if "cavium" in self.dut.nic_type:
+		cmd += " --disable-hw-vlan-filter"
+        self.dut.send_expect(cmd % self.target, "testpmd>", 20)
         self.dut.send_expect("set fwd rxonly", "testpmd>")
         self.dut.send_expect("set verbose 1", "testpmd>")
         self.dut.send_expect("start", "testpmd>")
@@ -121,6 +133,9 @@ class TestUniPacket(TestCase):
         elif "niantic" in self.nic.lower() or "i350" in self.nic.lower():
             outerL4Type = ""
             ipv4_default_packet_type = ["L2_ETHER", "L3_IPV4"]
+	elif "cavium" in self.dut.nic_type:
+            outerL4Type = ""
+            ipv4_default_packet_type = ["L3_IPV4"]
         pktType = {
             "MAC_IP_PKT":                ipv4_default_packet_type + [outerL4Type],
             "MAC_IP_UDP_PKT":            ipv4_default_packet_type + ["L4_UDP"],
@@ -139,6 +154,8 @@ class TestUniPacket(TestCase):
         elif "niantic" in self.nic.lower() or "i350" in self.nic.lower():
             pktType.pop("MAC_IP_ICMP_PKT")
             pktType.pop("MAC_IPFRAG_TCP_PKT")
+	elif "cavium" in self.dut.nic_type:
+            pktType.pop("MAC_IP_ICMP_PKT")
 
         self.run_test(pktType)
 
@@ -152,6 +169,9 @@ class TestUniPacket(TestCase):
         elif "niantic" in self.nic.lower() or "i350" in self.nic.lower():
             outerL4Type = ""
             ipv6_default_packet_type = ["L2_ETHER", "L3_IPV6"]
+        elif "cavium" in self.dut.nic_type:
+            outerL4Type = ""
+            ipv6_default_packet_type = ["L3_IPV6"]
 
         pktType = {
             "MAC_IPv6_PKT":          ipv6_default_packet_type + [outerL4Type],
@@ -245,36 +265,55 @@ class TestUniPacket(TestCase):
         checked that whether NVGRE tunnel packet can be normally detected
         by Fortville.
         """
-        self.verify(("fortville" in self.nic or "fortpark_TLV" in self.nic),
+        self.verify(("fortville" in self.nic or "fortpark_TLV" in self.nic or "cavium" in self.dut.nic_type),
                     "NVGRE tunnel packet type detect only support by Fortville")
-        nvgre_base_packet_type = ["L2_ETHER", "L3_IPV4_EXT_UNKNOWN", "TUNNEL_GRENAT"]
-        # INNER IPV4 not with vlan
-        nvgre_ipv4_default_packet_type = nvgre_base_packet_type + ["INNER_L2_ETHER", "INNER_L3_IPV4_EXT_UNKNOWN"]
-        # INNER IPV6 not with vlan
-        nvgre_ipv6_default_packet_type = nvgre_base_packet_type + ["INNER_L2_ETHER", "INNER_L3_IPV6_EXT_UNKNOWN"]
-        # INNER IPV4 with vlan
-        nvgre_ipv4_vlan_packet_type = nvgre_base_packet_type + ["INNER_L2_ETHER_VLAN", "INNER_L3_IPV4_EXT_UNKNOWN"]
-        # INNER IPV6 with vlan
-        nvgre_ipv6_vlan_packet_type = nvgre_base_packet_type + ["INNER_L2_ETHER_VLAN", "INNER_L3_IPV6_EXT_UNKNOWN"]
+	if "cavium" in self.dut.nic_type:
+        	nvgre_base_packet_type = ["L3_IPV4", "TUNNEL_NVGRE"]
+		pktType = {
+       		    "MAC_IP_NVGRE_MAC_IPFRAG_PKT":              nvgre_base_packet_type,
+       		    "MAC_IP_NVGRE_MAC_IP_PKT":                  nvgre_base_packet_type,
+       		    "MAC_IP_NVGRE_MAC_VLAN_PKT":                nvgre_base_packet_type,
+       		    "MAC_IP_NVGRE_MAC_VLAN_IPFRAG_PKT":         nvgre_base_packet_type,
+       		    "MAC_IP_NVGRE_MAC_VLAN_IP_PKT":             nvgre_base_packet_type,
+       		    "MAC_IP_NVGRE_MAC_VLAN_IP_UDP_PKT":         nvgre_base_packet_type,
+       		    "MAC_IP_NVGRE_MAC_VLAN_IP_TCP_PKT":         nvgre_base_packet_type,
+       		    "MAC_IP_NVGRE_MAC_VLAN_IP_SCTP_PKT":        nvgre_base_packet_type,
+       		    "MAC_IP_NVGRE_MAC_VLAN_IP_ICMP_PKT":        nvgre_base_packet_type,
+       		    "MAC_IP_NVGRE_MAC_VLAN_IPv6FRAG_PKT":       nvgre_base_packet_type,
+       		    "MAC_IP_NVGRE_MAC_VLAN_IPv6_PKT":           nvgre_base_packet_type,
+       		    "MAC_IP_NVGRE_MAC_VLAN_IPv6_UDP_PKT":       nvgre_base_packet_type,
+       		    "MAC_IP_NVGRE_MAC_VLAN_IPv6_TCP_PKT":       nvgre_base_packet_type,
+       		    "MAC_IP_NVGRE_MAC_VLAN_IPv6_SCTP_PKT":      nvgre_base_packet_type,
+       		    "MAC_IP_NVGRE_MAC_VLAN_IPv6_ICMP_PKT":      nvgre_base_packet_type
+       		}
+	else:
+        	nvgre_base_packet_type = ["L2_ETHER", "L3_IPV4_EXT_UNKNOWN", "TUNNEL_GRENAT"]
+        	# INNER IPV4 not with vlan
+       		nvgre_ipv4_default_packet_type = nvgre_base_packet_type + ["INNER_L2_ETHER", "INNER_L3_IPV4"]
+       		# INNER IPV6 not with vlan
+       		nvgre_ipv6_default_packet_type = nvgre_base_packet_type + ["INNER_L2_ETHER", "INNER_L3_IPV6"]
+       		# INNER IPV4 with vlan
+       		nvgre_ipv4_vlan_packet_type = nvgre_base_packet_type + ["INNER_L2_ETHER_VLAN", "INNER_L3_IPV4"]
+       		# INNER IPV6 with vlan
+       		nvgre_ipv6_vlan_packet_type = nvgre_base_packet_type + ["INNER_L2_ETHER_VLAN", "INNER_L3_IPV6"]
 
-
-        pktType = {
-            "MAC_IP_NVGRE_MAC_IPFRAG_PKT":              nvgre_ipv4_default_packet_type + ["INNER_L4_FRAG"],
-            "MAC_IP_NVGRE_MAC_IP_PKT":                  nvgre_ipv4_default_packet_type + ["INNER_L4_NONFRAG"],
-            "MAC_IP_NVGRE_MAC_VLAN_PKT":                nvgre_base_packet_type + ["INNER_L2_ETHER"],
-            "MAC_IP_NVGRE_MAC_VLAN_IPFRAG_PKT":         nvgre_ipv4_vlan_packet_type + ["INNER_L4_FRAG"],
-            "MAC_IP_NVGRE_MAC_VLAN_IP_PKT":             nvgre_ipv4_vlan_packet_type + ["INNER_L4_NONFRAG"],
-            "MAC_IP_NVGRE_MAC_VLAN_IP_UDP_PKT":         nvgre_ipv4_vlan_packet_type + ["INNER_L4_UDP"],
-            "MAC_IP_NVGRE_MAC_VLAN_IP_TCP_PKT":         nvgre_ipv4_vlan_packet_type + ["INNER_L4_TCP"],
-            "MAC_IP_NVGRE_MAC_VLAN_IP_SCTP_PKT":        nvgre_ipv4_vlan_packet_type + ["INNER_L4_SCTP"],
-            "MAC_IP_NVGRE_MAC_VLAN_IP_ICMP_PKT":        nvgre_ipv4_vlan_packet_type + ["INNER_L4_ICMP"],
-            "MAC_IP_NVGRE_MAC_VLAN_IPv6FRAG_PKT":       nvgre_ipv6_vlan_packet_type + ["INNER_L4_FRAG"],
-            "MAC_IP_NVGRE_MAC_VLAN_IPv6_PKT":           nvgre_ipv6_vlan_packet_type + ["INNER_L4_NONFRAG"],
-            "MAC_IP_NVGRE_MAC_VLAN_IPv6_UDP_PKT":       nvgre_ipv6_vlan_packet_type + ["INNER_L4_UDP"],
-            "MAC_IP_NVGRE_MAC_VLAN_IPv6_TCP_PKT":       nvgre_ipv6_vlan_packet_type + ["INNER_L4_TCP"],
-            "MAC_IP_NVGRE_MAC_VLAN_IPv6_SCTP_PKT":      nvgre_ipv6_vlan_packet_type + ["INNER_L4_SCTP"],
-            "MAC_IP_NVGRE_MAC_VLAN_IPv6_ICMP_PKT":      nvgre_ipv6_vlan_packet_type + ["INNER_L4_ICMP"]
-        }
+       		pktType = {
+       		    "MAC_IP_NVGRE_MAC_IPFRAG_PKT":              nvgre_ipv4_default_packet_type + ["INNER_L4_FRAG"],
+       		    "MAC_IP_NVGRE_MAC_IP_PKT":                  nvgre_ipv4_default_packet_type + ["INNER_L4_NONFRAG"],
+       		    "MAC_IP_NVGRE_MAC_VLAN_PKT":                nvgre_base_packet_type + ["INNER_L2_ETHER"],
+       		    "MAC_IP_NVGRE_MAC_VLAN_IPFRAG_PKT":         nvgre_ipv4_vlan_packet_type + ["INNER_L4_FRAG"],
+       		    "MAC_IP_NVGRE_MAC_VLAN_IP_PKT":             nvgre_ipv4_vlan_packet_type + ["INNER_L4_NONFRAG"],
+       		    "MAC_IP_NVGRE_MAC_VLAN_IP_UDP_PKT":         nvgre_ipv4_vlan_packet_type + ["INNER_L4_UDP"],
+       		    "MAC_IP_NVGRE_MAC_VLAN_IP_TCP_PKT":         nvgre_ipv4_vlan_packet_type + ["INNER_L4_TCP"],
+       		    "MAC_IP_NVGRE_MAC_VLAN_IP_SCTP_PKT":        nvgre_ipv4_vlan_packet_type + ["INNER_L4_SCTP"],
+       		    "MAC_IP_NVGRE_MAC_VLAN_IP_ICMP_PKT":        nvgre_ipv4_vlan_packet_type + ["INNER_L4_ICMP"],
+       		    "MAC_IP_NVGRE_MAC_VLAN_IPv6FRAG_PKT":       nvgre_ipv6_vlan_packet_type + ["INNER_L4_FRAG"],
+       		    "MAC_IP_NVGRE_MAC_VLAN_IPv6_PKT":           nvgre_ipv6_vlan_packet_type + ["INNER_L4_NONFRAG"],
+       		    "MAC_IP_NVGRE_MAC_VLAN_IPv6_UDP_PKT":       nvgre_ipv6_vlan_packet_type + ["INNER_L4_UDP"],
+       		    "MAC_IP_NVGRE_MAC_VLAN_IPv6_TCP_PKT":       nvgre_ipv6_vlan_packet_type + ["INNER_L4_TCP"],
+       		    "MAC_IP_NVGRE_MAC_VLAN_IPv6_SCTP_PKT":      nvgre_ipv6_vlan_packet_type + ["INNER_L4_SCTP"],
+       		    "MAC_IP_NVGRE_MAC_VLAN_IPv6_ICMP_PKT":      nvgre_ipv6_vlan_packet_type + ["INNER_L4_ICMP"]
+       		}
         self.run_test(pktType)
 
     def test_NVGRE_in_IPv6_tunnel(self):
@@ -282,45 +321,76 @@ class TestUniPacket(TestCase):
         checked that whether NVGRE in IPv6 tunnel packet can be normally
         detected by Fortville.
         """
-        self.verify(("fortville" in self.nic or "fortpark_TLV" in self.nic),
+        self.verify(("fortville" in self.nic or "fortpark_TLV" in self.nic or "cavium" in self.dut.nic_type),
                     "NVGRE in IPv6 detect only support by Fortville")
-        nvgre_base_packet_type = ["L2_ETHER", "L3_IPV6_EXT_UNKNOWN", "TUNNEL_GRENAT"]
-        # INNER IPV4 not with vlan
-	nvgre_ipv4_default_packet_type = nvgre_base_packet_type + ["INNER_L2_ETHER", "INNER_L3_IPV4_EXT_UNKNOWN"]
-        # INNER IPV6 not with vlan
-        nvgre_ipv6_default_packet_type = nvgre_base_packet_type + ["INNER_L2_ETHER", "INNER_L3_IPV6_EXT_UNKNOWN"]
-        # INNER IPV4 with vlan
-	nvgre_ipv4_vlan_packet_type = nvgre_base_packet_type + ["INNER_L2_ETHER_VLAN", "INNER_L3_IPV4_EXT_UNKNOWN"]
-        # INNER IPV6 with vlan
-        nvgre_ipv6_vlan_packet_type = nvgre_base_packet_type + ["INNER_L2_ETHER_VLAN", "INNER_L3_IPV6_EXT_UNKNOWN"]
+	if "cavium" in self.dut.nic_type:
+		#cavium recognizes only L3 and L4 by hardware
+       		nvgre_base_packet_type = ["L3_IPV6", "TUNNEL_NVGRE"]
+       		pkt_types = {
+       		    "MAC_IPv6_NVGRE_MAC_PKT":               nvgre_base_packet_type,
+       		    "MAC_IPv6_NVGRE_MAC_IPFRAG_PKT":        nvgre_base_packet_type,
+       		    "MAC_IPv6_NVGRE_MAC_IP_PKT":            nvgre_base_packet_type,
+       		    "MAC_IPv6_NVGRE_MAC_IP_UDP_PKT":        nvgre_base_packet_type,
+       		    "MAC_IPv6_NVGRE_MAC_IP_TCP_PKT":        nvgre_base_packet_type,
+       		    "MAC_IPv6_NVGRE_MAC_IP_SCTP_PKT":       nvgre_base_packet_type,
+       		    "MAC_IPv6_NVGRE_MAC_IP_ICMP_PKT":       nvgre_base_packet_type,
+       		    "MAC_IPv6_NVGRE_MAC_IPv6FRAG_PKT":      nvgre_base_packet_type,
+       		    "MAC_IPv6_NVGRE_MAC_IPv6_PKT":          nvgre_base_packet_type,
+       		    "MAC_IPv6_NVGRE_MAC_IPv6_UDP_PKT":      nvgre_base_packet_type,
+       		    "MAC_IPv6_NVGRE_MAC_IPv6_TCP_PKT":      nvgre_base_packet_type,
+       		    "MAC_IPv6_NVGRE_MAC_IPv6_SCTP_PKT":     nvgre_base_packet_type,
+       		    "MAC_IPv6_NVGRE_MAC_IPv6_ICMP_PKT":     nvgre_base_packet_type,
+       		    "MAC_IPv6_NVGRE_MAC_VLAN_IPFRAG_PKT":   nvgre_base_packet_type,
+       		    "MAC_IPv6_NVGRE_MAC_VLAN_IP_PKT":       nvgre_base_packet_type,
+       		    "MAC_IPv6_NVGRE_MAC_VLAN_IP_UDP_PKT":   nvgre_base_packet_type,
+       		    "MAC_IPv6_NVGRE_MAC_VLAN_IP_TCP_PKT":   nvgre_base_packet_type,
+       		    "MAC_IPv6_NVGRE_MAC_VLAN_IP_SCTP_PKT":  nvgre_base_packet_type,
+       		    "MAC_IPv6_NVGRE_MAC_VLAN_IP_ICMP_PKT":  nvgre_base_packet_type,
+       		    "MAC_IPv6_NVGRE_MAC_VLAN_IPv6FRAG_PKT": nvgre_base_packet_type,
+       		    "MAC_IPv6_NVGRE_MAC_VLAN_IPv6_PKT":     nvgre_base_packet_type,
+       		    "MAC_IPv6_NVGRE_MAC_VLAN_IPv6_UDP_PKT": nvgre_base_packet_type,
+       		    "MAC_IPv6_NVGRE_MAC_VLAN_IPv6_TCP_PKT": nvgre_base_packet_type,
+       		    "MAC_IPv6_NVGRE_MAC_VLAN_IPv6_SCTP_PKT":nvgre_base_packet_type,
+       		    "MAC_IPv6_NVGRE_MAC_VLAN_IPv6_ICMP_PKT":nvgre_base_packet_type
+       		}
+	else:
+       		nvgre_base_packet_type = ["L2_ETHER", "L3_IPV6_EXT_UNKNOWN", "TUNNEL_GRENAT"]
+       		# INNER IPV4 not with vlan
+       		nvgre_ipv4_default_packet_type = nvgre_base_packet_type + ["INNER_L2_ETHER", "INNER_L3_IPV4_EXT_UNKNOWN"]
+       		# INNER IPV6 not with vlan
+       		nvgre_ipv6_default_packet_type = nvgre_base_packet_type + ["INNER_L2_ETHER", "INNER_L3_IPV6_EXT_UNKNOWN"]
+       		# INNER IPV4 with vlan
+       		nvgre_ipv4_vlan_packet_type = nvgre_base_packet_type + ["INNER_L2_ETHER_VLAN", "INNER_L3_IPV4_EXT_UNKNOWN"]
+       		# INNER IPV6 with vlan
+       		nvgre_ipv6_vlan_packet_type = nvgre_base_packet_type + ["INNER_L2_ETHER_VLAN", "INNER_L3_IPV6_EXT_UNKNOWN"]
 
-        pkt_types = {
-            "MAC_IPv6_NVGRE_MAC_PKT":               nvgre_base_packet_type + ["INNER_L2_ETHER"],
-            "MAC_IPv6_NVGRE_MAC_IPFRAG_PKT":        nvgre_ipv4_default_packet_type + ["INNER_L4_FRAG"],
-            "MAC_IPv6_NVGRE_MAC_IP_PKT":            nvgre_ipv4_default_packet_type + ["INNER_L4_NONFRAG"],
-            "MAC_IPv6_NVGRE_MAC_IP_UDP_PKT":        nvgre_ipv4_default_packet_type + ["INNER_L4_UDP"],
-            "MAC_IPv6_NVGRE_MAC_IP_TCP_PKT":        nvgre_ipv4_default_packet_type + ["INNER_L4_TCP"],
-            "MAC_IPv6_NVGRE_MAC_IP_SCTP_PKT":       nvgre_ipv4_default_packet_type + ["INNER_L4_SCTP"],
-            "MAC_IPv6_NVGRE_MAC_IP_ICMP_PKT":       nvgre_ipv4_default_packet_type + ["INNER_L4_ICMP"],
-            "MAC_IPv6_NVGRE_MAC_IPv6FRAG_PKT":      nvgre_ipv6_default_packet_type + ["INNER_L4_FRAG"],
-            "MAC_IPv6_NVGRE_MAC_IPv6_PKT":          nvgre_ipv6_default_packet_type + ["INNER_L4_NONFRAG"],
-            "MAC_IPv6_NVGRE_MAC_IPv6_UDP_PKT":      nvgre_ipv6_default_packet_type + ["INNER_L4_UDP"],
-            "MAC_IPv6_NVGRE_MAC_IPv6_TCP_PKT":      nvgre_ipv6_default_packet_type + ["INNER_L4_TCP"], 
-            "MAC_IPv6_NVGRE_MAC_IPv6_SCTP_PKT":     nvgre_ipv6_default_packet_type + ["INNER_L4_NONFRAG"],
-            "MAC_IPv6_NVGRE_MAC_IPv6_ICMP_PKT":     nvgre_ipv6_default_packet_type + ["INNER_L4_NONFRAG"],
-            "MAC_IPv6_NVGRE_MAC_VLAN_IPFRAG_PKT":   nvgre_ipv4_vlan_packet_type + ["INNER_L4_FRAG"],
-            "MAC_IPv6_NVGRE_MAC_VLAN_IP_PKT":       nvgre_ipv4_vlan_packet_type + ["INNER_L4_NONFRAG"],
-            "MAC_IPv6_NVGRE_MAC_VLAN_IP_UDP_PKT":   nvgre_ipv4_vlan_packet_type + ["INNER_L4_UDP"],
-            "MAC_IPv6_NVGRE_MAC_VLAN_IP_TCP_PKT":   nvgre_ipv4_vlan_packet_type + ["INNER_L4_TCP"],
-            "MAC_IPv6_NVGRE_MAC_VLAN_IP_SCTP_PKT":  nvgre_ipv4_vlan_packet_type + ["INNER_L4_SCTP"],
-            "MAC_IPv6_NVGRE_MAC_VLAN_IP_ICMP_PKT":  nvgre_ipv4_vlan_packet_type + ["INNER_L4_ICMP"],
-            "MAC_IPv6_NVGRE_MAC_VLAN_IPv6FRAG_PKT": nvgre_ipv6_vlan_packet_type + ["INNER_L4_FRAG"], 
-            "MAC_IPv6_NVGRE_MAC_VLAN_IPv6_PKT":     nvgre_ipv6_vlan_packet_type + ["INNER_L4_NONFRAG"],
-            "MAC_IPv6_NVGRE_MAC_VLAN_IPv6_UDP_PKT": nvgre_ipv6_vlan_packet_type + ["INNER_L4_UDP"],
-            "MAC_IPv6_NVGRE_MAC_VLAN_IPv6_TCP_PKT": nvgre_ipv6_vlan_packet_type + ["INNER_L4_TCP"],
-            "MAC_IPv6_NVGRE_MAC_VLAN_IPv6_SCTP_PKT":nvgre_ipv6_vlan_packet_type + ["INNER_L4_NONFRAG"],
-            "MAC_IPv6_NVGRE_MAC_VLAN_IPv6_ICMP_PKT":nvgre_ipv6_vlan_packet_type + ["INNER_L4_NONFRAG"]
-        }
+       		pkt_types = {
+       		    "MAC_IPv6_NVGRE_MAC_PKT":               nvgre_base_packet_type + ["INNER_L2_ETHER"],
+       		    "MAC_IPv6_NVGRE_MAC_IPFRAG_PKT":        nvgre_ipv4_default_packet_type + ["INNER_L4_FRAG"],
+       		    "MAC_IPv6_NVGRE_MAC_IP_PKT":            nvgre_ipv4_default_packet_type + ["INNER_L4_NONFRAG"],
+       		    "MAC_IPv6_NVGRE_MAC_IP_UDP_PKT":        nvgre_ipv4_default_packet_type + ["INNER_L4_UDP"],
+       		    "MAC_IPv6_NVGRE_MAC_IP_TCP_PKT":        nvgre_ipv4_default_packet_type + ["INNER_L4_TCP"],
+       		    "MAC_IPv6_NVGRE_MAC_IP_SCTP_PKT":       nvgre_ipv4_default_packet_type + ["INNER_L4_SCTP"],
+       		    "MAC_IPv6_NVGRE_MAC_IP_ICMP_PKT":       nvgre_ipv4_default_packet_type + ["INNER_L4_ICMP"],
+       		    "MAC_IPv6_NVGRE_MAC_IPv6FRAG_PKT":      nvgre_ipv6_default_packet_type + ["INNER_L4_FRAG"],
+       		    "MAC_IPv6_NVGRE_MAC_IPv6_PKT":          nvgre_ipv6_default_packet_type + ["INNER_L4_NONFRAG"],
+       		    "MAC_IPv6_NVGRE_MAC_IPv6_UDP_PKT":      nvgre_ipv6_default_packet_type + ["INNER_L4_UDP"],
+       		    "MAC_IPv6_NVGRE_MAC_IPv6_TCP_PKT":      nvgre_ipv6_default_packet_type + ["INNER_L4_TCP"], 
+       		    "MAC_IPv6_NVGRE_MAC_IPv6_SCTP_PKT":     nvgre_ipv6_default_packet_type + ["INNER_L4_NONFRAG"],
+       		    "MAC_IPv6_NVGRE_MAC_IPv6_ICMP_PKT":     nvgre_ipv6_default_packet_type + ["INNER_L4_NONFRAG"],
+       		    "MAC_IPv6_NVGRE_MAC_VLAN_IPFRAG_PKT":   nvgre_ipv4_vlan_packet_type + ["INNER_L4_FRAG"],
+       		    "MAC_IPv6_NVGRE_MAC_VLAN_IP_PKT":       nvgre_ipv4_vlan_packet_type + ["INNER_L4_NONFRAG"],
+       		    "MAC_IPv6_NVGRE_MAC_VLAN_IP_UDP_PKT":   nvgre_ipv4_vlan_packet_type + ["INNER_L4_UDP"],
+       		    "MAC_IPv6_NVGRE_MAC_VLAN_IP_TCP_PKT":   nvgre_ipv4_vlan_packet_type + ["INNER_L4_TCP"],
+       		    "MAC_IPv6_NVGRE_MAC_VLAN_IP_SCTP_PKT":  nvgre_ipv4_vlan_packet_type + ["INNER_L4_SCTP"],
+       		    "MAC_IPv6_NVGRE_MAC_VLAN_IP_ICMP_PKT":  nvgre_ipv4_vlan_packet_type + ["INNER_L4_ICMP"],
+       		    "MAC_IPv6_NVGRE_MAC_VLAN_IPv6FRAG_PKT": nvgre_ipv6_vlan_packet_type + ["INNER_L4_FRAG"], 
+       		    "MAC_IPv6_NVGRE_MAC_VLAN_IPv6_PKT":     nvgre_ipv6_vlan_packet_type + ["INNER_L4_NONFRAG"],
+       		    "MAC_IPv6_NVGRE_MAC_VLAN_IPv6_UDP_PKT": nvgre_ipv6_vlan_packet_type + ["INNER_L4_UDP"],
+       		    "MAC_IPv6_NVGRE_MAC_VLAN_IPv6_TCP_PKT": nvgre_ipv6_vlan_packet_type + ["INNER_L4_TCP"],
+       		    "MAC_IPv6_NVGRE_MAC_VLAN_IPv6_SCTP_PKT":nvgre_ipv6_vlan_packet_type + ["INNER_L4_NONFRAG"],
+       		    "MAC_IPv6_NVGRE_MAC_VLAN_IPv6_ICMP_PKT":nvgre_ipv6_vlan_packet_type + ["INNER_L4_NONFRAG"]
+       		}
 
         self.run_test(pkt_types)
 
@@ -328,9 +398,13 @@ class TestUniPacket(TestCase):
         """
         checked that whether GRE tunnel packet can be normally detected by Fortville.
         """
-        self.verify(("fortville" in self.nic or "fortpark_TLV" in self.nic),
+	bind_layers(IP, GRE, frag=0, proto=IPPROTO_GRE)
+        self.verify(("fortville" in self.nic or "fortpark_TLV" in self.nic or "cavium" in self.dut.nic_type),
                     "GRE tunnel packet type detect only support by Fortville")
-        IPv4_packet_type = [" L2_ETHER", " L3_IPV4_EXT_UNKNOWN", "L4_NONFRAG"]
+	if "cavium" in self.dut.nic_type:
+        	IPv4_packet_type = ["L3_IPV4", "TUNNEL_GRE"]
+	else:
+        	IPv4_packet_type = [" L2_ETHER", " L3_IPV4_EXT_UNKNOWN", "L4_NONFRAG"]
 
         pktType = {
             "MAC_IP_GRE_IPFRAG_PKT":          IPv4_packet_type,
@@ -342,6 +416,7 @@ class TestUniPacket(TestCase):
             "MAC_IP_GRE_PKT":                 IPv4_packet_type
         }
         self.run_test(pktType)
+	split_layers(IP, GRE, frag=0, proto=IPPROTO_GRE)
 
     def test_Vxlan_tunnel(self):
         """
