@@ -332,9 +332,9 @@ class TestShutdownApi(TestCase):
         jumbo_size = 2048
         self.pmdout.start_testpmd("Default", "--portmask=%s --port-topology=loop" % utils.create_mask(self.ports), socket=self.ports_socket)
         self.dut.send_expect("port stop all", "testpmd> ", 100)
+        self.dut.send_expect("port config all max-pkt-len %d" % jumbo_size, "testpmd> ")
         out = self.dut.send_expect("vlan set strip off all", "testpmd> ")
         if "fail" not in out:
-            self.dut.send_expect("port config all max-pkt-len %d" % jumbo_size, "testpmd> ")
             for port in self.ports:
                 self.dut.send_expect("rx_vlan add 1 %d" % port, "testpmd> ")
             self.dut.send_expect("set fwd mac", "testpmd>")
